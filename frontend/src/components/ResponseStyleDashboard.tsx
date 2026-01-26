@@ -61,7 +61,7 @@ interface ResponseStyleDashboardProps {
 // ============================================================================
 
 const COMMON_VALIDITY_MEASURES = {
-  MMPI2: [
+  ValidityIndicators: [
     { name: 'VRIN', description: 'Variable Response Inconsistency', elevated: '>80T' },
     { name: 'TRIN', description: 'True Response Inconsistency', elevated: '>80T' },
     { name: 'F', description: 'Infrequency', elevated: '>100T' },

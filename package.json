@@ -7,7 +7,10 @@
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
-    "verify:index": "node scripts/verify-index.js",
-    "preflight": "bash scripts/preflight.sh"
+    "verify:index": "bash scripts/preflight.sh",
+    "preflight": "bash scripts/preflight.sh",
+    "support:pack": "bash scripts/support-pack.sh",
+    "setup:inbreast": "bash scripts/setup-inbreast.sh",
+    "link:inbreast": "bash scripts/link-inbreast.sh"
   }
 }

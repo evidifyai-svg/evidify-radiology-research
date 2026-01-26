@@ -905,7 +905,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 borderLeft: '4px solid #a855f7',
               }}>
                 <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>
-                  VALIDITY INDICATORS (Analogous to MMPI Validity Scales)
+                  VALIDITY INDICATORS (Analogous to response consistency scales)
                 </div>
                 <div style={{ color: 'white', fontSize: '14px' }}>
                   Behavioral patterns that may indicate rushed reading, automation bias, or negligent dismissal.
@@ -3536,6 +3536,8 @@ setAiAgreementStreak(prev => prev + 1);
     return { addaDenominator, changeOccurred, aiConsistentChange, adda: addaDenominator && aiConsistentChange };
   }, [state.currentCase, state.initialBirads, state.finalBirads]);
 
+  const isSetupScreen = state.step === 'SETUP';
+
   // ============== RENDER ==============
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
@@ -3571,151 +3573,160 @@ setAiAgreementStreak(prev => prev + 1);
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && viewMode === 'RESEARCHER' ? '360px' : 'auto' }}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-              <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
-              {/* Operator View Badge (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
-                <div style={{
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  backgroundColor: '#a855f7',
-                  color: 'white',
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  border: '1px solid #c084fc',
-                }}>
-                  🔬 OPERATOR VIEW
-                </div>
-              )}
-              {/* Trial Phase Badge */}
-              {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
-                <div style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  backgroundColor: state.currentCase?.isCalibration ? '#f59e0b' : '#22c55e',
-                  color: state.currentCase?.isCalibration ? '#78350f' : '#052e16',
-                  border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
-                  animation: 'pulse 2s infinite',
-                }}>
-                  {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
-                </div>
-              )}
-            </div>
-            <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
-            <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-              🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
-              {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
-              <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
-            </div>
+        {isSetupScreen ? (
+          <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Research Study Launcher</h1>
+            <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
+              Start a participant session or open the researcher console for the Friday walkthrough.
+            </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+        ) : (
+          <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
+                {/* Operator View Badge (Researcher Mode Only) */}
+                {viewMode === 'RESEARCHER' && (
+                  <div style={{
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    backgroundColor: '#a855f7',
+                    color: 'white',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    border: '1px solid #c084fc',
+                  }}>
+                    🔬 OPERATOR VIEW
+                  </div>
+                )}
+                {/* Trial Phase Badge */}
+                {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
+                  <div style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    backgroundColor: state.currentCase?.isCalibration ? '#f59e0b' : '#22c55e',
+                    color: state.currentCase?.isCalibration ? '#78350f' : '#052e16',
+                    border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
+                    animation: 'pulse 2s infinite',
+                  }}>
+                    {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
+              <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
+                🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
+                {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
+                <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
+              </div>
             </div>
-            <button
-              onClick={() => setShowStudyDesign(true)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                border: '1px solid rgba(147, 197, 253, 0.5)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              📋 Study Design
-            </button>
-            <button
-              onClick={() => setShowStudyPack(true)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'rgba(34, 197, 94, 0.3)',
-                border: '1px solid rgba(134, 239, 172, 0.5)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              📦 Study Pack
-            </button>
-            {/* Keyboard Help */}
-            <button
-              onClick={() => setShowKeyboardHelp(true)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-              title="Keyboard shortcuts (?)"
-            >
-              ⌨️ <span style={{ opacity: 0.7 }}>?</span>
-            </button>
-            {/* Mode Toggle */}
-            <div style={{
-              display: 'flex',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: '8px',
-              padding: '2px',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
+                <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+              </div>
               <button
-                onClick={() => setViewMode('CLINICIAN')}
+                onClick={() => setShowStudyDesign(true)}
                 style={{
-                  padding: '6px 12px',
-                  backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                  border: '1px solid rgba(147, 197, 253, 0.5)',
+                  borderRadius: '8px',
                   color: 'white',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                👩‍⚕️ Clinician
+                📋 Study Design
               </button>
               <button
-                onClick={() => setViewMode('RESEARCHER')}
+                onClick={() => setShowStudyPack(true)}
                 style={{
-                  padding: '6px 12px',
-                  backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                  border: '1px solid rgba(134, 239, 172, 0.5)',
+                  borderRadius: '8px',
                   color: 'white',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                🔬 Researcher
+                📦 Study Pack
               </button>
+              {/* Keyboard Help */}
+              <button
+                onClick={() => setShowKeyboardHelp(true)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Keyboard shortcuts (?)"
+              >
+                ⌨️ <span style={{ opacity: 0.7 }}>?</span>
+              </button>
+              {/* Mode Toggle */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                borderRadius: '8px',
+                padding: '2px',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}>
+                <button
+                  onClick={() => setViewMode('CLINICIAN')}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                  }}
+                >
+                  👩‍⚕️ Clinician
+                </button>
+                <button
+                  onClick={() => setViewMode('RESEARCHER')}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                  }}
+                >
+                  🔬 Researcher
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         {/* Mode-Specific Description Bar */}
         {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
@@ -3747,35 +3758,121 @@ setAiAgreementStreak(prev => prev + 1);
           
           {/* SETUP */}
           {state.step === 'SETUP' && (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              {/* Session Recovery Banner */}
-              <SessionRecoveryBanner
-                hasRecoverableSession={hasRecoverableSession}
-                recoveryData={recoveryData}
-                onRecover={handleRecoverSession}
-                onDiscard={handleDiscardRecovery}
-              />
-              
-              <h2 style={{ color: 'white' }}>Select Study Condition</h2>
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
-                {(['HUMAN_FIRST', 'AI_FIRST', 'CONCURRENT'] as RevealCondition[]).map(cond => (
-                  <button key={cond} onClick={() => startStudy(cond)} style={{
-                    padding: '24px 32px', backgroundColor: cond === 'HUMAN_FIRST' ? '#3b82f6' : '#334155', color: 'white',
-                    border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
-                  }}>
-                    <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
-                      {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
-                    </div>
-                    <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                      {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
-                    </div>
-                    {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '8px', fontSize: '11px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
-                  </button>
-                ))}
+            <div style={{ textAlign: 'center', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setViewMode('CLINICIAN');
+                    startStudy();
+                  }}
+                  style={{
+                    padding: '20px 28px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: '2px solid #60a5fa',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    minWidth: '220px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                  }}
+                >
+                  🧑‍⚕️ Run Participant Session
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('RESEARCHER');
+                    startStudy();
+                  }}
+                  style={{
+                    padding: '20px 28px',
+                    backgroundColor: '#7c3aed',
+                    color: 'white',
+                    border: '2px solid #a78bfa',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    minWidth: '220px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                  }}
+                >
+                  🔬 Researcher Console
+                </button>
               </div>
-              <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', maxWidth: '500px', margin: '0 auto', textAlign: 'left' }}>
-                <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
-              </div>
+
+              <details style={{ width: '100%', maxWidth: '720px', backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', padding: '16px', textAlign: 'left' }}>
+                <summary style={{ cursor: 'pointer', color: 'white', fontWeight: 600, fontSize: '14px' }}>
+                  Advanced / Diagnostics
+                </summary>
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <SessionRecoveryBanner
+                    hasRecoverableSession={hasRecoverableSession}
+                    recoveryData={recoveryData}
+                    onRecover={handleRecoverSession}
+                    onDiscard={handleDiscardRecovery}
+                  />
+
+                  <div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px' }}>View Mode</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => setViewMode('CLINICIAN')}
+                        style={{
+                          padding: '8px 14px',
+                          backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : '#1f2937',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        👩‍⚕️ Clinician
+                      </button>
+                      <button
+                        onClick={() => setViewMode('RESEARCHER')}
+                        style={{
+                          padding: '8px 14px',
+                          backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : '#1f2937',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        🔬 Researcher
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ color: 'white', marginBottom: '12px' }}>Select Study Condition</h3>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {(['HUMAN_FIRST', 'AI_FIRST', 'CONCURRENT'] as RevealCondition[]).map(cond => (
+                        <button key={cond} onClick={() => startStudy(cond)} style={{
+                          padding: '16px 20px', backgroundColor: cond === 'HUMAN_FIRST' ? '#3b82f6' : '#334155', color: 'white',
+                          border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
+                        }}>
+                          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
+                            {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                            {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
+                          </div>
+                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px' }}>
+                    <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
+                  </div>
+                </div>
+              </details>
             </div>
           )}
 

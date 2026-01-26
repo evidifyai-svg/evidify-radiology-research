@@ -91,7 +91,7 @@ const METHODOLOGY_TEMPLATES: Record<string, {
       'Custody recommendations are based on current circumstances',
     ],
     standardTests: [
-      'MMPI-2 or MMPI-2-RF',
+      'Validity indicators (standardized response consistency scales)',
       'PAI',
       'Parenting Stress Index',
       'CBCL (Child Behavior Checklist)',
@@ -150,7 +150,7 @@ const METHODOLOGY_TEMPLATES: Record<string, {
     standardTests: [
       'R-CRAS',
       'MSE-3R',
-      'MMPI-2/PAI',
+      'Validity indicators / PAI',
       'Structured malingering measures',
     ],
   },
@@ -176,7 +176,7 @@ const METHODOLOGY_TEMPLATES: Record<string, {
       'Self-reported limitations require corroboration',
     ],
     standardTests: [
-      'MMPI-2/PAI',
+      'Validity indicators / PAI',
       'Cognitive testing (as indicated)',
       'Symptom validity tests',
       'Functional capacity measures',

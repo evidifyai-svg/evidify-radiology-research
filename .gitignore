@@ -32,3 +32,8 @@ src-tauri/gen/
 *.zip
 verification/**/golden/*
 verification/**/fixtures/*
+
+# INbreast dataset (local-only)
+frontend/public/images/inbreast/**
+!frontend/public/images/inbreast/.gitkeep
+!frontend/public/images/inbreast/README.md

@@ -7,7 +7,7 @@
  * NOT legal advice - this is an experiment display mapping to conditions.
  * 
  * Key Patterns (from Baird's work):
- * - HIGHEST LIABILITY: "Read twice, AI disagreed, changed toward AI" (crucifixion condition)
+ * - HIGHEST LIABILITY: "Read twice, AI disagreed, changed toward AI" (high-risk post-AI downgrade)
  * - LOWER LIABILITY: "Read twice + documented + FDR/FOR disclosed + did not change"
  */
 
@@ -83,7 +83,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
     score -= 10;
   }
   
-  // Factor 2: Change toward AI (Baird's "crucifixion" pattern)
+  // Factor 2: Change toward AI (high-risk post-AI downgrade pattern)
   const changeOccurred = inputs.initialBirads !== inputs.finalBirads;
   const changedTowardAI = inputs.aiBirads !== null && inputs.finalBirads === inputs.aiBirads;
   
