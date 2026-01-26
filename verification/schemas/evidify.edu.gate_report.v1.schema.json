@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evidify.ai/schemas/evidify.edu.gate_report.v1.schema.json",
+  "title": "Evidify EDU Gate Report v1",
+  "description": "Canonical, deterministic gate evaluation report for educational (504/IEP) documentation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "report_id",
+    "inputs_digest",
+    "summary",
+    "gate_outcomes",
+    "violations",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "evidify.edu.gate_report.v1",
+      "description": "Schema version identifier"
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_sha256", "audit_head_sha256"],
+      "properties": {
+        "canonical_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "audit_head_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "policy_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "template_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "block_count", "warn_count", "info_count"],
+      "properties": {
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] },
+        "block_count": { "type": "integer", "minimum": 0 },
+        "warn_count": { "type": "integer", "minimum": 0 },
+        "info_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "gate_outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "status", "title"],
+        "properties": {
+          "gate_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["PASS", "WARN", "FAIL"] },
+          "title": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "violations": { "type": "array" },
+    "warnings": { "type": "array" }
+  }
+}

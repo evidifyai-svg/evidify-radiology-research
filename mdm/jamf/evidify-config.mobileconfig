@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Evidify Configuration Profile for Jamf Pro
+  
+  This profile configures Evidify for managed macOS deployments.
+  Deploy via Jamf Pro > Configuration Profiles > Upload
+  
+  Features:
+  - Pre-configures organization policy
+  - Sets allowed export destinations
+  - Enables/disables features based on org requirements
+  - Privacy-preserving: no PHI transmitted to MDM
+-->
+<plist version="1.0">
+<dict>
+    <!-- Profile Metadata -->
+    <key>PayloadDisplayName</key>
+    <string>Evidify Clinical Documentation</string>
+    
+    <key>PayloadDescription</key>
+    <string>Configuration profile for Evidify local-first clinical documentation platform. Configures security policies, export controls, and feature settings.</string>
+    
+    <key>PayloadIdentifier</key>
+    <string>ai.evidify.config.macos</string>
+    
+    <key>PayloadOrganization</key>
+    <string>Your Organization Name</string>
+    
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    
+    <key>PayloadUUID</key>
+    <string>REPLACE-WITH-GENERATED-UUID</string>
+    
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+    
+    <key>PayloadScope</key>
+    <string>User</string>
+    
+    <key>PayloadContent</key>
+    <array>
+        <!-- Evidify App Configuration -->
+        <dict>
+            <key>PayloadDisplayName</key>
+            <string>Evidify Settings</string>
+            
+            <key>PayloadIdentifier</key>
+            <string>ai.evidify.config.settings</string>
+            
+            <key>PayloadType</key>
+            <string>ai.evidify</string>
+            
+            <key>PayloadUUID</key>
+            <string>REPLACE-WITH-GENERATED-UUID-2</string>
+            
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            
+            <!-- Organization Identity -->
+            <key>OrganizationName</key>
+            <string>Your Organization Name</string>
+            
+            <key>OrganizationId</key>
+            <string>org-uuid-here</string>
+            
+            <!-- Export Policy -->
+            <key>ExportPolicy</key>
+            <dict>
+                <!-- Block exports to cloud-synced folders -->
+                <key>CloudSyncAction</key>
+                <string>Block</string>
+                
+                <!-- Warn on network shares -->
+                <key>NetworkShareAction</key>
+                <string>Warn</string>
+                
+                <!-- Block removable media -->
+                <key>RemovableMediaAction</key>
+                <string>Block</string>
+                
+                <!-- Unknown destinations -->
+                <key>UnknownDestinationAction</key>
+                <string>Block</string>
+                
+                <!-- Allowed export formats -->
+                <key>AllowedFormats</key>
+                <array>
+                    <string>pdf</string>
+                    <string>docx</string>
+                    <string>ccda</string>
+                </array>
+                
+                <!-- Require audit pack for bulk exports -->
+                <key>AuditPackRequiredAbove</key>
+                <integer>5</integer>
+            </dict>
+            
+            <!-- Recording Policy -->
+            <key>RecordingPolicy</key>
+            <dict>
+                <!-- Always require consent -->
+                <key>ConsentRequired</key>
+                <true/>
+                
+                <!-- Auto-delete audio after signing -->
+                <key>AutoDeleteAfterSigning</key>
+                <true/>
+                
+                <!-- Max retention (0 = unlimited) -->
+                <key>MaxAudioRetentionDays</key>
+                <integer>1</integer>
+                
+                <!-- Re-consent each session -->
+                <key>ReconsentEachSession</key>
+                <false/>
+            </dict>
+            
+            <!-- Attestation Policy -->
+            <key>AttestationPolicy</key>
+            <dict>
+                <!-- Allow "not relevant" dismissals -->
+                <key>AllowNotRelevant</key>
+                <true/>
+                
+                <!-- Require explanation for dismissals -->
+                <key>RequireExplanation</key>
+                <true/>
+                
+                <!-- Timeout (0 = no timeout) -->
+                <key>TimeoutSeconds</key>
+                <integer>0</integer>
+            </dict>
+            
+            <!-- Supervision Policy (for training programs) -->
+            <key>SupervisionPolicy</key>
+            <dict>
+                <!-- Credential levels requiring co-signature -->
+                <key>CosignRequiredFor</key>
+                <array>
+                    <string>intern</string>
+                    <string>trainee</string>
+                    <string>postdoc</string>
+                </array>
+                
+                <!-- Max review delay (hours) -->
+                <key>MaxReviewDelayHours</key>
+                <integer>72</integer>
+                
+                <!-- Review high-risk notes -->
+                <key>ReviewHighRiskNotes</key>
+                <true/>
+                
+                <!-- Enable competency tracking -->
+                <key>CompetencyTrackingEnabled</key>
+                <true/>
+            </dict>
+            
+            <!-- Retention Policy -->
+            <key>RetentionPolicy</key>
+            <dict>
+                <!-- Note retention (days, 0 = indefinite) -->
+                <key>NoteRetentionDays</key>
+                <integer>0</integer>
+                
+                <!-- Audit log retention (min 7 years recommended) -->
+                <key>AuditLogRetentionDays</key>
+                <integer>2555</integer>
+                
+                <!-- Auto-archive after inactivity -->
+                <key>AutoArchiveAfterDays</key>
+                <integer>365</integer>
+                
+                <!-- Generate destruction certificates -->
+                <key>RequireDestructionCertificate</key>
+                <true/>
+            </dict>
+            
+            <!-- Feature Flags -->
+            <key>Features</key>
+            <dict>
+                <!-- Enable Voice Scribe -->
+                <key>VoiceScribeEnabled</key>
+                <true/>
+                
+                <!-- Enable AI note structuring -->
+                <key>AIStructuringEnabled</key>
+                <true/>
+                
+                <!-- Enable ethics detection -->
+                <key>EthicsDetectionEnabled</key>
+                <true/>
+                
+                <!-- Enable semantic search -->
+                <key>SemanticSearchEnabled</key>
+                <true/>
+                
+                <!-- Enable time tracking -->
+                <key>TimeTrackingEnabled</key>
+                <true/>
+                
+                <!-- Enable SIEM forwarding -->
+                <key>SIEMEnabled</key>
+                <false/>
+            </dict>
+            
+            <!-- SIEM Configuration (if enabled) -->
+            <key>SIEMConfig</key>
+            <dict>
+                <key>Endpoint</key>
+                <string></string>
+                
+                <key>Format</key>
+                <string>splunk</string>
+                
+                <key>BatchSize</key>
+                <integer>100</integer>
+                
+                <key>FlushIntervalSeconds</key>
+                <integer>60</integer>
+            </dict>
+            
+            <!-- Update Policy -->
+            <key>UpdatePolicy</key>
+            <dict>
+                <!-- Auto-update enabled -->
+                <key>AutoUpdateEnabled</key>
+                <true/>
+                
+                <!-- Update channel -->
+                <key>Channel</key>
+                <string>stable</string>
+                
+                <!-- Defer updates (days) -->
+                <key>DeferDays</key>
+                <integer>3</integer>
+            </dict>
+        </dict>
+        
+        <!-- Privacy Preferences (TCC) -->
+        <dict>
+            <key>PayloadDisplayName</key>
+            <string>Evidify Privacy Preferences</string>
+            
+            <key>PayloadIdentifier</key>
+            <string>ai.evidify.config.privacy</string>
+            
+            <key>PayloadType</key>
+            <string>com.apple.TCC.configuration-profile-policy</string>
+            
+            <key>PayloadUUID</key>
+            <string>REPLACE-WITH-GENERATED-UUID-3</string>
+            
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            
+            <key>Services</key>
+            <dict>
+                <!-- Microphone access for Voice Scribe -->
+                <key>Microphone</key>
+                <array>
+                    <dict>
+                        <key>Identifier</key>
+                        <string>ai.evidify</string>
+                        <key>IdentifierType</key>
+                        <string>bundleID</string>
+                        <key>Allowed</key>
+                        <true/>
+                    </dict>
+                </array>
+                
+                <!-- Accessibility (for clipboard monitoring) -->
+                <key>Accessibility</key>
+                <array>
+                    <dict>
+                        <key>Identifier</key>
+                        <string>ai.evidify</string>
+                        <key>IdentifierType</key>
+                        <string>bundleID</string>
+                        <key>Allowed</key>
+                        <true/>
+                    </dict>
+                </array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>

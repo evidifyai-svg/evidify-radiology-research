@@ -1,0 +1,8 @@
+@@ -1,3 +1,6 @@
+ [toolchain]
+-channel = "1.78.0"
++# Tauri v1 toolchain support: keep in sync with CI and ensure Cargo understands
++# crates using the 2024 edition (e.g., transitive deps pulled by tauri-cli).
++channel = "1.92.0"
++components = ["rustfmt", "clippy"]
+ profile = "minimal"

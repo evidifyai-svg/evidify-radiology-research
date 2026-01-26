@@ -1,0 +1,17 @@
+{
+  "name": "evidify-cli",
+  "version": "1.1.0",
+  "description": "Headless pack runner for Evidify Forensic CI",
+  "main": "evidify-cli.cjs",
+  "bin": {
+    "evidify-cli": "./evidify-cli.cjs"
+  },
+  "scripts": {
+    "run-pack": "node evidify-cli.cjs run-pack"
+  },
+  "keywords": ["evidify", "forensic", "cli", "ci"],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

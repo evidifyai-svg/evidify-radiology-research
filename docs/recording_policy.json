@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "defaults": {
+    "require_patient_state_each_session": true,
+    "require_verbal_reconfirm_each_session": true,
+    "require_signed_consent_before_recording": true,
+    "block_if_patient_state_unknown": true,
+    "block_if_consent_missing": true,
+    "warn_if_third_party_unknown": true,
+    "block_if_third_party_yes_and_not_consented": true
+  },
+  "state_overrides": {
+    "DEFAULT": {
+      "assume_all_party_consent_required": true
+    }
+  }
+}

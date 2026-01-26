@@ -1,0 +1,15 @@
+@@ -6,10 +6,13 @@
+ /**
+  * Minimal smoke tests for Evidify verification assets.
+  *
+  * IMPORTANT:
+- * - This file MUST NOT write to verification/packs/**/golden or verification/fixtures/**.
++ * - This file MUST NOT write to:
++ *   - verification/packs/[any]/golden
++ *   - verification/fixtures/[any]
++ *   (We avoid glob syntax here because the sequence `**/` can terminate block comments in JS.)
+  * - It should only perform read-only checks and exit non-zero on failure.
+  *
+  * Usage:
+  *   node verification/run-smoke-tests.cjs
+  */

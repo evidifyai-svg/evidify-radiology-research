@@ -1,0 +1,20 @@
+@@ -126,13 +126,17 @@
+   
+   // Helper to get claim text (supports both formats)
+   const getClaimText = (claim: Claim): string => {
+-    return getClaimText(claim) || claim.text || '';
++    // A prior refactor accidentally introduced self-recursion here, causing a UI freeze.
++    // Support both shapes:
++    // - newer: { claim_text: string }
++    // - legacy: { text: string }
++    return (claim as any).claim_text || (claim as any).text || '';
+   };
+   
+   // Helper to get citations count (supports both formats)
+   const getCitationsCount = (claim: Claim): number => {
+     if (!claim.citations) return 0;
+-    return getCitationsCount(claim);
++    return Array.isArray(claim.citations) ? claim.citations.length : 0;
+   };
+   
+   // Helper to check if citations is object array

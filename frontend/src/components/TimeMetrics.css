@@ -1,0 +1,465 @@
+/* TimeMetrics.css */
+/* Show users their time savings */
+
+/* Widget Styles */
+.time-metrics-widget {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-metrics-widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.time-metrics-widget__header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.time-metrics-widget__period {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.time-metrics-widget__hero {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.time-metrics-widget__value {
+  font-size: 48px;
+  font-weight: 700;
+  color: #16a34a;
+  line-height: 1;
+}
+
+.time-metrics-widget__label {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.time-metrics-widget__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.time-metrics-widget__stat {
+  text-align: center;
+}
+
+.time-metrics-widget__stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.time-metrics-widget__stat-label {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.time-metrics-widget__comparison {
+  position: relative;
+}
+
+.time-metrics-widget__bar {
+  position: relative;
+  height: 40px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.time-metrics-widget__bar-industry {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.time-metrics-widget__bar-you {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  font-size: 11px;
+  color: white;
+  font-weight: 500;
+  min-width: 100px;
+}
+
+/* Banner Styles */
+.time-metrics-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #f0fdf4, #dcfce7);
+  border-radius: 24px;
+  font-size: 14px;
+  color: #15803d;
+}
+
+.time-metrics-banner__icon {
+  font-size: 16px;
+}
+
+.time-metrics-banner__text strong {
+  font-weight: 600;
+}
+
+.time-metrics-banner__detail {
+  font-size: 12px;
+  color: #16a34a;
+}
+
+/* Dashboard Styles */
+.time-metrics-dashboard {
+  background: #f8fafc;
+  padding: 24px;
+  border-radius: 16px;
+}
+
+.time-metrics-dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.time-metrics-dashboard__header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.time-metrics-dashboard__period-selector {
+  display: flex;
+  gap: 4px;
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.time-metrics-dashboard__period-selector button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.time-metrics-dashboard__period-selector button:hover {
+  background: #f1f5f9;
+}
+
+.time-metrics-dashboard__period-selector button.active {
+  background: #2563eb;
+  color: white;
+}
+
+.time-metrics-dashboard__hero {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.time-metrics-dashboard__hero-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.time-metrics-dashboard__hero-card--primary {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: white;
+}
+
+.time-metrics-dashboard__hero-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.time-metrics-dashboard__hero-value {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.time-metrics-dashboard__hero-card--primary .time-metrics-dashboard__hero-value {
+  color: white;
+}
+
+.time-metrics-dashboard__hero-unit {
+  font-size: 18px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.time-metrics-dashboard__hero-label {
+  font-size: 14px;
+  margin-top: 8px;
+  opacity: 0.9;
+}
+
+.time-metrics-dashboard__hero-comparison {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 8px;
+}
+
+.time-metrics-dashboard__breakdown {
+  margin-bottom: 32px;
+}
+
+.time-metrics-dashboard__breakdown h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.time-metrics-dashboard__methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.method-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.method-card__icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.method-card__name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.method-card__count {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.method-card__avg {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.method-card__avg-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.method-card__avg-label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.method-card__savings {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 12px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Chart Styles */
+.time-metrics-dashboard__trend h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.time-metrics-dashboard__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 200px;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.time-metrics-dashboard__chart-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.time-metrics-dashboard__chart-fill {
+  width: 100%;
+  max-width: 48px;
+  background: linear-gradient(180deg, #2563eb, #3b82f6);
+  border-radius: 6px 6px 0 0;
+  margin-top: auto;
+  transition: height 0.3s ease;
+}
+
+.time-metrics-dashboard__chart-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.time-metrics-dashboard__chart-value {
+  position: absolute;
+  top: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.time-metrics-dashboard__chart-benchmark {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+/* Motivation Section */
+.time-metrics-dashboard__motivation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.time-metrics-dashboard__motivation-icon {
+  font-size: 32px;
+}
+
+.time-metrics-dashboard__motivation-text {
+  font-size: 15px;
+  color: #1e293b;
+  line-height: 1.5;
+}
+
+.time-metrics-dashboard__motivation-text strong {
+  color: #16a34a;
+}
+
+/* Empty and Loading States */
+.time-metrics--loading,
+.time-metrics--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+}
+
+.time-metrics--loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.time-metrics__empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .time-metrics-widget,
+  .time-metrics-dashboard {
+    background: #1e293b;
+  }
+  
+  .time-metrics-widget__header h3,
+  .time-metrics-widget__label,
+  .time-metrics-widget__stat-label {
+    color: #94a3b8;
+  }
+  
+  .time-metrics-widget__stat-value,
+  .time-metrics-dashboard__header h2 {
+    color: #f1f5f9;
+  }
+  
+  .time-metrics-widget__bar {
+    background: #334155;
+  }
+  
+  .time-metrics-dashboard__hero-card,
+  .time-metrics-dashboard__chart,
+  .method-card {
+    background: #0f172a;
+  }
+}

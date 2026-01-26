@@ -1,0 +1,5 @@
+Drop the packaged verifier/test kit ZIP here.
+
+Recommended:
+- Zip the repository's `./verification/` folder (or your latest `EVIDIFY_FORENSIC_TEST_KIT_*.zip`) and place it in this directory.
+- Ensure the ZIP includes: verifier, gate engine, schemas, packs (CC-001, BIG-001), and negative fixtures.

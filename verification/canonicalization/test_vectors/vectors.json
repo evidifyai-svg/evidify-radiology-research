@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "description": "Test vectors for Evidify canonicalization - Rust and TypeScript must produce identical results",
+  "vectors": [
+    {
+      "id": "basic-object-sorting",
+      "description": "Basic object key sorting",
+      "input": {"c": 3, "a": 1, "b": 2},
+      "expected_canonical": "{\"a\":1,\"b\":2,\"c\":3}",
+      "expected_sha256": "e6a3385fb77c287a712e7f406a451727f0625041823ecf23bea7ef39b2e39805"
+    },
+    {
+      "id": "nested-object",
+      "description": "Nested object with array",
+      "input": {"outer": {"z": 26, "a": 1}, "inner": [3, 1, 2]},
+      "expected_canonical": "{\"inner\":[3,1,2],\"outer\":{\"a\":1,\"z\":26}}",
+      "expected_sha256": "187663dd2a4f6baa99cf961ebfaa7a99c1e6fe9d00dcfbc4fc8470acec3241d0"
+    },
+    {
+      "id": "empty-object",
+      "description": "Empty object",
+      "input": {},
+      "expected_canonical": "{}",
+      "expected_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "id": "null-value",
+      "description": "Null value",
+      "input": null,
+      "expected_canonical": "null",
+      "expected_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "id": "string-value",
+      "description": "String value",
+      "input": "hello world",
+      "expected_canonical": "\"hello world\"",
+      "expected_sha256": "9ddefe4435b21d901439e546d54a14a175a3493b9fd8fbf38d9ea6d3cbf70826"
+    },
+    {
+      "id": "unicode-string",
+      "description": "Unicode characters in string",
+      "input": {"emoji": "🎉", "japanese": "日本語"},
+      "expected_canonical": "{\"emoji\":\"🎉\",\"japanese\":\"日本語\"}",
+      "expected_sha256": "82d408c59e430acdf7fa1d2b0803a0c14ab7e8f3131a81c4d66397bd88f6f83b"
+    },
+    {
+      "id": "finding-id-gate001",
+      "description": "Stable finding ID for GATE-001 violation",
+      "finding_input": {
+        "gate_id": "GATE-001",
+        "code": "OPINION_NO_BASIS",
+        "sub_code": "NO_SUPPORTING_ANCHORS",
+        "severity": "BLOCK",
+        "message": "Opinion OPN-001 has no supporting anchors in audit log",
+        "object_type": "opinion",
+        "object_id": "OPN-001"
+      },
+      "expected_uuid": "4502e9ae-cd37-5c9d-88fe-06f3a8ef5937"
+    },
+    {
+      "id": "finding-id-gate003",
+      "description": "Stable finding ID for GATE-003 violation",
+      "finding_input": {
+        "gate_id": "GATE-003",
+        "code": "AI_RELIANCE_NO_APPROVAL",
+        "sub_code": "AI_NO_HUMAN_REVIEW",
+        "severity": "BLOCK",
+        "message": "AI generation GEN-002 has no human review event",
+        "object_type": "ai_generation",
+        "object_id": "GEN-002"
+      },
+      "expected_uuid": "8b7af22e-3fce-5d9e-8af4-f30a1691cf5b"
+    }
+  ],
+  "gate_report_sample": {
+    "description": "Complete gate report for cross-platform verification",
+    "input": {
+      "schema_version": "evidify.forensic.gate_report.v1",
+      "case_id": "TEST-001",
+      "report_id": "RPT-TEST-001",
+      "inputs_digest": {
+        "canonical_sha256": "abc123def456",
+        "audit_head_sha256": "789xyz000111"
+      },
+      "summary": {
+        "status": "PASS",
+        "block_count": 0,
+        "warn_count": 0,
+        "info_count": 0
+      },
+      "gate_outcomes": {
+        "GATE-001": "PASS",
+        "GATE-002": "PASS"
+      },
+      "violations": [],
+      "warnings": []
+    },
+    "expected_sha256": "e78faaefdab008ada770498a427666afecbe908fefd7ac6fdb6e62344d2d355c"
+  }
+}

@@ -1,0 +1,21 @@
+@@ -125,14 +125,18 @@
+   const [expandedClaims, setExpandedClaims] = useState<Set<string>>(new Set());
+   
+   // Helper to get claim text (supports both formats)
++  // NOTE: previously this function called itself recursively, which would hang the UI.
+   const getClaimText = (claim: Claim): string => {
+-    return getClaimText(claim) || claim.text || '';
++    // claim_text is the canonical field used across forensic components
++    // text exists in some older/demo shapes
++    return (claim.claim_text || claim.text || '').toString();
+   };
+   
+   // Helper to get citations count (supports both formats)
++  // NOTE: previously this function called itself recursively, which would hang the UI.
+   const getCitationsCount = (claim: Claim): number => {
+     if (!claim.citations) return 0;
+-    return getCitationsCount(claim);
++    return claim.citations.length || 0;
+   };
+   
+   // Helper to check if citations is object array

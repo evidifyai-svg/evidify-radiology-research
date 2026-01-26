@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+/**
+ * run-smoke-tests.cjs
+ *
+ * Fast, non-golden smoke checks intended for:
+ * - local developer sanity ("does the harness boot?")
+ * - CI preflight (cheap checks before heavier acceptance tests)
+ *
+ * IMPORTANT:
+ * - This file MUST NOT modify any golden fixtures.
+ * - This file MUST NOT write to:
+ *   - verification/packs/[any]/golden
+ *   - verification/fixtures/[any]
+ *   (We avoid glob text here because the sequence '[any]/' contains '* /' which ends block comments.)
+ * /
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+function fail(msg) {
+  console.error(`SMOKE: FAIL: ${msg}`);
+  process.exit(1);
+}
+
+function pass(msg) {
+  console.log(`SMOKE: PASS: ${msg}`);
+}
+
+function exists(p) {
+  return fs.existsSync(p);
+}
+
+// Repository-relative paths (this script lives in verification/)
+const ROOT = path.join(__dirname, '..');
+const VER = __dirname;
+
+// 1) Node runtime sanity
+const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+if (Number.isNaN(nodeMajor) || nodeMajor < 18) {
+  fail(`Node >= 18 required. Found ${process.versions.node}`);
+}
+pass(`Node version OK: ${process.versions.node}`);
+
+// 2) Required verification artifacts exist
+const required = [
+  path.join(VER, 'gate-engine-v1.1.cjs'),
+  path.join(VER, 'verifier', 'verify-v1.1.cjs'),
+  path.join(VER, 'schemas', 'evidify.forensic.gate_report.v1.schema.json'),
+  path.join(VER, 'canonicalization', 'test_vectors', 'run_tests.cjs'),
+  path.join(VER, 'canonicalization', 'test_vectors', 'vectors.json'),
+];
+
+for (const p of required) {
+  if (!exists(p)) fail(`Missing required file: ${path.relative(ROOT, p)}`);
+}
+pass('Required verification files present');
+
+// 3) Canonicalization vectors (byte-level) — read-only check
+try {
+  execSync(`node "${path.join(VER, 'canonicalization', 'test_vectors', 'run_tests.cjs')}"`, {
+    stdio: 'inherit',
+    env: { ...process.env },
+  });
+  pass('Canonicalization test vectors executed');
+} catch (e) {
+  fail('Canonicalization test vectors failed');
+}
+
+// 4) Schema file parses as JSON (no validation here)
+try {
+  JSON.parse(fs.readFileSync(path.join(VER, 'schemas', 'evidify.forensic.gate_report.v1.schema.json'), 'utf8'));
+  pass('Schema JSON parses');
+} catch (e) {
+  fail(`Schema JSON parse failed: ${e.message}`);
+}
+
+// 5) Optional: if acceptance tests exist, print hint only (do not run)
+if (exists(path.join(VER, 'run-acceptance-tests.cjs'))) {
+  console.log('SMOKE: INFO: Full acceptance suite available: node verification/run-acceptance-tests.cjs');
+}
+
+pass('All smoke tests completed');
+process.exit(0);

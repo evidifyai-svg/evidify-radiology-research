@@ -1,0 +1,11 @@
+ID,Area,Priority,Title,Acceptance
+REC-001,Recording,P0,Add PrepareStep consent/recording gate UI,Toggle + patient state + consent status + privacy + engine decision shown; decline path available
+REC-002,Recording,P0,Implement local recording policy engine,Policy JSON loaded; outputs ALLOW/WARN/BLOCK + reason codes; unit tests cover key cases
+REC-003,Recording,P0,Implement on-device audio recorder w/ encrypted chunk storage,Audio-only capture works; chunks encrypted; no plaintext audio on disk
+REC-004,Recording,P0,Implement destruction certificate + key shredding,Auto-destroy after note generation event; certificate saved; failure -> quarantine
+AI-001,DeepAnalysis,P0,Create patient feature store (structured-only),Per-patient timeline updates on note save; rolling windows computed
+AI-002,DeepAnalysis,P0,Add inconsistency detectors,Flags contradictions across sessions; each flag includes evidence fields
+AI-003,DeepAnalysis,P1,Add trajectory summaries (symptom/intervention trends),Outputs trend cards with time window + evidence; no raw text use
+AI-004,DeepAnalysis,P1,Hypothesis engine v1 (rules),Ranked suggestions with confidence + why + suggested next step; clinician accept/reject
+AI-005,AI Runtime,P1,LLM phrasing service (JSON-only contract),"Given structured evidence JSON, returns short rationale text; schema validation blocks raw text"
+DX-001,DevEx,P0,Fix INSTALL.md and add provider readiness panel,No ellipses; copy/paste steps; UI shows AI provider status

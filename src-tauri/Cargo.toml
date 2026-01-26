@@ -1,0 +1,96 @@
+[package]
+name = "evidify"
+version = "4.2.8-beta"
+description = "Local-first clinical documentation platform"
+authors = ["Evidify"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+# Tauri framework
+tauri = { version = "1.5", features = [
+  "clipboard-write-text",
+  "dialog-ask",
+  "dialog-message", 
+  "dialog-open",
+  "dialog-save",
+  "path-all",
+  "window-close",
+  "window-hide",
+  "window-maximize",
+  "window-minimize",
+  "window-set-size",
+  "window-set-title",
+  "window-show"
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database - SQLCipher for encrypted storage
+rusqlite = { version = "0.30", features = ["bundled-sqlcipher"] }
+
+# Cryptography
+argon2 = "0.5"
+aes-gcm = "0.10"
+sha2 = "0.10"
+rand = "0.8"
+hkdf = "0.12"
+hex = "0.4"
+zeroize = "1.7"
+
+# OS Keychain integration
+keyring = "2.0"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# HTTP client (for Ollama)
+reqwest = { version = "0.11", features = ["json"] }
+
+# URL parsing (for loopback validation)
+url = "2.5"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Embeddings
+ndarray = "0.15"
+
+# Base64
+base64 = "0.21"
+
+# Pattern matching
+lazy_static = "1.4"
+regex = "1.10"
+
+# Directory utilities
+dirs = "5.0"
+
+# Zip archive for DOCX export
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+# Enable devtools only for dev builds
+devtools = ["tauri/devtools"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true

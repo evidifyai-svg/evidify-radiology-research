@@ -1,0 +1,45 @@
+{
+  "app_name": "Evidify-Forensic",
+  "app_version": "0.0.0",
+  "build_timestamp_utc": "2026-01-12T00:00:00Z",
+  "git_commit": "0000000000000000000000000000000000000000",
+  "repo_dirty": false,
+  "targets": [
+    {
+      "os": "macos",
+      "arch": "arm64",
+      "artifact": "Evidify-Forensic-0.0.0-mac.dmg"
+    },
+    {
+      "os": "windows",
+      "arch": "x86_64",
+      "artifact": "Evidify-Forensic-0.0.0-win.msi"
+    }
+  ],
+  "toolchain": {
+    "rustc": "optional",
+    "cargo": "optional",
+    "node": "optional",
+    "pnpm": "optional"
+  },
+  "feature_flags": {
+    "export_verify_ui": true,
+    "network_silence_mode": "unknown",
+    "pdf_viewer": "unknown",
+    "ocr": "unknown"
+  },
+  "signing": {
+    "mac_signed": "unknown",
+    "mac_notarized": "unknown",
+    "windows_signed": "unknown",
+    "signing_notes": ""
+  },
+  "dependencies": {
+    "ollama_required": false,
+    "ollama_version_tested": "",
+    "ocr_dependencies": []
+  },
+  "known_deviations": [
+    "List anything that could affect determinism: locale, timezone handling, filesystem ordering, line endings, etc."
+  ]
+}

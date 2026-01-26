@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evidify.ai/schemas/evidify.forensic.gate_report.v1.schema.json",
+  "title": "Evidify Forensic Gate Report v1",
+  "description": "Canonical, deterministic gate evaluation report for forensic psychology documentation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "report_id",
+    "inputs_digest",
+    "summary",
+    "gate_outcomes",
+    "violations",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "evidify.forensic.gate_report.v1",
+      "description": "Schema version identifier"
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique case identifier"
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique report identifier"
+    },
+    "inputs_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_sha256", "audit_head_sha256"],
+      "properties": {
+        "canonical_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of canonical.json"
+        },
+        "audit_head_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of final audit log chain hash"
+        },
+        "policy_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional: SHA-256 of gate policy config"
+        },
+        "template_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional: SHA-256 of report template"
+        }
+      },
+      "description": "Cryptographic digests of inputs for determinism verification"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "block_count", "warn_count", "info_count"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL"],
+          "description": "Overall gate evaluation status"
+        },
+        "block_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of blocking violations"
+        },
+        "warn_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of warnings"
+        },
+        "info_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of informational findings"
+        }
+      },
+      "description": "Summary counts for quick status check"
+    },
+    "gate_outcomes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["PASS", "FAIL", "WARN", "INFO", "SKIP"]
+      },
+      "description": "Per-gate outcome mapping (gate_id → status)"
+    },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "description": "Blocking violations that prevent export"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" },
+      "description": "Non-blocking warnings"
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "gate_id", "code", "sub_code", "severity", "message"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "description": "Stable UUIDv5 derived from finding properties"
+        },
+        "gate_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Gate that produced this finding (e.g., GATE-001)"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Finding code (e.g., OPINION_NO_BASIS)"
+        },
+        "sub_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Sub-code for specificity (e.g., NO_SUPPORTING_ANCHORS)"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["BLOCK", "WARN", "INFO"],
+          "description": "Finding severity level"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of the finding"
+        },
+        "remediation_hint": {
+          "type": "string",
+          "description": "Suggested fix for this finding"
+        },
+        "spec_reference": {
+          "type": "string",
+          "description": "Reference to specification section"
+        },
+        "object": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "id"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Object type (e.g., opinion, claim, limitation)"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Object identifier"
+            }
+          },
+          "description": "Reference to the object that caused this finding"
+        }
+      }
+    }
+  }
+}

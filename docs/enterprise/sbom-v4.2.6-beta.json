@@ -1,0 +1,283 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-01-09T23:59:00Z",
+    "tools": [
+      {
+        "vendor": "CycloneDX",
+        "name": "cargo-cyclonedx",
+        "version": "0.4.0"
+      },
+      {
+        "vendor": "npm",
+        "name": "cyclonedx-npm",
+        "version": "1.16.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "bom-ref": "evidify@4.2.6-beta",
+      "name": "Evidify",
+      "version": "4.2.6-beta",
+      "description": "Local-first clinical documentation platform for behavioral health",
+      "licenses": [
+        {
+          "license": {
+            "id": "proprietary",
+            "name": "Evidify Proprietary License"
+          }
+        }
+      ],
+      "supplier": {
+        "name": "Evidify, Inc.",
+        "url": ["https://evidify.ai"],
+        "contact": [
+          {
+            "email": "security@evidify.ai"
+          }
+        ]
+      },
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "purl": "pkg:generic/evidify@4.2.6-beta"
+    },
+    "manufacture": {
+      "name": "Evidify, Inc.",
+      "url": ["https://evidify.ai"]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/tauri@1.5.4",
+      "name": "tauri",
+      "version": "1.5.4",
+      "description": "Desktop application framework",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/tauri@1.5.4",
+      "externalReferences": [
+        {"type": "website", "url": "https://tauri.app"},
+        {"type": "vcs", "url": "https://github.com/tauri-apps/tauri"}
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/sqlcipher@0.5.4",
+      "name": "rusqlite",
+      "version": "0.30.0",
+      "description": "SQLite bindings with SQLCipher encryption",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/rusqlite@0.30.0",
+      "properties": [
+        {"name": "feature", "value": "bundled-sqlcipher"}
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/argon2@0.5.3",
+      "name": "argon2",
+      "version": "0.5.3",
+      "description": "Argon2 password hashing (Argon2id variant)",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/argon2@0.5.3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/aes-gcm@0.10.3",
+      "name": "aes-gcm",
+      "version": "0.10.3",
+      "description": "AES-GCM authenticated encryption",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/aes-gcm@0.10.3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/sha2@0.10.8",
+      "name": "sha2",
+      "version": "0.10.8",
+      "description": "SHA-2 hash functions",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/sha2@0.10.8"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/hmac@0.12.1",
+      "name": "hmac",
+      "version": "0.12.1",
+      "description": "HMAC implementation",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/hmac@0.12.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/ed25519-dalek@2.1.0",
+      "name": "ed25519-dalek",
+      "version": "2.1.0",
+      "description": "Ed25519 signatures for update verification",
+      "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+      "purl": "pkg:cargo/ed25519-dalek@2.1.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/keyring@2.3.0",
+      "name": "keyring",
+      "version": "2.3.0",
+      "description": "Cross-platform credential storage",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/keyring@2.3.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/serde@1.0.195",
+      "name": "serde",
+      "version": "1.0.195",
+      "description": "Serialization framework",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/serde@1.0.195"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/serde_json@1.0.111",
+      "name": "serde_json",
+      "version": "1.0.111",
+      "description": "JSON serialization",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/serde_json@1.0.111"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/tokio@1.35.1",
+      "name": "tokio",
+      "version": "1.35.1",
+      "description": "Async runtime",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/tokio@1.35.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/reqwest@0.11.23",
+      "name": "reqwest",
+      "version": "0.11.23",
+      "description": "HTTP client (update checks only)",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/reqwest@0.11.23"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/uuid@1.6.1",
+      "name": "uuid",
+      "version": "1.6.1",
+      "description": "UUID generation",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/uuid@1.6.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/chrono@0.4.31",
+      "name": "chrono",
+      "version": "0.4.31",
+      "description": "Date/time handling",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/chrono@0.4.31"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/tracing@0.1.40",
+      "name": "tracing",
+      "version": "0.1.40",
+      "description": "Structured logging",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/tracing@0.1.40"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/zeroize@1.7.0",
+      "name": "zeroize",
+      "version": "1.7.0",
+      "description": "Secure memory zeroing",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:cargo/zeroize@1.7.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/react@18.2.0",
+      "name": "react",
+      "version": "18.2.0",
+      "description": "UI framework",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:npm/react@18.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/react-dom@18.2.0",
+      "name": "react-dom",
+      "version": "18.2.0",
+      "description": "React DOM bindings",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:npm/react-dom@18.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/typescript@5.3.3",
+      "name": "typescript",
+      "version": "5.3.3",
+      "description": "TypeScript compiler",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:npm/typescript@5.3.3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tailwindcss@3.4.1",
+      "name": "tailwindcss",
+      "version": "3.4.1",
+      "description": "CSS framework",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:npm/tailwindcss@3.4.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/vite@5.0.11",
+      "name": "vite",
+      "version": "5.0.11",
+      "description": "Build tool",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:npm/vite@5.0.11"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "evidify@4.2.6-beta",
+      "dependsOn": [
+        "pkg:cargo/tauri@1.5.4",
+        "pkg:cargo/rusqlite@0.30.0",
+        "pkg:cargo/argon2@0.5.3",
+        "pkg:cargo/aes-gcm@0.10.3",
+        "pkg:cargo/sha2@0.10.8",
+        "pkg:cargo/hmac@0.12.1",
+        "pkg:cargo/ed25519-dalek@2.1.0",
+        "pkg:cargo/keyring@2.3.0",
+        "pkg:cargo/serde@1.0.195",
+        "pkg:cargo/serde_json@1.0.111",
+        "pkg:cargo/tokio@1.35.1",
+        "pkg:cargo/reqwest@0.11.23",
+        "pkg:cargo/uuid@1.6.1",
+        "pkg:cargo/chrono@0.4.31",
+        "pkg:cargo/tracing@0.1.40",
+        "pkg:cargo/zeroize@1.7.0",
+        "pkg:npm/react@18.2.0",
+        "pkg:npm/react-dom@18.2.0",
+        "pkg:npm/typescript@5.3.3",
+        "pkg:npm/tailwindcss@3.4.1",
+        "pkg:npm/vite@5.0.11"
+      ]
+    }
+  ],
+  "vulnerabilities": []
+}

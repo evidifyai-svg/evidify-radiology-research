@@ -1,0 +1,16 @@
+{
+  "name": "evidify-canonicalization",
+  "version": "1.0.0",
+  "description": "Evidify canonicalization library for deterministic JSON serialization",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node test.cjs"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

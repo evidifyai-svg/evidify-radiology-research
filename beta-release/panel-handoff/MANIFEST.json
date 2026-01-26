@@ -1,0 +1,32 @@
+{
+  "handoff_version": "v1.2",
+  "created_date": "2026-01-12",
+  "required_artifacts": {
+    "builds": [
+      "builds/Evidify-Forensic-<version>-mac.dmg OR builds/Evidify-Forensic.app",
+      "builds/Evidify-Forensic-<version>-win.msi OR builds/Evidify-Forensic-<version>-win.exe",
+      "builds/build_manifest.json"
+    ],
+    "exports": [
+      "exports/CC-001-PASS-<timestamp>.zip",
+      "exports/CC-001-FAIL-<timestamp>.zip",
+      "exports/BIG-001-FAIL-<timestamp>.zip"
+    ],
+    "logs": [
+      "logs/CC-001-PASS/ (app.log, verifier.log)",
+      "logs/CC-001-FAIL/ (app.log, verifier.log)",
+      "logs/BIG-001-FAIL/ (app.log, verifier.log)"
+    ],
+    "recordings": [
+      "recordings/CC-001-PASS-workflow.mp4",
+      "recordings/BIG-001-FAIL-workflow.mp4"
+    ],
+    "environment": [
+      "environment/system_info.md",
+      "environment/ollama_info.txt"
+    ],
+    "test-kit": [
+      "test-kit/EVIDIFY_FORENSIC_TEST_KIT_v1.1.zip (or newer)"
+    ]
+  }
+}
