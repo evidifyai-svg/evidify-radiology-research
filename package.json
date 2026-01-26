@@ -1,5 +1,13 @@
 {
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.6.3"
+  "name": "evidify-radiology-research",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "verify:index": "node scripts/verify-index.js",
+    "preflight": "bash scripts/preflight.sh"
   }
 }
