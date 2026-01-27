@@ -3131,7 +3131,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const handleROIEnter = useCallback(async (roiId: string) => {
     roiEnterTimeRef.current = Date.now();
     if (eventLoggerRef.current && state.currentCase) {
-      await eventLoggerRef.current.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: state.currentCase.caseId });
+      await eventLoggerRef.current!.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: state.currentCase.caseId });
       setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
     }
   }, [state.currentCase]);
@@ -3145,7 +3145,7 @@ export const ResearchDemoFlow: React.FC = () => {
         return { ...s, roiDwellTimes: newMap };
       });
       if (eventLoggerRef.current && state.currentCase && dwellMs > 100) {
-        await eventLoggerRef.current.addEvent('DWELL_TIME_ROI', { roiId, dwellMs, caseId: state.currentCase.caseId });
+        await eventLoggerRef.current!.addEvent('DWELL_TIME_ROI', { roiId, dwellMs, caseId: state.currentCase.caseId });
         setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
       }
     }
@@ -3161,7 +3161,7 @@ export const ResearchDemoFlow: React.FC = () => {
       }
     }));
     if (eventLoggerRef.current) {
-      await eventLoggerRef.current.addEvent('IMAGE_VIEWED', { interactionType: type, caseId: state.currentCase?.caseId });
+      await eventLoggerRef.current!.addEvent('IMAGE_VIEWED', { interactionType: type, caseId: state.currentCase?.caseId });
       setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
     }
   }, [state.currentCase]);
@@ -3181,26 +3181,41 @@ export const ResearchDemoFlow: React.FC = () => {
     
     const firstCase = getCurrentCase(queue);
     
-    exportPackRef.current = new ExportPackZip({
-      sessionId: state.sessionId,
-      protocolVersion: 'BRPLL-MAMMO-v1.0',
-      siteId: 'DEMO',
-      condition: { revealTiming: condition.condition, disclosureFormat: condition.disclosureFormat, seed: condition.seed, assignmentMethod: condition.assignmentMethod },
-      caseQueue: { 
-        queueId: `Q-${Date.now().toString(36)}`,
-        totalCases: queue.cases.length,
-        completedCases: 0,
-        caseIds: queue.cases.map(c => c.caseId),
-      },
-    });
+exportPackRef.current = new ExportPackZip({
+  sessionId: state.sessionId,
+  participantId: 'DEMO-PARTICIPANT',
+  studyId: 'BRPLL-DEMO',
+  protocolVersion: 'BRPLL-MAMMO-v1.0',
+  siteId: 'DEMO',
+  condition: {
+    revealTiming: condition.condition,
+    disclosureFormat: condition.disclosureFormat,
+    seed: condition.seed,
+    assignmentMethod: condition.assignmentMethod,
+  },
+  caseQueue: {
+    queueId: `Q-${Date.now().toString(36)}`,
+    totalCases: queue.cases.length,
+    completedCases: 0,
+    caseIds: queue.cases.map(c => c.caseId),
+  },
+});
     
-    eventLoggerRef.current = new EventLogger(exportPackRef.current);
-    await eventLoggerRef.current.logSessionStarted({
-      sessionId: state.sessionId, protocolVersion: 'BRPLL-MAMMO-v1.0', siteId: 'DEMO',
-    });
+await eventLoggerRef.current.logSessionStarted({
+  participantId: 'DEMO-PARTICIPANT',
+  siteId: 'DEMO',
+  studyId: 'BRPLL-DEMO',
+  protocolVersion: 'BRPLL-MAMMO-v1.0',
+  browserInfo: {
+    userAgent: navigator.userAgent,
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    pixelRatio: window.devicePixelRatio ?? 1,
+  },
+});
     
     // Eye-tracking infrastructure port (stub for future hardware integration)
-    await eventLoggerRef.current.addEvent('EYE_TRACKER_STATUS', {
+    await eventLoggerRef.current!.addEvent('EYE_TRACKER_STATUS', {
       device: 'MOUSE_PROXY',
       status: 'ACTIVE',
       calibrationValid: true,
@@ -3208,7 +3223,7 @@ export const ResearchDemoFlow: React.FC = () => {
       note: 'Using mouse hover as gaze proxy. Ready for WebGazer/Tobii integration.',
     });
     
-    await eventLoggerRef.current.logRandomizationAssigned({
+    await eventLoggerRef.current!.logRandomizationAssigned({
       seed: condition.seed, condition: condition.condition, disclosureFormat: condition.disclosureFormat,
       assignmentMethod: condition.assignmentMethod, conditionMatrixHash: condition.conditionMatrixHash,
     });
@@ -3221,7 +3236,7 @@ const counterbalanceArm = (() => {
       return (parsed % 4) + 1;
     })();
     const caseOrderVariant = condition.seed ? (parseInt(condition.seed.slice(-2), 16) % 2 === 0 ? 'FORWARD' : 'REVERSE') : 'FORWARD';
-    await eventLoggerRef.current.addEvent('COUNTERBALANCING_ASSIGNED', {
+    await eventLoggerRef.current!.addEvent('COUNTERBALANCING_ASSIGNED', {
       scheme: 'LATIN_SQUARE_4x4',
       arm: `ARM-${counterbalanceArm}`,
       caseOrderVariant,
@@ -3231,7 +3246,7 @@ const counterbalanceArm = (() => {
     });
     
     if (firstCase) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
     }
     
     setState(s => ({
@@ -3250,7 +3265,7 @@ const counterbalanceArm = (() => {
   const submitCalibration = useCallback(async () => {
     if (!eventLoggerRef.current || state.calibrationBirads === null || !state.currentCase) return;
     
-    await eventLoggerRef.current.addEvent('CALIBRATION_RESPONSE', {
+    await eventLoggerRef.current!.addEvent('CALIBRATION_RESPONSE', {
       caseId: state.currentCase.caseId,
       selectedBirads: state.calibrationBirads,
       confidence: state.calibrationConfidence,
@@ -3264,12 +3279,12 @@ const counterbalanceArm = (() => {
   const continueFromCalibration = useCallback(async () => {
     if (!state.caseQueue || !eventLoggerRef.current) return;
     
-    await eventLoggerRef.current.addEvent('CALIBRATION_FEEDBACK_SHOWN', {
+    await eventLoggerRef.current!.addEvent('CALIBRATION_FEEDBACK_SHOWN', {
       caseId: state.currentCase?.caseId,
       userBirads: state.calibrationBirads,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
     });
-    await eventLoggerRef.current.addEvent('GROUND_TRUTH_REVEALED', {
+    await eventLoggerRef.current!.addEvent('GROUND_TRUTH_REVEALED', {
       caseId: state.currentCase?.caseId,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
       context: 'CALIBRATION_MODE_ONLY',
@@ -3280,7 +3295,7 @@ const counterbalanceArm = (() => {
     const nextCase = getCurrentCase(newQueue);
     
     if (nextCase) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
     }
     
     setState(s => ({
@@ -3302,15 +3317,26 @@ const counterbalanceArm = (() => {
   const lockImpression = useCallback(async () => {
     if (!eventLoggerRef.current || !state.currentCase || state.initialBirads === null) return;
     
-    const lockTime = new Date();
-    await eventLoggerRef.current.logFirstImpressionLocked({
-      sessionId: state.sessionId, caseId: state.currentCase.caseId, condition: state.condition?.condition || 'UNKNOWN',
-      selectedBirads: state.initialBirads, confidence: state.initialConfidence, preAiTimeMs: lockTime.getTime() - (state.caseStartTime?.getTime() || 0),
-      interactionCounts: state.interactionCounts, preTrust: state.preTrust,
-    });
+const lockTime = new Date();
+
+await eventLoggerRef.current!.logFirstImpressionLocked(
+  state.initialBirads ?? 0,
+  state.initialConfidence ?? 0
+);
+
+await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
+  sessionId: state.sessionId,
+  caseId: state.currentCase.caseId,
+  condition: state.condition,
+  birads: state.initialBirads ?? 0,
+  confidence: state.initialConfidence ?? 0,
+  interactionCounts: state.interactionCounts,
+  preTrust: state.preTrust,
+  lockTimestamp: lockTime.toISOString(),
+});
     
     const aiRevealTime = new Date();
-    await eventLoggerRef.current.logAIRevealed({
+    await eventLoggerRef.current!.logAIRevealed({
       aiBirads: state.currentCase.aiResult?.birads ?? 4, aiConfidence: state.currentCase.aiResult?.confidence ?? 0.87,
     });
     
@@ -3319,8 +3345,8 @@ const counterbalanceArm = (() => {
     const disclosureIntensity = disclosurePolicy === 'STATIC' ? 'STANDARD' : 
       caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL_DEBIAS';
     
-    await eventLoggerRef.current.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
-    await eventLoggerRef.current.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
+    await eventLoggerRef.current!.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
+    await eventLoggerRef.current!.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
       policy: disclosurePolicy,
       caseDifficulty,
       disclosureIntensity,
@@ -3338,7 +3364,7 @@ const counterbalanceArm = (() => {
   const handleComprehension = useCallback(async (answer: string) => {
     const correct = answer === 'missed_cancer';
     if (eventLoggerRef.current) {
-      await eventLoggerRef.current.addEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
+      await eventLoggerRef.current!.addEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
         questionId: 'FDR_FOR_COMPREHENSION', selectedAnswer: answer, correctAnswer: 'missed_cancer', isCorrect: correct,
       });
     }
@@ -3350,7 +3376,7 @@ const counterbalanceArm = (() => {
     const needsDeviation = state.finalBirads !== state.initialBirads;
     if (needsDeviation) {
       if (eventLoggerRef.current) {
-        await eventLoggerRef.current.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
+        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
       }
       setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
     } else {
@@ -3363,10 +3389,10 @@ const counterbalanceArm = (() => {
   const proceedToProbes = useCallback(async (skipDeviation = false) => {
     if (eventLoggerRef.current) {
       if (skipDeviation) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
         setDeviationsSkipped(prev => prev + 1);
       } else if (state.deviationRationale) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SUBMITTED', { 
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
           rationale: state.deviationRationale, 
           initialBirads: state.initialBirads, 
           finalBirads: state.finalBirads 
@@ -3384,10 +3410,10 @@ const counterbalanceArm = (() => {
     
     if (state.step === 'DEVIATION' && deviationRequired) {
       if (skipDeviation) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
         setDeviationsSkipped(prev => prev + 1);
       } else {
-        await eventLoggerRef.current.addEvent('DEVIATION_SUBMITTED', { rationale: state.deviationRationale, initialBirads: state.initialBirads, finalBirads: state.finalBirads });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { rationale: state.deviationRationale, initialBirads: state.initialBirads, finalBirads: state.finalBirads });
       }
     }
     
@@ -3403,17 +3429,17 @@ setAiAgreementStreak(prev => prev + 1);
       setAiAgreementStreak(0);
     }
     
-    await eventLoggerRef.current.logFinalAssessment(
+    await eventLoggerRef.current!.logFinalAssessment(
       state.currentCase.caseId,
       state.finalBirads ?? state.initialBirads ?? 0,
       state.finalConfidence,
       state.initialBirads ?? 0,
       state.currentCase.aiResult?.birads ?? 4
     );
-    await eventLoggerRef.current.addEvent('ATTENTION_COVERAGE_PROXY', {
+    await eventLoggerRef.current!.addEvent('ATTENTION_COVERAGE_PROXY', {
       roiDwellTimes: Object.fromEntries(state.roiDwellTimes), totalDwellMs: Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0),
     });
-    await eventLoggerRef.current.addEvent('TRUST_CALIBRATION', {
+    await eventLoggerRef.current!.addEvent('TRUST_CALIBRATION', {
       preTrust: state.preTrust,
       postTrust: state.postTrust,
       trustDelta: state.postTrust - state.preTrust,
@@ -3423,7 +3449,7 @@ setAiAgreementStreak(prev => prev + 1);
     // Log risk meter snapshot
     const totalDwell = Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0);
     const aiDwell = state.roiDwellTimes.get('ai_box') || 0;
-    await eventLoggerRef.current.addEvent('RISK_METER_SNAPSHOT', {
+    await eventLoggerRef.current!.addEvent('RISK_METER_SNAPSHOT', {
       caseId: state.currentCase.caseId,
       timeToLockMs: state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0,
       aiAgreementStreak: agreedWithAI ? aiAgreementStreak + 1 : 0,
@@ -3433,7 +3459,7 @@ setAiAgreementStreak(prev => prev + 1);
       agreedWithAI,
     });
     
-    await eventLoggerRef.current.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
+    await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
     // Compute metrics
     const metrics: DerivedMetrics = {
@@ -3464,7 +3490,7 @@ setAiAgreementStreak(prev => prev + 1);
     const newQueue = advanceQueue(state.caseQueue);
     
     if (isQueueComplete(newQueue)) {
-      await eventLoggerRef.current.logSessionEnded({ reason: 'completed', totalCases: state.caseResults.length });
+      await eventLoggerRef.current!.logSessionEnded({ reason: 'completed', totalCases: state.caseResults.length });
       setState(s => ({ ...s, step: 'STUDY_COMPLETE', caseQueue: newQueue, eventCount: exportPackRef.current?.getEvents().length || 0 }));
       return;
     }
@@ -3472,7 +3498,7 @@ setAiAgreementStreak(prev => prev + 1);
     const nextCaseDef = getCurrentCase(newQueue);
     
     if (nextCaseDef) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
     }
     
     setState(s => ({
@@ -3491,7 +3517,7 @@ setAiAgreementStreak(prev => prev + 1);
   const generateExport = useCallback(async () => {
     if (!exportPackRef.current || !eventLoggerRef.current) return;
     
-    await eventLoggerRef.current.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
+    await eventLoggerRef.current!.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
     
     // Add all case metrics before generating
     for (const metrics of state.caseResults) {
@@ -3554,7 +3580,7 @@ setAiAgreementStreak(prev => prev + 1);
           onDisclosurePolicyChange={async (policy) => {
             setDisclosurePolicy(policy);
             if (eventLoggerRef.current) {
-              await eventLoggerRef.current.addEvent('DISCLOSURE_POLICY_CHANGED', { 
+              await eventLoggerRef.current!.addEvent('DISCLOSURE_POLICY_CHANGED', { 
                 policy, 
                 caseId: state.currentCase?.caseId,
                 timestamp: new Date().toISOString()
@@ -4618,7 +4644,7 @@ setAiAgreementStreak(prev => prev + 1);
               <button 
                 onClick={async () => {
                   if (eventLoggerRef.current) {
-                    await eventLoggerRef.current.addEvent('NASA_TLX_RECORDED', {
+                    await eventLoggerRef.current!.addEvent('NASA_TLX_RECORDED', {
                       caseId: state.currentCase?.caseId,
                       mentalDemand: tlxMental,
                       temporalDemand: tlxTemporal,
@@ -4941,7 +4967,7 @@ setAiAgreementStreak(prev => prev + 1);
         onComplete={async (probes) => {
           // Log probes
           if (eventLoggerRef.current) {
-            await eventLoggerRef.current.addEvent('POST_CASE_PROBES_COMPLETED', {
+            await eventLoggerRef.current!.addEvent('POST_CASE_PROBES_COMPLETED', {
               caseId: state.currentCase?.caseId,
               postTrust: probes.postTrust,
               preTrust: state.preTrust,

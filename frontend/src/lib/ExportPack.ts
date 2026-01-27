@@ -101,7 +101,7 @@ async function sha256Bytes(input: ArrayBuffer): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function computeContentHash(payload: Record<string, unknown>): Promise<string> {
+async function computeContentHash(payload: unknown): Promise<string> {
   return sha256Hex(canonicalJSON(payload));
 }
 
@@ -157,7 +157,7 @@ export interface TrialEvent {
   seq: number;
   type: string;
   timestamp: string;
-  payload: Record<string, unknown>;
+  payload: unknown;
 }
 
 export interface LedgerEntry {
@@ -210,23 +210,45 @@ export interface DerivedMetrics {
   sessionId: string;
   timestamp: string;
   condition: string;
+
+  // Assessment values
   initialBirads: number;
   finalBirads: number;
   aiBirads: number | null;
   aiConfidence: number | null;
+
+  // Change analysis
   changeOccurred: boolean;
   aiConsistentChange: boolean;
   aiInconsistentChange: boolean;
+
+  // ADDA
   adda: boolean | null;
   addaDenominator: boolean;
+
+  // Documentation
+  deviationRequired: boolean;
   deviationDocumented: boolean;
   deviationSkipped: boolean;
-  deviationRequired: boolean;
+
+  // Legacy/compat (older name)
   deviationText?: string;
+
+  // Preferred name used by ResearchDemoFlow/UI
+  deviationRationale?: string;
+
+  // Comprehension
   comprehensionCorrect: boolean | null;
+
+  // Timing (ms)
   totalTimeMs: number;
   lockToRevealMs: number;
   revealToFinalMs: number;
+
+  // Used by ResearchDemoFlow aggregations
+  timeToLockMs?: number | null;
+
+  // Protocol / design
   revealTiming: string;
   disclosureFormat: string;
 }
@@ -299,7 +321,7 @@ export class ExportPackBuilder {
   /**
    * Add event to the chain
    */
-  async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEntry> {
+async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {    
     const seq = this.events.length;
     const event: TrialEvent = {
       id: this.generateUUID(),
@@ -395,7 +417,13 @@ export class ExportPackBuilder {
     const deviationRequired = changeOccurred;
     const deviationDocumented = deviationSubmitted !== undefined;
     const deviationSkippedFlag = deviationSkipped !== undefined;
-    const deviationText = (deviationSubmitted?.payload as any)?.deviationText;
+
+    // Support multiple payload shapes (legacy + preferred)
+    const deviationText =
+      (deviationSubmitted?.payload as any)?.deviationText ??
+      (deviationSubmitted?.payload as any)?.rationaleText ??
+      (deviationSubmitted?.payload as any)?.rationale ??
+      '';
 
     // Comprehension
     const comprehensionCorrect = comprehensionResponse
@@ -429,6 +457,7 @@ export class ExportPackBuilder {
       deviationSkipped: deviationSkippedFlag,
       deviationRequired,
       deviationText,
+      deviationRationale: deviationText,
       comprehensionCorrect,
       totalTimeMs,
       lockToRevealMs,

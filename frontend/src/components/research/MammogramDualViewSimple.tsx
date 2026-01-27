@@ -27,6 +27,8 @@ interface Props {
   onOverlayToggle?: (overlay: string, enabled: boolean) => void;
 }
 
+type WindowLevel = { center: number; width: number };
+
 // Window/Level presets for mammography
 const WL_PRESETS = {
   'Standard': { center: 0.5, width: 1.0 },
@@ -34,7 +36,7 @@ const WL_PRESETS = {
   'Soft Tissue': { center: 0.55, width: 1.2 },
   'Dense': { center: 0.4, width: 0.6 },
   'Inverted': { center: 0.5, width: -1.0 },
-} as const;
+};
 
 type WLPresetName = keyof typeof WL_PRESETS;
 
@@ -73,7 +75,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [windowLevel, setWindowLevel] = useState(WL_PRESETS['Standard']);
+  const [windowLevel, setWindowLevel] = useState<WindowLevel>(WL_PRESETS.Standard);
   const [activePreset, setActivePreset] = useState<WLPresetName>('Standard');
   const [activeView, setActiveView] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);

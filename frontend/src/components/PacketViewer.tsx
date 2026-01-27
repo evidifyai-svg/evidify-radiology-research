@@ -23,11 +23,19 @@ import React, { useState, useMemo } from 'react';
 import type { 
   CanonicalEvent, 
   CanonicalLedgerEntry 
-} from './CanonicalHash';
+} from '../lib/CanonicalHash';
 
 // ============================================================================
 // TYPES
 // ============================================================================
+type MetricItem = {
+  label: string;
+  value: string | number;
+  note?: string;
+  color?: string;
+  highlight?: boolean;
+  warn?: boolean;
+};
 
 export interface PacketViewerProps {
   events: CanonicalEvent[];
@@ -498,6 +506,11 @@ interface MetricsTabProps {
   manifest: TrialManifest;
 }
 
+type MetricGroup = {
+  title: string;
+  items: MetricItem[];
+};
+
 const MetricsTab: React.FC<MetricsTabProps> = ({ metrics, manifest }) => {
   // ADDA display logic
   const addaDisplay = useMemo(() => {
@@ -510,7 +523,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ metrics, manifest }) => {
     return { value: 'FALSE', label: 'Did not change toward AI', color: '#22c55e' };
   }, [metrics]);
 
-  const metricGroups = [
+const metricGroups: MetricGroup[] = [
     {
       title: 'Assessment Values',
       items: [

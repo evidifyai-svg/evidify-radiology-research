@@ -7,24 +7,11 @@
 
 import JSZip from 'jszip';
 
-// Re-export types from original
-export interface TrialEvent {
-  id: string;
-  seq: number;
-  type: string;
-  timestamp: string;
-  payload: Record<string, unknown>;
-}
+// Canonical types live in ExportPack.ts — import into local scope and re-export to avoid drift
+import type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
+export type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
 
-export interface LedgerEntry {
-  seq: number;
-  eventId: string;
-  eventType: string;
-  timestamp: string;
-  contentHash: string;
-  previousHash: string;
-  chainHash: string;
-}
+// Re-export types from original
 
 export interface ExportManifest {
   exportVersion: string;
@@ -65,29 +52,6 @@ export interface ExportManifest {
     codebook: string;
   };
   timestampTrustModel: string;
-}
-
-export interface DerivedMetrics {
-  sessionId: string;
-  caseId: string;
-  condition: string;
-  initialBirads: number;
-  finalBirads: number;
-  aiBirads: number;
-  aiConfidence: number;
-  changeOccurred: boolean;
-  aiConsistentChange: boolean;
-  aiInconsistentChange: boolean;
-  addaDenominator: boolean;
-  adda: boolean | null;
-  preAiTimeMs: number;
-  postAiTimeMs: number;
-  totalTimeMs: number;
-  deviationDocumented: boolean;
-  deviationSkipped: boolean;
-  comprehensionCheckPassed: boolean;
-  attentionCheckCase: boolean;
-  attentionCheckPassed: boolean | null;
 }
 
 export interface VerifierOutput {
@@ -227,13 +191,20 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
   /**
    * Add case metrics
    */
-addCaseMetrics(metrics: DerivedMetrics): void {
-    const exists = this.metricsPerCase.find(m => m.caseId === metrics.caseId);
+  addCaseMetrics(metrics: DerivedMetrics): void {
+    const metricsCaseId = (metrics as any).caseId as string | undefined;
+
+    // If this metrics object doesn't carry a caseId, just append it.
+    if (!metricsCaseId) {
+      this.metricsPerCase.push(metrics);
+      return;
+    }
+
+    const exists = this.metricsPerCase.find(m => (m as any).caseId === metricsCaseId);
     if (!exists) {
       this.metricsPerCase.push(metrics);
     }
   }
-
   /**
    * Run internal verifier
    */

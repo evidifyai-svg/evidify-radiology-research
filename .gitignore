@@ -33,6 +33,12 @@ src-tauri/gen/
 verification/**/golden/*
 verification/**/fixtures/*
 
+# datasets / large assets
+frontend/public/images/INbreast Release 1.0/
+
+# editor backups
+*.bak
+
 # INbreast dataset (local-only)
 frontend/public/images/inbreast/**
 !frontend/public/images/inbreast/.gitkeep
