@@ -657,6 +657,8 @@ export class ExportPackBuilder {
     // P0: Export manifest + root hash (payload integrity)
     // --------------------
     const verifierOutputJson = JSON.stringify(verifierOutput, null, 2);
+    const verifierChecksum = await sha256Hex(verifierOutputJson);
+    const codebookChecksum = await sha256Hex(codebook);
     const exportManifestCreatedUtc = new Date().toISOString();
 
     const payloadFiles: Record<string, string> = {
@@ -688,6 +690,16 @@ export class ExportPackBuilder {
 
     // Pretty JSON file (hash computed from canonical form above)
     const exportManifestJson = JSON.stringify(exportManifest, null, 2);
+
+    // Attach export root hash + manifest provenance to trial manifest (no recursion)
+    (manifest as any).export_manifest_schema = 'evidify.export_manifest.v1';
+    (manifest as any).export_manifest_created_utc = exportManifestCreatedUtc;
+    (manifest as any).export_manifest_sha256 = exportRootHash;
+    (manifest as any).export_root_hash = exportRootHash;
+
+    // Extend fileChecksums to cover all exported payload files
+    (manifest as any).fileChecksums.verifier_output = verifierChecksum;
+    (manifest as any).fileChecksums.codebook = codebookChecksum;
 
     return {
       manifest,
