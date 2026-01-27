@@ -12,7 +12,8 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ExportPackBuilder, { TrialEvent, EventType } from './ExportPack';
+import JSZip from 'jszip';
+import ExportPackBuilder, { TrialEvent, EventType } from '../lib/ExportPack';
 
 // ============================================================================
 // TYPES
@@ -330,52 +331,55 @@ const SimpleDemoFlowHardened: React.FC = () => {
   // ============================================================================
   // Generate Export Pack
   // ============================================================================
-  
   const generateExport = useCallback(async () => {
-    const builder = new ExportPackBuilder();
-    
-    // Set manifest
-    builder.setManifest({
-      session: {
-        id: state.sessionId,
-        startTime: state.startTime.toISOString(),
-        endTime: state.submitTime?.toISOString() ?? new Date().toISOString(),
-        durationMs: Math.round(timeOnCase * 1000),
-      },
-      case: {
-        id: state.caseId,
-        condition: state.condition,
-        conditionCode: 'HF_FDR_FOR',
-      },
-      participant: {
-        id: 'demo-user',
-        role: 'reader',
-        siteId: 'BRPLL',
-      },
+    // Build export using src/lib/ExportPack.ts (no builder.setManifest / builder.build)
+    const builder = new ExportPackBuilder({
+      sessionId: state.sessionId,
+      participantId: 'demo-user',
+      condition: state.condition,
       protocol: {
-        studyId: 'BRPLL_001',
-        protocolVersion: '1.0.0',
         revealTiming: 'human_first',
         disclosureFormat: 'fdr_for',
         deviationEnforcement: 'optional_with_attestation',
       },
+      disclosureProvenance: {
+        fdrValue: state.fdr,
+        forValue: state.for_,
+        source: 'demo_ui',
+      },
+      randomization: {
+        seed: state.sessionId,
+        assignmentMethod: 'live_rng',
+      },
     });
-    
-    // Add all events
-    for (const event of state.events) {
-      await builder.addEvent(event);
+
+    // Re-add events into the builder chain
+    // NOTE: This will re-timestamp events (OK for demo); we can preserve timestamps later if needed.
+    for (const e of state.events) {
+      await builder.addEvent(e.type, (e.payload ?? {}) as any);
     }
-    
-    // Build pack
-    const { zip, verifierOutput } = await builder.build();
-    
-    // Generate download URL
+
+    const pack = await builder.generateExportPackage();
+
+    // Assemble ZIP here
+    const zip = new JSZip();
+
+    zip.file('_DEBUG_SENTINEL.txt', 'generateExport_v3_hit');
+
+    zip.file('trial_manifest.json', JSON.stringify(pack.manifest, null, 2));
+    zip.file('export_manifest.json', pack.exportManifestJson);
+    zip.file('events.jsonl', pack.eventsJsonl);
+    zip.file('ledger.json', pack.ledgerJson);
+    zip.file('verifier_output.json', JSON.stringify(pack.verifierOutput, null, 2));
+    zip.file('derived_metrics.csv', pack.metricsCSV);
+    zip.file('codebook.md', pack.codebook);
+
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
-    
+
     setExportPack(builder);
     setExportUrl(url);
-    setVerifierResult(verifierOutput.result);
+    setVerifierResult(pack.verifierOutput.result);
   }, [state]);
   
   // ============================================================================
@@ -438,7 +442,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
         borderRadius: '12px',
         marginBottom: '24px',
       }}>
-        <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Demo</h1>
+        <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Demo — SENTINEL</h1>
         <p style={{ margin: '8px 0 0 0', opacity: 0.9 }}>
           Human-First AI Workflow with FDR/FOR Disclosure
         </p>
