@@ -596,6 +596,9 @@ export class ExportPackBuilder {
     metricsCSV: string;
     verifierOutput: VerifierOutput;
     codebook: string;
+    // NEW (P0): payload manifest + root hash
+    exportManifestJson: string;
+    exportRootHash: string;
   }> {
     // Generate events.jsonl
     const eventsJsonl = this.events.map(e => JSON.stringify(e)).join('\n');
@@ -650,6 +653,42 @@ export class ExportPackBuilder {
     // Generate codebook
     const codebook = this.generateCodebook();
 
+    // --------------------
+    // P0: Export manifest + root hash (payload integrity)
+    // --------------------
+    const verifierOutputJson = JSON.stringify(verifierOutput, null, 2);
+    const exportManifestCreatedUtc = new Date().toISOString();
+
+    const payloadFiles: Record<string, string> = {
+      'events.jsonl': eventsJsonl,
+      'ledger.json': ledgerJson,
+      'verifier_output.json': verifierOutputJson,
+      'derived_metrics.csv': metricsCSV,
+      'codebook.md': codebook,
+    };
+
+    const exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }> = [];
+    for (const filePath of Object.keys(payloadFiles).sort()) {
+      const content = payloadFiles[filePath];
+      exportManifestEntries.push({
+        path: filePath,
+        sha256: await sha256Hex(content),
+        bytes: new TextEncoder().encode(content).byteLength,
+      });
+    }
+
+    const exportManifest = {
+      schema: 'evidify.export_manifest.v1',
+      created_utc: exportManifestCreatedUtc,
+      entries: exportManifestEntries,
+    };
+
+    // Root hash = SHA-256(canonical manifest JSON)
+    const exportRootHash = await sha256Hex(canonicalJSON(exportManifest));
+
+    // Pretty JSON file (hash computed from canonical form above)
+    const exportManifestJson = JSON.stringify(exportManifest, null, 2);
+
     return {
       manifest,
       eventsJsonl,
@@ -657,6 +696,8 @@ export class ExportPackBuilder {
       metricsCSV,
       verifierOutput,
       codebook,
+      exportManifestJson,
+      exportRootHash,
     };
   }
 
