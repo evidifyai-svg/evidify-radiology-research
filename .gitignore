@@ -55,3 +55,6 @@ artifacts/
 
 # local artifacts
 artifacts/
+
+# build outputs
+frontend/dist/
