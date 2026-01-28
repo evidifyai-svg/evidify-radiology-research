@@ -10,6 +10,40 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  Brain,
+  BookOpen,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  Clock,
+  Download,
+  Eye,
+  FileText,
+  Gavel,
+  HardDrive,
+  Info,
+  Link,
+  Lock,
+  PenSquare,
+  Play,
+  RefreshCw,
+  Scale,
+  Settings,
+  Target,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Upload,
+  User,
+  Zap,
+  X,
+} from 'lucide-react';
 import { MammogramDualViewSimple } from './research/MammogramDualViewSimple';
 // import { PacketViewer } from './PacketViewer'; // Replaced by ExpertWitnessPacketViewer
 import { ExportPackZip, DerivedMetrics } from '../lib/ExportPackZip';
@@ -50,6 +84,166 @@ interface DemoState {
   eventCount: number;
 }
 
+const TOO_FAST_PRE_AI_MS = 5000;
+const TOO_FAST_AI_EXPOSURE_MS = 3000;
+
+const groupEventsByCase = (events: any[]): Map<string, any[]> => {
+  const grouped = new Map<string, any[]>();
+  let activeCaseId: string | null = null;
+
+  events.forEach(event => {
+    if (event.type === 'CASE_LOADED' && event.payload?.caseId) {
+      activeCaseId = event.payload.caseId as string;
+      if (!grouped.has(activeCaseId)) {
+        grouped.set(activeCaseId, []);
+      }
+    }
+
+    if (activeCaseId) {
+      grouped.get(activeCaseId)?.push(event);
+    }
+
+    if (event.type === 'CASE_COMPLETED' && event.payload?.caseId === activeCaseId) {
+      activeCaseId = null;
+    }
+  });
+
+  return grouped;
+};
+
+const computeDerivedMetricsFromEvents = (
+  events: any[],
+  caseId: string,
+  sessionId: string,
+  condition: ConditionAssignment | null
+): DerivedMetrics => {
+  const groupedEvents = groupEventsByCase(events);
+  const caseEvents = groupedEvents.get(caseId) ?? [];
+  const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
+  const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
+  const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
+  const deviationSubmitted = caseEvents.filter(event => event.type === 'DEVIATION_SUBMITTED');
+  const deviationStarted = caseEvents.filter(event => event.type === 'DEVIATION_STARTED');
+  const deviationSkipped = caseEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
+  const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
+  const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+
+  const initialBirads = firstImpression?.payload?.birads ?? 0;
+  const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
+  const aiBirads = aiRevealed?.payload?.suggestedBirads ?? null;
+  const aiConfidence = aiRevealed?.payload?.aiConfidence ?? null;
+
+  const changeOccurred = finalBirads !== initialBirads;
+  const aiConsistentChange = changeOccurred && aiBirads != null && finalBirads === aiBirads;
+  const aiInconsistentChange = changeOccurred && aiBirads != null && finalBirads !== aiBirads;
+  const addaDenominator = aiBirads != null && initialBirads !== aiBirads;
+  const adda = addaDenominator ? finalBirads === aiBirads : null;
+
+  const decisionChangeCount = deviationStarted.length > 0 ? deviationStarted.length : changeOccurred ? 1 : 0;
+  const overrideCount = aiBirads != null && finalBirads !== aiBirads ? 1 : 0;
+  const rationaleProvided = deviationSubmitted.some(event => (event.payload?.rationale ?? '').trim().length > 0);
+
+  const timeToLockMs = firstImpression?.payload?.timeToLockMs ?? null;
+  const preAiReadMs =
+    typeof timeToLockMs === 'number'
+      ? timeToLockMs
+      : firstImpression
+        ? new Date(firstImpression.timestamp).getTime() - new Date(caseEvents[0]?.timestamp ?? firstImpression.timestamp).getTime()
+        : 0;
+
+  const aiExposureMs =
+    finalAssessment?.payload?.postAiTimeMs ??
+    (aiRevealed && finalAssessment
+      ? new Date(finalAssessment.timestamp).getTime() - new Date(aiRevealed.timestamp).getTime()
+      : 0);
+
+  const totalTimeMs = caseCompleted?.payload?.totalTimeMs ?? 0;
+  const lockToRevealMs =
+    firstImpression && aiRevealed
+      ? new Date(aiRevealed.timestamp).getTime() - new Date(firstImpression.timestamp).getTime()
+      : 0;
+
+  return {
+    sessionId,
+    timestamp: new Date().toISOString(),
+    condition: condition?.condition ?? 'UNKNOWN',
+    caseId,
+    initialBirads,
+    finalBirads,
+    aiBirads,
+    aiConfidence,
+    changeOccurred,
+    aiConsistentChange,
+    aiInconsistentChange,
+    addaDenominator,
+    adda,
+    deviationRequired: changeOccurred,
+    deviationDocumented: rationaleProvided,
+    deviationSkipped: changeOccurred && !rationaleProvided && deviationSkipped.length > 0,
+    deviationText: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
+    deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
+    comprehensionCorrect: comprehensionEvent?.payload?.isCorrect ?? null,
+    preAiReadMs,
+    aiExposureMs,
+    decisionChangeCount,
+    overrideCount,
+    rationaleProvided,
+    timingFlagPreAiTooFast: preAiReadMs < TOO_FAST_PRE_AI_MS,
+    timingFlagAiExposureTooFast: aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS,
+    totalTimeMs,
+    timeToLockMs,
+    lockToRevealMs,
+    revealToFinalMs: aiExposureMs,
+    revealTiming: condition?.condition ?? 'UNKNOWN',
+    disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
+  };
+};
+
+const buildMethodsSnapshot = (
+  events: any[],
+  condition: ConditionAssignment | null,
+  caseQueue: CaseQueueState | null,
+  caseResults: DerivedMetrics[],
+  disclosurePolicy: 'STATIC' | 'ADAPTIVE'
+) => {
+  const firstLock = events.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
+  const finalLock = [...events].reverse().find(event => event.type === 'FINAL_ASSESSMENT');
+  const sessionStart = events.find(event => event.type === 'SESSION_STARTED');
+  const sessionEnd = [...events].reverse().find(event => event.type === 'SESSION_ENDED');
+
+  const avgPreAiReadMs = caseResults.length > 0
+    ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.preAiReadMs ?? 0), 0) / caseResults.length)
+    : 0;
+  const avgAiExposureMs = caseResults.length > 0
+    ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.aiExposureMs ?? 0), 0) / caseResults.length)
+    : 0;
+
+  return {
+    conditionAssignment: {
+      condition: condition?.condition ?? 'UNKNOWN',
+      disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
+      seed: condition?.seed ?? 'N/A',
+      assignmentMethod: condition?.assignmentMethod ?? 'UNKNOWN',
+    },
+    caseOrder: caseQueue?.cases.map(c => c.caseId) ?? [],
+    timingSummary: {
+      averagePreAiReadMs: avgPreAiReadMs,
+      averageAiExposureMs: avgAiExposureMs,
+      sessionStartTime: sessionStart?.timestamp ?? null,
+      sessionEndTime: sessionEnd?.timestamp ?? null,
+      totalDurationMs: sessionStart && sessionEnd ? new Date(sessionEnd.timestamp).getTime() - new Date(sessionStart.timestamp).getTime() : null,
+    },
+    errorRateDisclosure: {
+      format: condition?.disclosureFormat ?? 'UNKNOWN',
+      policy: disclosurePolicy,
+    },
+    lockPoints: {
+      initialLockedTimestamp: firstLock?.timestamp ?? null,
+      finalLockedTimestamp: finalLock?.timestamp ?? null,
+    },
+  };
+};
+
 // ============================================================================
 // STUDY CONTROL SURFACE COMPONENT
 // ============================================================================
@@ -88,7 +282,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
       overflow: 'hidden',
     }}>
       {/* Header */}
-      <div 
+      <div
         onClick={onToggle}
         style={{
           padding: '12px 16px',
@@ -100,7 +294,8 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
         }}
       >
         <div style={{ color: 'white', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          🔬 STUDY CONTROL
+          <Activity size={14} />
+          STUDY CONTROL
           <span style={{ 
             backgroundColor: '#22c55e', 
             color: 'white', 
@@ -112,7 +307,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
             LIVE
           </span>
         </div>
-        <span style={{ color: 'white', fontSize: '14px' }}>{isCollapsed ? '▼' : '▲'}</span>
+        <span style={{ color: 'white', fontSize: '14px' }}>{isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</span>
       </div>
       
       {!isCollapsed && (
@@ -135,8 +330,8 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
               fontWeight: 700,
               fontSize: '14px'
             }}>
-              {condition.condition === 'HUMAN_FIRST' ? '🧠 HUMAN_FIRST' : 
-               condition.condition === 'AI_FIRST' ? '🤖 AI_FIRST' : '⚡ CONCURRENT'}
+              {condition.condition === 'HUMAN_FIRST' ? 'HUMAN_FIRST' : 
+               condition.condition === 'AI_FIRST' ? 'AI_FIRST' : 'CONCURRENT'}
             </div>
           </div>
           
@@ -159,8 +354,9 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           {/* Assignment Method */}
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>ASSIGNMENT</div>
-            <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-              {condition.assignmentMethod === 'SEEDED_RANDOM' ? '🎲 Seeded Random' : '✋ Manual Override'}
+            <div style={{ color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Settings size={12} />
+              {condition.assignmentMethod === 'SEEDED_RANDOM' ? 'Seeded Random' : 'Manual Override'}
             </div>
           </div>
           
@@ -191,9 +387,10 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                       gap: '4px',
                     }}
                   >
-                    {isCompleted && <span style={{ color: '#4ade80' }}>✓</span>}
-                    {isCurrent && <span style={{ color: '#fbbf24' }}>▶</span>}
-                    {isCalibration ? '📚' : ''}{caseId.length > 12 ? caseId.slice(0, 10) + '..' : caseId}
+                    {isCompleted && <CheckCircle size={10} />}
+                    {isCurrent && <Play size={10} />}
+                    {isCalibration ? <BookOpen size={10} /> : null}
+                    {caseId.length > 12 ? caseId.slice(0, 10) + '..' : caseId}
                   </div>
                 );
               })}
@@ -243,7 +440,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 alignItems: 'center',
                 gap: '4px'
               }}>
-                <span style={{ color: '#22c55e' }}>✓</span>
+                <CheckCircle size={10} color="#22c55e" />
                 <span>Logged to RANDOMIZATION_ASSIGNED event</span>
               </div>
             </div>
@@ -252,8 +449,9 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           {/* Disclosure Format */}
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>DISCLOSURE FORMAT</div>
-            <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-              📊 FDR/FOR (4% / 12%)
+            <div style={{ color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <BarChart3 size={12} />
+              FDR/FOR (4% / 12%)
             </div>
           </div>
           
@@ -303,7 +501,10 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 fontSize: '10px',
                 color: '#c4b5fd'
               }}>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>🧠 Adaptive Mode Active</div>
+                <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Brain size={12} />
+                  Adaptive Mode Active
+                </div>
                 <div>Disclosure intensity varies by case difficulty:</div>
                 <div style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
                   <span style={{ color: '#86efac' }}>EASY: minimal</span>
@@ -383,7 +584,8 @@ const AttentionMetricsPanel: React.FC<AttentionMetricsPanelProps> = ({
         alignItems: 'center',
         gap: '8px'
       }}>
-        👁️ ATTENTION INSTRUMENTATION
+        <Eye size={14} />
+        ATTENTION INSTRUMENTATION
         <span style={{ 
           backgroundColor: '#164e63', 
           color: '#22d3ee', 
@@ -434,12 +636,12 @@ const AttentionMetricsPanel: React.FC<AttentionMetricsPanelProps> = ({
       {/* Interaction Counts */}
       <div style={{ display: 'flex', gap: '16px', paddingTop: '12px', borderTop: '1px solid #334155' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '14px' }}>🔍</span>
+          <Target size={14} color="#60a5fa" />
           <span style={{ color: 'white', fontWeight: 600 }}>{interactionCounts.zooms}</span>
           <span style={{ fontSize: '10px', color: '#64748b' }}>zooms</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '14px' }}>✋</span>
+          <Zap size={14} color="#f59e0b" />
           <span style={{ color: 'white', fontWeight: 600 }}>{interactionCounts.pans}</span>
           <span style={{ fontSize: '10px', color: '#64748b' }}>pans</span>
         </div>
@@ -565,8 +767,9 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
               gap: '12px',
               marginBottom: '4px',
             }}>
-              <h2 style={{ color: 'white', margin: 0, fontSize: '20px' }}>
-                ⚖️ Expert Witness Packet
+              <h2 style={{ color: 'white', margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Gavel size={18} />
+                Expert Witness Packet
               </h2>
               <div style={{
                 padding: '4px 12px',
@@ -576,7 +779,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 backgroundColor: tamperDetected ? '#dc2626' : '#22c55e',
                 color: tamperDetected ? 'white' : '#052e16',
               }}>
-                {tamperDetected ? '❌ INTEGRITY COMPROMISED' : '✓ VERIFIED AUTHENTIC'}
+                {tamperDetected ? 'INTEGRITY COMPROMISED' : 'VERIFIED AUTHENTIC'}
               </div>
             </div>
             <div style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>
@@ -603,10 +806,10 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
           borderBottom: '1px solid #333',
         }}>
           {[
-            { id: 'timeline', label: '📋 Decision Timeline', icon: '🔗' },
-            { id: 'legal', label: '⚖️ Legal Summary', icon: '📜' },
-            { id: 'validity', label: '🎯 Validity Indicators', icon: '📊' },
-            { id: 'raw', label: '🔐 Raw Ledger', icon: '💾' },
+            { id: 'timeline', label: 'Decision Timeline', icon: <ClipboardList size={14} /> },
+            { id: 'legal', label: 'Legal Summary', icon: <Scale size={14} /> },
+            { id: 'validity', label: 'Validity Indicators', icon: <Target size={14} /> },
+            { id: 'raw', label: 'Raw Ledger', icon: <Lock size={14} /> },
           ].map(tab => (
             <button
               key={tab.id}
@@ -622,8 +825,13 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 fontSize: '13px',
                 fontWeight: 600,
                 transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
               }}
             >
+              {tab.icon}
               {tab.label}
             </button>
           ))}
@@ -639,143 +847,110 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
           
           {/* TIMELINE TAB */}
           {activeTab === 'timeline' && (
-            <div>
-              <div style={{ 
-                marginBottom: '20px', 
-                padding: '16px', 
-                backgroundColor: '#1e293b', 
-                borderRadius: '8px',
-                borderLeft: '4px solid #3b82f6',
-              }}>
-                <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>
-                  TAMPER-EVIDENT DECISION CHAIN
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+              <div>
+                <div style={{ 
+                  marginBottom: '16px', 
+                  padding: '14px', 
+                  backgroundColor: '#1e293b', 
+                  borderRadius: '8px',
+                  borderLeft: '4px solid #3b82f6',
+                }}>
+                  <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>
+                    EVENT STREAM (HUMAN-READABLE)
+                  </div>
+                  <div style={{ color: 'white', fontSize: '14px' }}>
+                    Read the story of the session in order: initial read, AI exposure, and final decision.
+                  </div>
                 </div>
-                <div style={{ color: 'white', fontSize: '14px' }}>
-                  Each entry is cryptographically linked to the previous entry. 
-                  Modification of any historical data breaks the chain and verification fails.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {keyEvents.slice(0, 20).map(event => (
+                    <div key={event.id} style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div>
+                          <div style={{ color: 'white', fontWeight: 600, fontSize: '13px' }}>
+                            {event.type.replace(/_/g, ' ')}
+                          </div>
+                          <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            {new Date(event.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '10px', color: '#64748b', fontFamily: 'monospace' }}>
+                          #{event.seq}
+                        </span>
+                      </div>
+                      {event.payload && (
+                        <div style={{ marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                          {event.type === 'FIRST_IMPRESSION_LOCKED' && (
+                            <>Initial BI-RADS {event.payload.birads} • Confidence {event.payload.confidence}%</>
+                          )}
+                          {event.type === 'AI_REVEALED' && (
+                            <>AI BI-RADS {event.payload.suggestedBirads} • Confidence {Math.round((event.payload.aiConfidence || 0.87) * 100)}%</>
+                          )}
+                          {event.type === 'FINAL_ASSESSMENT' && (
+                            <>Final BI-RADS {event.payload.birads} • Change {event.payload.changeFromInitial ? 'Yes' : 'No'}</>
+                          )}
+                          {event.type === 'DEVIATION_SUBMITTED' && (
+                            <>Rationale: {(event.payload.rationale || '').slice(0, 80)}</>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-              
-              {/* Timeline */}
-              <div style={{ position: 'relative' }}>
-                {keyEvents.slice(0, 15).map((event, i) => {
-                  const ledgerEntry = ledger[i] || {};
-                  const prevHash = i > 0 ? ledger[i-1]?.hash?.slice(0, 12) : 'GENESIS';
-                  
-                  return (
-                    <div key={event.id} style={{
-                      display: 'flex',
-                      gap: '16px',
-                      marginBottom: '16px',
-                      position: 'relative',
-                    }}>
-                      {/* Timeline line */}
-                      {i < keyEvents.length - 1 && (
-                        <div style={{
-                          position: 'absolute',
-                          left: '19px',
-                          top: '40px',
-                          width: '2px',
-                          height: 'calc(100% - 20px)',
-                          backgroundColor: '#334155',
-                        }} />
-                      )}
-                      
-                      {/* Entry number */}
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        backgroundColor: event.type.includes('LOCKED') ? '#f59e0b' :
-                                        event.type.includes('AI') ? '#a855f7' :
-                                        event.type.includes('FINAL') ? '#22c55e' :
-                                        event.type.includes('DEVIATION') ? '#ef4444' : '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        zIndex: 1,
-                      }}>
-                        {i}
-                      </div>
-                      
-                      {/* Entry content */}
-                      <div style={{
-                        flex: 1,
-                        backgroundColor: '#1e293b',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                        border: '1px solid #334155',
-                      }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'flex-start',
-                          marginBottom: '8px',
-                        }}>
-                          <div>
-                            <div style={{ color: 'white', fontWeight: 600, fontSize: '14px' }}>
-                              {event.type.replace(/_/g, ' ')}
-                            </div>
-                            <div style={{ color: '#64748b', fontSize: '11px' }}>
-                              {new Date(event.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                          <div style={{
-                            padding: '2px 8px',
-                            backgroundColor: '#0f172a',
-                            borderRadius: '4px',
-                            fontFamily: 'monospace',
-                            fontSize: '10px',
-                            color: '#4ade80',
-                          }}>
-                            {ledgerEntry.hash?.slice(0, 16) || 'pending'}...
-                          </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ backgroundColor: '#1e293b', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    {tamperDetected ? <AlertTriangle size={16} color="#f87171" /> : <CheckCircle size={16} color="#4ade80" />}
+                    <div style={{ color: 'white', fontWeight: 600 }}>Verification Status</div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    {tamperDetected ? 'Hash chain failed validation.' : 'Hash chain intact and verified.'}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#1e293b', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>HASH CHAIN</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {keyEvents.slice(0, 10).map(event => {
+                      const ledgerEntry = ledger.find((entry: any) => entry.eventId === event.id) || {};
+                      return (
+                        <div key={event.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '10px', color: '#94a3b8' }}>{event.type.replace(/_/g, ' ')}</span>
+                          <span style={{ fontSize: '10px', color: '#4ade80', fontFamily: 'monospace' }}>
+                            {(ledgerEntry.chainHash || '').slice(0, 12)}...
+                          </span>
                         </div>
-                        
-                        {/* Chain link indicator */}
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '8px',
-                          fontSize: '10px',
-                          color: '#64748b',
-                        }}>
-                          <span>🔗 Linked to:</span>
-                          <code style={{ color: '#60a5fa' }}>{prevHash}...</code>
-                        </div>
-                        
-                        {/* Key data */}
-                        {event.data && (
-                          <div style={{
-                            marginTop: '8px',
-                            padding: '8px',
-                            backgroundColor: '#0f172a',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            color: '#94a3b8',
-                          }}>
-                            {event.type === 'FIRST_IMPRESSION_LOCKED' && (
-                              <span>BI-RADS: <strong style={{ color: '#f59e0b' }}>{event.data.selectedBirads}</strong> • Confidence: {event.data.confidence}%</span>
-                            )}
-                            {event.type === 'AI_REVEALED' && (
-                              <span>AI BI-RADS: <strong style={{ color: '#a855f7' }}>{event.data.aiBirads}</strong> • AI Confidence: {Math.round((event.data.aiConfidence || 0.87) * 100)}%</span>
-                            )}
-                            {event.type === 'FINAL_ASSESSMENT' && (
-                              <span>Final BI-RADS: <strong style={{ color: '#22c55e' }}>{event.data.finalBirads}</strong> • Changed: {event.data.changeOccurred ? 'YES' : 'NO'}</span>
-                            )}
-                            {event.type === 'DEVIATION_SUBMITTED' && (
-                              <span>Rationale: <em style={{ color: '#fcd34d' }}>"{(event.data.rationale || '').slice(0, 50)}..."</em></span>
-                            )}
-                          </div>
-                        )}
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#1e293b', padding: '14px', borderRadius: '8px', border: '1px solid #334155' }}>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>WHAT CHANGED</div>
+                  {(() => {
+                    const initialLock = events.find((event: any) => event.type === 'FIRST_IMPRESSION_LOCKED');
+                    const finalLock = events.find((event: any) => event.type === 'FINAL_ASSESSMENT');
+                    if (!initialLock || !finalLock) {
+                      return <div style={{ fontSize: '11px', color: '#64748b' }}>Insufficient data to compute diffs.</div>;
+                    }
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                        <div style={{ fontWeight: 600, color: 'white' }}>Field</div>
+                        <div style={{ fontWeight: 600, color: 'white' }}>Initial</div>
+                        <div style={{ fontWeight: 600, color: 'white' }}>Final</div>
+                        <div>BI-RADS</div>
+                        <div>{initialLock.payload?.birads ?? '--'}</div>
+                        <div>{finalLock.payload?.birads ?? '--'}</div>
+                        <div>Confidence</div>
+                        <div>{initialLock.payload?.confidence ?? '--'}%</div>
+                        <div>{finalLock.payload?.confidence ?? '--'}%</div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           )}
@@ -791,8 +966,8 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 marginBottom: '24px',
                 textAlign: 'center',
               }}>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>
-                  {overallDefensibility >= 3 ? '✅' : overallDefensibility >= 2 ? '⚠️' : '❌'}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                  {overallDefensibility >= 3 ? <CheckCircle size={40} color="#4ade80" /> : overallDefensibility >= 2 ? <AlertTriangle size={40} color="#f59e0b" /> : <AlertCircle size={40} color="#f87171" />}
                 </div>
                 <div style={{ color: 'white', fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>
                   {overallDefensibility >= 3 ? 'DEFENSIBLE RECORD' : 
@@ -805,8 +980,9 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
               
               {/* Key Legal Questions */}
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ color: 'white', fontSize: '16px', marginBottom: '16px' }}>
-                  📜 Key Legal Questions Answered
+                <h3 style={{ color: 'white', fontSize: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Scale size={16} />
+                  Key Legal Questions Answered
                 </h3>
                 
                 {[
@@ -880,8 +1056,9 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 borderRadius: '8px',
                 border: '1px solid #3b82f6',
               }}>
-                <div style={{ color: '#93c5fd', fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>
-                  💡 CROSS-EXAMINATION DEFENSE POINTS
+                <div style={{ color: '#93c5fd', fontSize: '12px', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Info size={12} />
+                  CROSS-EXAMINATION DEFENSE POINTS
                 </div>
                 <ul style={{ color: '#94a3b8', fontSize: '12px', margin: 0, paddingLeft: '20px' }}>
                   <li style={{ marginBottom: '4px' }}>Initial assessment was locked BEFORE AI disclosure</li>
@@ -1077,8 +1254,12 @@ ${ledger.slice(0, 10).map((entry, i) => `    {
                   cursor: 'pointer',
                   fontSize: '12px',
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}>
-                  📥 Download JSON
+                  <Download size={12} />
+                  Download JSON
                 </button>
               </div>
             </div>
@@ -1212,8 +1393,9 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
           marginBottom: '24px',
         }}>
           <div>
-            <h2 style={{ color: 'white', margin: 0, fontSize: '18px' }}>
-              📊 Post-Case Assessment
+            <h2 style={{ color: 'white', margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart3 size={16} />
+              Post-Case Assessment
             </h2>
             <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
               Case: {caseId}
@@ -1298,10 +1480,17 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
               textAlign: 'center',
               color: 'white',
               fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
             }}>
-              {postTrust > preTrust ? '📈 Trust increased from expectation' :
-               postTrust < preTrust ? '📉 Trust decreased from expectation' :
-               '➡️ Trust matched expectation'}
+              {postTrust > preTrust ? <TrendingUp size={14} color="#86efac" /> :
+               postTrust < preTrust ? <TrendingDown size={14} color="#fca5a5" /> :
+               <Activity size={14} color="#cbd5f5" />}
+              {postTrust > preTrust ? 'Trust increased from expectation' :
+               postTrust < preTrust ? 'Trust decreased from expectation' :
+               'Trust matched expectation'}
             </div>
           </div>
         )}
@@ -1541,8 +1730,13 @@ const KeyboardHelpModal: React.FC<{ isVisible: boolean; onClose: () => void }> =
           fontSize: '12px',
           color: '#888',
           textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
         }}>
-          💡 Keyboard shortcuts are logged for workflow analysis
+          <Info size={14} />
+          Keyboard shortcuts are logged for workflow analysis
         </div>
       </div>
     </div>
@@ -1734,15 +1928,15 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
   };
 
   const packContents = [
-    { name: 'PROTOCOL.md', desc: 'IRB-ready study protocol (BRPLL-MAMMO-v1.0)', icon: '📋' },
-    { name: 'CONDITIONS.json', desc: 'Condition matrix with factor definitions', icon: '🎯' },
-    { name: 'COUNTERBALANCING.csv', desc: 'Latin square assignment table (4×4)', icon: '🔀' },
-    { name: 'CODEBOOK.md', desc: 'Variable definitions + event schemas', icon: '📖' },
-    { name: 'CONSENT_TEMPLATE.md', desc: 'Participant consent script (editable)', icon: '✍️' },
-    { name: 'ANALYSIS_SKELETON.R', desc: 'Mixed-effects model starter code', icon: '📊' },
-    { name: 'MRMC_MAPPING.md', desc: 'iMRMC export format documentation', icon: '🔗' },
-    { name: 'VERIFIER.sh', desc: 'Standalone hash chain verifier CLI', icon: '🔐' },
-    { name: 'REPLICATION_GUIDE.md', desc: '30-minute site setup instructions', icon: '🚀' },
+    { name: 'PROTOCOL.md', desc: 'IRB-ready study protocol (BRPLL-MAMMO-v1.0)', icon: <FileText size={14} /> },
+    { name: 'CONDITIONS.json', desc: 'Condition matrix with factor definitions', icon: <Target size={14} /> },
+    { name: 'COUNTERBALANCING.csv', desc: 'Latin square assignment table (4×4)', icon: <RefreshCw size={14} /> },
+    { name: 'CODEBOOK.md', desc: 'Variable definitions + event schemas', icon: <ClipboardList size={14} /> },
+    { name: 'CONSENT_TEMPLATE.md', desc: 'Participant consent script (editable)', icon: <PenSquare size={14} /> },
+    { name: 'ANALYSIS_SKELETON.R', desc: 'Mixed-effects model starter code', icon: <BarChart3 size={14} /> },
+    { name: 'MRMC_MAPPING.md', desc: 'iMRMC export format documentation', icon: <Link size={14} /> },
+    { name: 'VERIFIER.sh', desc: 'Standalone hash chain verifier CLI', icon: <Lock size={14} /> },
+    { name: 'REPLICATION_GUIDE.md', desc: '30-minute site setup instructions', icon: <Play size={14} /> },
   ];
   
   return (
@@ -1780,7 +1974,8 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
         }}>
           <div>
             <h2 style={{ margin: 0, color: 'white', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              📦 Study Pack v1.0
+              <Upload size={18} />
+              Study Pack v1.0
               <span style={{ 
                 fontSize: '10px', 
                 backgroundColor: 'rgba(255,255,255,0.2)', 
@@ -1794,7 +1989,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               Everything another site needs to run this study in 30 minutes
             </p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             style={{ 
               padding: '8px 16px', 
@@ -1803,10 +1998,14 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               borderRadius: '8px', 
               color: 'white', 
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            ✕
+            <X size={14} />
+            Close
           </button>
         </div>
         
@@ -1889,7 +2088,10 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
             fontSize: '12px',
             color: '#bfdbfe'
           }}>
-            <strong style={{ color: 'white' }}>🏛️ Multi-Site Ready:</strong> This pack includes site-specific configuration templates. 
+            <strong style={{ color: 'white', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Scale size={12} />
+              Multi-Site Ready:
+            </strong> This pack includes site-specific configuration templates. 
             Each collaborating institution can generate their own session IDs and seeds while maintaining 
             protocol fidelity for federated analysis.
           </div>
@@ -1916,9 +2118,15 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
                 }}
               >
                 {generating ? (
-                  <>⏳ Generating Pack...</>
+                  <>
+                    <Clock size={16} />
+                    Generating Pack...
+                  </>
                 ) : (
-                  <>📦 Download Study Pack v1.0</>
+                  <>
+                    <Download size={16} />
+                    Download Study Pack v1.0
+                  </>
                 )}
               </button>
             ) : (
@@ -1932,7 +2140,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
                   gap: '10px',
                   marginBottom: '12px'
                 }}>
-                  <span style={{ fontSize: '24px' }}>✅</span>
+                  <CheckCircle size={24} color="#4ade80" />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ color: 'white', fontWeight: 700 }}>Study_Pack_BRPLL_MAMMO_v1.0.zip</div>
                     <div style={{ color: '#86efac', fontSize: '12px' }}>Ready for download (2.4 MB)</div>
@@ -2032,7 +2240,10 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
           borderRadius: '14px 14px 0 0',
         }}>
           <div>
-            <h2 style={{ margin: 0, color: 'white', fontSize: '18px' }}>📋 Study Design Summary</h2>
+            <h2 style={{ margin: 0, color: 'white', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ClipboardList size={16} />
+              Study Design Summary
+            </h2>
             <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: '12px' }}>Pre-registered research protocol • BRPLL-MAMMO-v1.0</p>
           </div>
           <button 
@@ -2325,8 +2536,12 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           fontSize: '11px',
           textTransform: 'uppercase',
           letterSpacing: '1px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
         }}>
-          📊 QC Monitor
+          <BarChart3 size={12} />
+          QC Monitor
         </div>
         <div style={{
           padding: '2px 8px',
@@ -2335,8 +2550,12 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           fontWeight: 600,
           backgroundColor: hasAnomalies ? '#92400e' : '#166534',
           color: hasAnomalies ? '#fcd34d' : '#4ade80',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
         }}>
-          {hasAnomalies ? '⚠️ FLAGS' : '✓ CLEAN'}
+          {hasAnomalies ? <AlertTriangle size={10} /> : <CheckCircle size={10} />}
+          {hasAnomalies ? 'FLAGS' : 'CLEAN'}
         </div>
       </div>
       
@@ -2366,7 +2585,7 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
         }}>
           <div style={{ color: '#64748b' }}>Fast Reads</div>
           <div style={{ color: fastReads > 0 ? '#fcd34d' : '#4ade80', fontWeight: 600 }}>
-            {fastReads} {fastReads > 0 && '⚠️'}
+            {fastReads} {fastReads > 0 && <AlertTriangle size={10} color="#fcd34d" />}
           </div>
         </div>
         
@@ -2386,9 +2605,9 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           borderRadius: '4px',
           borderLeft: `3px solid ${comprehensionFailures > 0 ? '#dc2626' : '#22c55e'}`,
         }}>
-          <div style={{ color: '#64748b' }}>Comprehension ❌</div>
+          <div style={{ color: '#64748b' }}>Comprehension Failures</div>
           <div style={{ color: comprehensionFailures > 0 ? '#f87171' : '#4ade80', fontWeight: 600 }}>
-            {comprehensionFailures} {comprehensionFailures > 0 && '⚠️'}
+            {comprehensionFailures} {comprehensionFailures > 0 && <AlertTriangle size={10} color="#f87171" />}
           </div>
         </div>
         
@@ -2471,9 +2690,8 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '24px',
         }}>
-          💾
+          <HardDrive size={20} color="white" />
         </div>
         <div>
           <div style={{ color: 'white', fontWeight: 600, fontSize: '14px' }}>
@@ -2499,9 +2717,13 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
             cursor: 'pointer',
             fontWeight: 600,
             fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
-          ↩️ Resume Session
+          <RefreshCw size={14} />
+          Resume Session
         </button>
         <button
           onClick={onDiscard}
@@ -2514,9 +2736,13 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
             cursor: 'pointer',
             fontWeight: 600,
             fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           }}
         >
-          🗑️ Discard
+          <Trash2 size={14} />
+          Discard
         </button>
       </div>
     </div>
@@ -2610,8 +2836,12 @@ const VerificationStatusPanel: React.FC<VerificationStatusProps> = ({
           fontSize: '11px',
           textTransform: 'uppercase',
           letterSpacing: '1px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
         }}>
-          🔐 Chain Status
+          <Lock size={12} />
+          Chain Status
         </div>
         <div style={{
           padding: '2px 8px',
@@ -2620,8 +2850,12 @@ const VerificationStatusPanel: React.FC<VerificationStatusProps> = ({
           fontWeight: 600,
           backgroundColor: isVerified === null ? '#334155' : isVerified ? '#166534' : '#991b1b',
           color: isVerified === null ? '#94a3b8' : isVerified ? '#4ade80' : '#fca5a5',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
         }}>
-          {isVerified === null ? 'PENDING' : isVerified ? '✓ INTACT' : '✗ BROKEN'}
+          {isVerified === null ? <AlertCircle size={10} /> : isVerified ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
+          {isVerified === null ? 'PENDING' : isVerified ? 'INTACT' : 'BROKEN'}
         </div>
       </div>
       
@@ -2824,7 +3058,7 @@ export const ResearchDemoFlow: React.FC = () => {
 
   const [showPacketViewer, setShowPacketViewer] = useState(false);
   const [timeOnCase, setTimeOnCase] = useState(0);
-  const [showEventLog, setShowEventLog] = useState(true);
+  const [showEventLog, setShowEventLog] = useState(false);
   const [showControlSurface, setShowControlSurface] = useState(false);
   const [tamperDemoActive, setTamperDemoActive] = useState(false);
   const [tamperFailureCode, setTamperFailureCode] = useState<string | null>(null);
@@ -2834,6 +3068,8 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showStudyDesign, setShowStudyDesign] = useState(false);
   const [viewMode, setViewMode] = useState<'CLINICIAN' | 'RESEARCHER'>('RESEARCHER');
   const [showStudyPack, setShowStudyPack] = useState(false);
+  const [showAdvancedResearcher, setShowAdvancedResearcher] = useState(false);
+  const [demoPathStep, setDemoPathStep] = useState(0);
   const [disclosurePolicy, setDisclosurePolicy] = useState<'STATIC' | 'ADAPTIVE'>('STATIC');
   const [aiAgreementStreak, setAiAgreementStreak] = useState(0);
   const [totalDeviationsRequired, setTotalDeviationsRequired] = useState(0);
@@ -2851,6 +3087,9 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
   
+  const isClinician = viewMode === 'CLINICIAN';
+  const isResearcher = viewMode === 'RESEARCHER';
+
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
@@ -3409,11 +3648,13 @@ await eventLoggerRef.current!.logAIRevealed({
         await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
       }
       setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
+    } else if (isClinician) {
+      await submitFinalAssessment();
     } else {
       // No deviation needed - show probes modal
       setShowProbesModal(true);
     }
-  }, [state.initialBirads, state.finalBirads]);
+  }, [state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
   
   // Called after deviation step to show probes
   const proceedToProbes = useCallback(async (skipDeviation = false) => {
@@ -3429,8 +3670,12 @@ await eventLoggerRef.current!.logAIRevealed({
         });
       }
     }
+    if (isClinician) {
+      await submitFinalAssessment(skipDeviation);
+      return;
+    }
     setShowProbesModal(true);
-  }, [state.deviationRationale, state.initialBirads, state.finalBirads]);
+  }, [state.deviationRationale, state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
 
   // Submit final assessment
   const submitFinalAssessment = useCallback(async (skipDeviation = false) => {
@@ -3491,60 +3736,18 @@ setAiAgreementStreak(prev => prev + 1);
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
-    // Compute metrics
-    const metrics: DerivedMetrics = {
-      sessionId: state.sessionId,
-      timestamp: new Date().toISOString(),
-      condition: state.condition?.condition ?? 'UNKNOWN',
-
-      initialBirads: state.initialBirads ?? 0,
-      finalBirads: state.finalBirads ?? state.initialBirads ?? 0,
-
-      aiBirads: aiSuggestedBirads,
-      aiConfidence: aiSuggestedConfidence,
-
-      changeOccurred: (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
-      aiConsistentChange:
-        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
-        (state.finalBirads ?? state.initialBirads) === aiSuggestedBirads,
-      aiInconsistentChange:
-        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
-        (state.finalBirads ?? state.initialBirads) !== aiSuggestedBirads,
-
-      addaDenominator:
-        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads,
-      adda:
-        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads
-          ? (state.finalBirads ?? state.initialBirads ?? 0) === aiSuggestedBirads
-          : null,
-
-      deviationRequired:
-        (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
-      deviationDocumented: (state.deviationRationale ?? '').trim().length > 0,
-      deviationSkipped:
-        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
-        (state.deviationRationale ?? '').trim().length === 0,
-      deviationText: (state.deviationRationale ?? '').trim() || undefined,
-
-      comprehensionCorrect: state.comprehensionCorrect ?? null,
-
-      totalTimeMs: Math.round(timeOnCase * 1000),
-      lockToRevealMs:
-        state.lockTime && state.aiRevealTime
-          ? state.aiRevealTime.getTime() - state.lockTime.getTime()
-          : 0,
-      revealToFinalMs: state.aiRevealTime ? Date.now() - state.aiRevealTime.getTime() : 0,
-
-      revealTiming: state.condition?.condition ?? 'UNKNOWN',
-      disclosureFormat: state.condition?.disclosureFormat ?? 'UNKNOWN',
-    };
-
-const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
+    const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
+    const metrics = computeDerivedMetricsFromEvents(
+      exportPackRef.current?.getEvents() ?? [],
+      completedCaseId,
+      state.sessionId,
+      state.condition
+    );
 
     setState(s => ({
       ...s,
       step: 'COMPLETE',
-      caseResults: [...s.caseResults, { caseId: completedCaseId, ...metrics }],
+      caseResults: [...s.caseResults, metrics],
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
   }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
@@ -3585,6 +3788,15 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
     if (!exportPackRef.current || !eventLoggerRef.current) return;
     
     await eventLoggerRef.current!.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
+
+    const methodsSnapshot = buildMethodsSnapshot(
+      exportPackRef.current.getEvents(),
+      state.condition,
+      state.caseQueue,
+      state.caseResults,
+      disclosurePolicy
+    );
+    exportPackRef.current.setMethodsSnapshot(methodsSnapshot);
     
     // Add all case metrics before generating
     for (const metrics of state.caseResults) {
@@ -3597,7 +3809,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
     setState(s => ({ ...s, exportReady: true, exportUrl: url, exportFilename: filename, verifierResult: verifierOutput.result as 'PASS' | 'FAIL', eventCount: exportPackRef.current?.getEvents().length || 0 }));
     setTamperDemoActive(false);
     setTamperFailureCode(null);
-  }, [state.caseResults]);
+  }, [state.caseResults, state.condition, state.caseQueue, disclosurePolicy]);
 
   // Tamper Demo - simulates what happens when export is modified
   const runTamperDemo = useCallback(() => {
@@ -3635,7 +3847,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
       {/* Study Control Surface - Left Panel (Researcher Mode Only) */}
-      {state.condition && viewMode === 'RESEARCHER' && (
+      {state.condition && isResearcher && (
         <StudyControlSurface
           condition={state.condition}
           sessionId={state.sessionId}
@@ -3664,7 +3876,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
         />
       )}
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && viewMode === 'RESEARCHER' ? '360px' : 'auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && isResearcher ? '360px' : 'auto' }}>
         {/* Header */}
         {isSetupScreen ? (
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
@@ -3677,9 +3889,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
+                <h1 style={{ margin: 0, fontSize: '26px' }}>{isClinician ? 'Clinician Review Shell' : 'Researcher Console'}</h1>
                 {/* Operator View Badge (Researcher Mode Only) */}
-                {viewMode === 'RESEARCHER' && (
+                {isResearcher && (
                   <div style={{
                     padding: '4px 10px',
                     borderRadius: '4px',
@@ -3690,8 +3902,12 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
                     border: '1px solid #c084fc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}>
-                    🔬 OPERATOR VIEW
+                    <Settings size={12} />
+                    OPERATOR VIEW
                   </div>
                 )}
                 {/* Trial Phase Badge */}
@@ -3706,78 +3922,125 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
                     animation: 'pulse 2s infinite',
                   }}>
-                    {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
+                    {state.currentCase?.isCalibration ? 'CALIBRATION TRIAL • FEEDBACK ON' : 'STUDY TRIAL • NO FEEDBACK'}
                   </div>
                 )}
               </div>
               <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
               <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-                🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
-                {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
-                <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={12} />
+                  {state.sessionId}
+                </span>
+                {state.condition && (
+                  <span style={{ marginLeft: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Target size={12} />
+                    {state.condition.condition}
+                  </span>
+                )}
+                {progress && (
+                  <span style={{ marginLeft: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <ClipboardList size={12} />
+                    Case {progress.current}/{progress.total}
+                  </span>
+                )}
+                <span style={{ marginLeft: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={12} />
+                  {timeOnCase.toFixed(1)}s
+                </span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
-                <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
-              </div>
-              <button
-                onClick={() => setShowStudyDesign(true)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                  border: '1px solid rgba(147, 197, 253, 0.5)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                📋 Study Design
-              </button>
-              <button
-                onClick={() => setShowStudyPack(true)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'rgba(34, 197, 94, 0.3)',
-                  border: '1px solid rgba(134, 239, 172, 0.5)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                📦 Study Pack
-              </button>
+              {isResearcher && (
+                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
+                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+                </div>
+              )}
+              {isResearcher && (
+                <>
+                  <button
+                    onClick={() => setShowAdvancedResearcher(!showAdvancedResearcher)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: showAdvancedResearcher ? 'rgba(148, 163, 184, 0.3)' : 'rgba(51, 65, 85, 0.4)',
+                      border: '1px solid rgba(148, 163, 184, 0.4)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Settings size={12} />
+                    {showAdvancedResearcher ? 'Hide Advanced' : 'Advanced Panels'}
+                  </button>
+                  <button
+                    onClick={() => setShowStudyDesign(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                      border: '1px solid rgba(147, 197, 253, 0.5)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <ClipboardList size={12} />
+                    Study Design
+                  </button>
+                  <button
+                    onClick={() => setShowStudyPack(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                      border: '1px solid rgba(134, 239, 172, 0.5)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Upload size={12} />
+                    Study Pack
+                  </button>
+                </>
+              )}
               {/* Keyboard Help */}
-              <button
-                onClick={() => setShowKeyboardHelp(true)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-                title="Keyboard shortcuts (?)"
-              >
-                ⌨️ <span style={{ opacity: 0.7 }}>?</span>
-              </button>
+              {isResearcher && (
+                <button
+                  onClick={() => setShowKeyboardHelp(true)}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  title="Keyboard shortcuts (?)"
+                >
+                  <Info size={12} />
+                  Shortcuts
+                </button>
+              )}
               {/* Mode Toggle */}
               <div style={{
                 display: 'flex',
@@ -3790,31 +4053,39 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   onClick={() => setViewMode('CLINICIAN')}
                   style={{
                     padding: '6px 12px',
-                    backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
+                    backgroundColor: isClinician ? '#3b82f6' : 'transparent',
                     border: 'none',
                     borderRadius: '6px',
                     color: 'white',
                     cursor: 'pointer',
                     fontSize: '10px',
                     fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  👩‍⚕️ Clinician
+                  <User size={12} />
+                  Clinician
                 </button>
                 <button
                   onClick={() => setViewMode('RESEARCHER')}
                   style={{
                     padding: '6px 12px',
-                    backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
+                    backgroundColor: isResearcher ? '#a855f7' : 'transparent',
                     border: 'none',
                     borderRadius: '6px',
                     color: 'white',
                     cursor: 'pointer',
                     fontSize: '10px',
                     fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  🔬 Researcher
+                  <Settings size={12} />
+                  Researcher
                 </button>
               </div>
             </div>
@@ -3824,24 +4095,25 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
         {/* Mode-Specific Description Bar */}
         {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
           <div style={{
-            backgroundColor: viewMode === 'RESEARCHER' ? '#1a1a2e' : '#1e3a5f',
+            backgroundColor: isResearcher ? '#1a1a2e' : '#1e3a5f',
             padding: '10px 24px',
-            borderBottom: `1px solid ${viewMode === 'RESEARCHER' ? '#a855f7' : '#3b82f6'}`,
+            borderBottom: `1px solid ${isResearcher ? '#a855f7' : '#3b82f6'}`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
-            <div style={{ color: '#94a3b8', fontSize: '11px' }}>
-              {viewMode === 'RESEARCHER' 
-                ? '🔬 RESEARCHER VIEW: Full instrumentation, event logging, study controls visible. Seeds and protocol parameters exposed.'
-                : '👩‍⚕️ CLINICIAN VIEW: Streamlined reading interface. Research instrumentation hidden.'}
+            <div style={{ color: '#94a3b8', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {isResearcher ? <Settings size={12} /> : <User size={12} />}
+              {isResearcher 
+                ? 'RESEARCHER VIEW: Instrumentation, event logging, and study controls are visible.'
+                : 'CLINICIAN VIEW: Streamlined reading workflow with research instrumentation hidden.'}
             </div>
             <div style={{ 
               fontSize: '10px', 
-              color: viewMode === 'RESEARCHER' ? '#c084fc' : '#60a5fa',
+              color: isResearcher ? '#c084fc' : '#60a5fa',
               fontWeight: 600,
             }}>
-              Press ? for keyboard shortcuts
+              {isResearcher ? 'Press ? for keyboard shortcuts' : 'Clinician workflow focus'}
             </div>
           </div>
         )}
@@ -3870,7 +4142,8 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     fontWeight: 700,
                   }}
                 >
-                  🧑‍⚕️ Run Participant Session
+                  <User size={16} />
+                  Run Participant Session
                 </button>
                 <button
                   onClick={() => {
@@ -3889,7 +4162,8 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     fontWeight: 700,
                   }}
                 >
-                  🔬 Researcher Console
+                  <Settings size={16} />
+                  Researcher Console
                 </button>
               </div>
 
@@ -3898,6 +4172,95 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   Advanced / Diagnostics
                 </summary>
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {isResearcher && (
+                    <div style={{ padding: '12px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
+                      {(() => {
+                        const demoSteps = [
+                          {
+                            title: 'Open Study Design',
+                            description: 'Review condition assignment, case order, and disclosure policy.',
+                            action: () => setShowStudyDesign(true),
+                            icon: <ClipboardList size={14} />,
+                          },
+                          {
+                            title: 'Open Study Pack',
+                            description: 'Show the replication bundle and export artifacts.',
+                            action: () => setShowStudyPack(true),
+                            icon: <Upload size={14} />,
+                          },
+                          {
+                            title: 'Launch Researcher Session',
+                            description: 'Start a session to demonstrate the live workflow.',
+                            action: () => {
+                              setViewMode('RESEARCHER');
+                              startStudy();
+                            },
+                            icon: <Play size={14} />,
+                          },
+                        ];
+
+                        const activeStep = demoSteps[Math.min(demoPathStep, demoSteps.length - 1)];
+
+                        return (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <div style={{ color: 'white', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Play size={14} />
+                                Demo Path (60 seconds)
+                              </div>
+                              <div style={{ color: '#64748b', fontSize: '11px' }}>
+                                Step {demoPathStep + 1} of {demoSteps.length}
+                              </div>
+                            </div>
+                            <div style={{ color: 'white', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {activeStep.icon}
+                              {activeStep.title}
+                            </div>
+                            <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px' }}>{activeStep.description}</div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => {
+                                  activeStep.action();
+                                  setDemoPathStep(prev => Math.min(prev + 1, demoSteps.length - 1));
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: '#3b82f6',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <Play size={12} />
+                                Open Step
+                              </button>
+                              <button
+                                onClick={() => setDemoPathStep(0)}
+                                style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: '#1f2937',
+                                  border: '1px solid #334155',
+                                  borderRadius: '8px',
+                                  color: '#94a3b8',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Restart
+                              </button>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                   <SessionRecoveryBanner
                     hasRecoverableSession={hasRecoverableSession}
                     recoveryData={recoveryData}
@@ -3919,9 +4282,13 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           cursor: 'pointer',
                           fontSize: '12px',
                           fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
-                        👩‍⚕️ Clinician
+                        <User size={12} />
+                        Clinician
                       </button>
                       <button
                         onClick={() => setViewMode('RESEARCHER')}
@@ -3934,9 +4301,13 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           cursor: 'pointer',
                           fontSize: '12px',
                           fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
-                        🔬 Researcher
+                        <Settings size={12} />
+                        Researcher
                       </button>
                     </div>
                   </div>
@@ -3949,20 +4320,22 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           padding: '16px 20px', backgroundColor: cond === 'HUMAN_FIRST' ? '#3b82f6' : '#334155', color: 'white',
                           border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
                         }}>
-                          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
-                            {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
+                          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {cond === 'HUMAN_FIRST' ? <User size={14} /> : cond === 'AI_FIRST' ? <Brain size={14} /> : <Zap size={14} />}
+                            {cond === 'HUMAN_FIRST' ? 'Human First' : cond === 'AI_FIRST' ? 'AI First' : 'Concurrent'}
                           </div>
                           <div style={{ fontSize: '11px', opacity: 0.8 }}>
                             {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
                           </div>
-                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
+                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>RECOMMENDED</div>}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px' }}>
-                    <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
+                  <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ClipboardList size={14} />
+                    <strong>Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
                   </div>
                 </div>
               </details>
@@ -3972,8 +4345,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* CALIBRATION */}
           {state.step === 'CALIBRATION' && currentCase && (
             <div>
-              <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>📚 Training Case:</strong> Make your assessment. You'll see ground truth feedback.
+              <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen size={14} />
+                <strong>Training Case:</strong> Make your assessment. You'll see ground truth feedback.
               </div>
               <div 
                 onMouseEnter={() => handleROIEnter('mammogram')} 
@@ -3992,7 +4366,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               </div>
               
               {/* Attention Metrics (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
+              {isResearcher && showAdvancedResearcher && (
                 <AttentionMetricsPanel 
                   roiDwellTimes={state.roiDwellTimes}
                   interactionCounts={state.interactionCounts}
@@ -4009,14 +4383,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     {[0,1,2,3,4,5,6].map(n => <option key={n} value={n}>BI-RADS {n}</option>)}
                   </select>
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press 0-5 to quick-select
+                    Shortcut: 0-5 to quick-select
                   </div>
                 </div>
                 <div>
                   <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Confidence: {state.calibrationConfidence}%</label>
                   <input type="range" min="0" max="100" value={state.calibrationConfidence} onChange={e => setState(s => ({ ...s, calibrationConfidence: Number(e.target.value) }))} style={{ width: '100%' }} />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press +/- to adjust
+                    Shortcut: +/- to adjust
                   </div>
                 </div>
               </div>
@@ -4043,8 +4417,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 marginBottom: '24px',
                 display: 'inline-block'
               }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>
-                  📚 CALIBRATION MODE — GROUND TRUTH VISIBLE
+                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <BookOpen size={14} />
+                  CALIBRATION MODE — GROUND TRUTH VISIBLE
                 </div>
                 <div style={{ fontSize: '11px', opacity: 0.9 }}>
                   This feedback is shown only during calibration. Study trials will NOT reveal ground truth.
@@ -4062,8 +4437,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {currentCase.groundTruth?.birads ?? '?'}</div>
                 </div>
               </div>
-              <div style={{ color: state.calibrationBirads === currentCase.groundTruth?.birads ? '#4ade80' : '#fbbf24', fontSize: '18px', marginBottom: '24px' }}>
-                {state.calibrationBirads === currentCase.groundTruth?.birads ? '✅ Correct!' : '⚠️ Review the case presentation for learning'}
+              <div style={{ color: state.calibrationBirads === currentCase.groundTruth?.birads ? '#4ade80' : '#fbbf24', fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {state.calibrationBirads === currentCase.groundTruth?.birads ? <CheckCircle size={18} color="#4ade80" /> : <AlertTriangle size={18} color="#fbbf24" />}
+                {state.calibrationBirads === currentCase.groundTruth?.birads ? 'Correct' : 'Review the case presentation for learning'}
               </div>
               
               {/* Study Trial Transition Notice */}
@@ -4081,8 +4457,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 <strong>Next:</strong> Study trials begin. You will NOT see ground truth or feedback until the study is complete.
               </div>
               
-              <button onClick={continueFromCalibration} style={{ padding: '16px 32px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                🔬 Begin Study Trials →
+              <button onClick={continueFromCalibration} style={{ padding: '16px 32px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Play size={16} />
+                Begin Study Trials →
               </button>
             </div>
           )}
@@ -4090,8 +4467,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* INITIAL ASSESSMENT */}
           {state.step === 'INITIAL' && currentCase && (
             <div>
-              <div style={{ backgroundColor: '#3b82f6', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                <strong>🧠 Initial Assessment:</strong> Review the mammogram and lock your impression BEFORE seeing AI.
+              <div style={{ backgroundColor: '#3b82f6', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Brain size={16} />
+                <strong>Initial Assessment:</strong> Review the mammogram and lock your impression BEFORE seeing AI.
               </div>
               
               {/* Viewer Controls Bar */}
@@ -4137,8 +4515,12 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     backgroundColor: '#0f172a',
                     borderRadius: '4px',
                     fontFamily: 'monospace',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}>
-                    ⏱️ {timeOnCase}s
+                    <Clock size={12} />
+                    {timeOnCase}s
                   </div>
                   {/* Reset Button */}
                   <button
@@ -4162,10 +4544,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                       cursor: 'pointer',
                       fontSize: '11px',
                       fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
                     title="Reset viewport (R)"
                   >
-                    ↺ Reset
+                    <RefreshCw size={12} />
+                    Reset
                   </button>
                 </div>
               </div>
@@ -4187,7 +4573,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               </div>
               
               {/* Attention Metrics (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
+              {isResearcher && showAdvancedResearcher && (
                 <AttentionMetricsPanel 
                   roiDwellTimes={state.roiDwellTimes}
                   interactionCounts={state.interactionCounts}
@@ -4204,39 +4590,43 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     {[0,1,2,3,4,5,6].map(n => <option key={n} value={n}>BI-RADS {n}</option>)}
                   </select>
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press 0-5 to quick-select
+                    Shortcut: 0-5 to quick-select
                   </div>
                 </div>
                 <div>
                   <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Confidence: {state.initialConfidence}%</label>
                   <input type="range" min="0" max="100" value={state.initialConfidence} onChange={e => setState(s => ({ ...s, initialConfidence: Number(e.target.value) }))} style={{ width: '100%' }} />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press +/- to adjust
+                    Shortcut: +/- to adjust
                   </div>
                 </div>
               </div>
               
               {/* Pre-AI Trust */}
-              <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
-                    🤖 Expected Trust in AI
-                  </label>
-                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>{state.preTrust}%</span>
+              {isResearcher && (
+                <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Brain size={12} />
+                      Expected Trust in AI
+                    </label>
+                    <span style={{ color: '#60a5fa', fontWeight: 700 }}>{state.preTrust}%</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={state.preTrust} onChange={e => setState(s => ({ ...s, preTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                    <span>Won't rely on AI</span>
+                    <span>Will heavily rely</span>
+                  </div>
                 </div>
-                <input type="range" min="0" max="100" value={state.preTrust} onChange={e => setState(s => ({ ...s, preTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                  <span>Won't rely on AI</span>
-                  <span>Will heavily rely</span>
-                </div>
-              </div>
+              )}
               
               <button 
                 id="lock-impression-btn"
                 onClick={lockImpression} 
                 disabled={state.initialBirads === null}
-                style={{ marginTop: '24px', padding: '16px 32px', backgroundColor: state.initialBirads !== null ? '#f59e0b' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                🔒 Lock First Impression & Reveal AI
+                style={{ marginTop: '24px', padding: '16px 32px', backgroundColor: state.initialBirads !== null ? '#f59e0b' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Lock size={16} />
+                Lock First Impression & Reveal AI
                 <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Space]</span>
               </button>
             </div>
@@ -4246,7 +4636,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'AI_REVEALED' && currentCase && (
             <div>
               <div style={{ backgroundColor: '#7c3aed', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>🤖 AI Assessment Revealed:</strong> Review AI opinion and FDR/FOR disclosure. You may update your assessment.
+                <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Brain size={16} />
+                  AI Assessment Revealed:
+                </strong> Review AI opinion and FDR/FOR disclosure. You may update your assessment.
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
@@ -4309,7 +4702,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                             color: 'white',
                             textAlign: 'center'
                           }}>
-                            🧠 ADAPTIVE: {caseDifficulty} CASE → {caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL+DEBIAS'} DISCLOSURE
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <Brain size={12} />
+                              ADAPTIVE: {caseDifficulty} CASE → {caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL+DEBIAS'} DISCLOSURE
+                            </span>
                           </div>
                         )}
                         
@@ -4328,7 +4724,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           </>
                         ) : (
                           <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '12px 0' }}>
-                            <div style={{ fontSize: '14px', marginBottom: '4px' }}>📊</div>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+                              <BarChart3 size={14} />
+                            </div>
                             <div>Minimal disclosure mode (easy case)</div>
                             <div style={{ fontSize: '10px', marginTop: '4px', color: '#64748b' }}>AI suggestion shown without detailed error rates</div>
                           </div>
@@ -4344,7 +4742,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                             border: '2px solid #ef4444'
                           }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: '#fca5a5', marginBottom: '6px' }}>
-                              ⚠️ HARD CASE: AUTOMATION BIAS WARNING
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <AlertTriangle size={12} />
+                                HARD CASE: AUTOMATION BIAS WARNING
+                              </span>
                             </div>
                             <div style={{ fontSize: '11px', color: '#fecaca' }}>
                               This case has features that frequently lead to over-reliance on AI. 
@@ -4354,7 +4755,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                         )}
                         
                         {/* Adaptive Policy Transparency */}
-                        {disclosurePolicy === 'ADAPTIVE' && (
+                        {disclosurePolicy === 'ADAPTIVE' && showAdvancedResearcher && (
                           <div style={{ 
                             marginTop: '12px', 
                             padding: '10px', 
@@ -4371,7 +4772,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                               alignItems: 'center',
                               gap: '6px'
                             }}>
-                              <span>🔍</span>
+                              <Eye size={12} />
                               <span>POLICY DECISION REASONING</span>
                             </div>
                             <div style={{ color: '#c7d2fe' }}>
@@ -4399,7 +4800,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                                 alignItems: 'center',
                                 gap: '4px'
                               }}>
-                                <span style={{ color: '#22c55e' }}>✓</span>
+                                <CheckCircle size={10} color="#22c55e" />
                                 <span>Logged: ADAPTIVE_DISCLOSURE_DECISION</span>
                               </div>
                             </div>
@@ -4410,35 +4811,39 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   })()}
                   
                   {/* Model Card (Collapsible) */}
-                  <div style={{ marginTop: '12px' }}>
-                    <button 
-                      onClick={() => setShowModelCard(!showModelCard)}
-                      style={{ 
-                        width: '100%',
-                        padding: '10px 12px', 
-                        backgroundColor: '#1e293b', 
-                        color: '#94a3b8', 
-                        border: '1px solid #334155', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer', 
-                        fontSize: '11px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span>🤖 AI Model Card</span>
-                      <span>{showModelCard ? '▲' : '▼'}</span>
-                    </button>
-                    {showModelCard && (
-                      <div style={{ 
-                        marginTop: '8px', 
-                        padding: '12px', 
-                        backgroundColor: '#0f172a', 
-                        borderRadius: '8px',
-                        border: '1px solid #334155',
-                        fontSize: '11px'
-                      }}>
+                  {isResearcher && showAdvancedResearcher && (
+                    <div style={{ marginTop: '12px' }}>
+                      <button 
+                        onClick={() => setShowModelCard(!showModelCard)}
+                        style={{ 
+                          width: '100%',
+                          padding: '10px 12px', 
+                          backgroundColor: '#1e293b', 
+                          color: '#94a3b8', 
+                          border: '1px solid #334155', 
+                          borderRadius: '8px', 
+                          cursor: 'pointer', 
+                          fontSize: '11px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Brain size={12} />
+                          AI Model Card
+                        </span>
+                        <span>{showModelCard ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+                      </button>
+                      {showModelCard && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          padding: '12px', 
+                          backgroundColor: '#0f172a', 
+                          borderRadius: '8px',
+                          border: '1px solid #334155',
+                          fontSize: '11px'
+                        }}>
                         <div style={{ marginBottom: '8px' }}>
                           <span style={{ color: '#64748b' }}>Model:</span>
                           <span style={{ color: 'white', marginLeft: '8px' }}>MammoCAD v2.1</span>
@@ -4463,42 +4868,51 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           color: '#fca5a5',
                           fontSize: '10px'
                         }}>
-                          ⚠️ Research use only. Not FDA cleared for clinical diagnosis.
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <AlertTriangle size={12} />
+                            Research use only. Not FDA cleared for clinical diagnosis.
+                          </span>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Comprehension Check */}
-                  <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Comprehension Check</div>
-                    <div style={{ fontSize: '13px', color: 'white', marginBottom: '12px' }}>Which error type is MORE likely with this AI?</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {[
-                        { id: 'false_alarm', label: 'False alarm (FDR = 4%)' },
-                        { id: 'missed_cancer', label: 'Missed cancer (FOR = 12%)' },
-                      ].map(opt => (
-                        <button key={opt.id} onClick={() => handleComprehension(opt.id)}
-                          style={{
-                            padding: '10px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                            backgroundColor: state.comprehensionAnswer === opt.id ? (state.comprehensionCorrect ? '#166534' : '#991b1b') : '#334155',
-                            color: 'white', fontSize: '13px',
-                          }}>
-                          {opt.label}
-                        </button>
-                      ))}
+                        </div>
+                      )}
                     </div>
-                    {state.comprehensionAnswer && (
-                      <div style={{ marginTop: '12px', padding: '8px', borderRadius: '6px', backgroundColor: state.comprehensionCorrect ? '#166534' : '#7f1d1d', color: 'white', fontSize: '12px' }}>
-                        {state.comprehensionCorrect ? '✓ Correct! FOR=12% > FDR=4%' : '✗ FOR=12% means missed cancers are more likely'}
+                  )}
+                  
+                  {/* Comprehension Check (Researcher Mode Only) */}
+                  {isResearcher && (
+                    <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Comprehension Check</div>
+                      <div style={{ fontSize: '13px', color: 'white', marginBottom: '12px' }}>Which error type is MORE likely with this AI?</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { id: 'false_alarm', label: 'False alarm (FDR = 4%)' },
+                          { id: 'missed_cancer', label: 'Missed cancer (FOR = 12%)' },
+                        ].map(opt => (
+                          <button key={opt.id} onClick={() => handleComprehension(opt.id)}
+                            style={{
+                              padding: '10px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                              backgroundColor: state.comprehensionAnswer === opt.id ? (state.comprehensionCorrect ? '#166534' : '#991b1b') : '#334155',
+                              color: 'white', fontSize: '13px',
+                            }}>
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
-                    )}
-                  </div>
+                      {state.comprehensionAnswer && (
+                        <div style={{ marginTop: '12px', padding: '8px', borderRadius: '6px', backgroundColor: state.comprehensionCorrect ? '#166534' : '#7f1d1d', color: 'white', fontSize: '12px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            {state.comprehensionCorrect ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
+                            {state.comprehensionCorrect ? 'Correct: FOR=12% > FDR=4%' : 'FOR=12% means missed cancers are more likely'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               
               {/* Attention Metrics (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
+              {isResearcher && showAdvancedResearcher && (
                 <AttentionMetricsPanel 
                   roiDwellTimes={state.roiDwellTimes}
                   interactionCounts={state.interactionCounts}
@@ -4507,7 +4921,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               )}
               
               {/* Automation Bias Risk Meter (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
+              {isResearcher && showAdvancedResearcher && (
                 <AutomationBiasRiskMeter
                   timeToLockMs={state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0}
                   aiAgreementStreak={aiAgreementStreak}
@@ -4521,7 +4935,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               {/* Final Assessment */}
               <div style={{ marginTop: '24px', padding: '20px', backgroundColor: '#0f172a', borderRadius: '12px' }}>
                 <div style={{ fontSize: '14px', color: 'white', fontWeight: 600, marginBottom: '16px' }}>
-                  Final Assessment {state.finalBirads !== state.initialBirads && <span style={{ color: '#f59e0b' }}>⚠️ CHANGED from BI-RADS {state.initialBirads}</span>}
+                  Final Assessment {state.finalBirads !== state.initialBirads && <span style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={12} /> CHANGED from BI-RADS {state.initialBirads}</span>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '500px' }}>
                   <div>
@@ -4538,44 +4952,57 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 </div>
                 
                 {/* Post-AI Trust with Delta */}
-                <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
-                      🤖 Actual Reliance on AI
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ color: '#a855f7', fontWeight: 700 }}>{state.postTrust}%</span>
-                      {state.postTrust !== state.preTrust && (
-                        <span style={{ 
-                          padding: '2px 8px', 
-                          borderRadius: '10px', 
-                          fontSize: '11px', 
-                          fontWeight: 600,
-                          backgroundColor: state.postTrust > state.preTrust ? '#166534' : '#7f1d1d',
-                          color: state.postTrust > state.preTrust ? '#86efac' : '#fca5a5',
-                        }}>
-                          {state.postTrust > state.preTrust ? '↑' : '↓'} {Math.abs(state.postTrust - state.preTrust)}
-                        </span>
-                      )}
+                {isResearcher && (
+                  <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Brain size={12} />
+                        Actual Reliance on AI
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ color: '#a855f7', fontWeight: 700 }}>{state.postTrust}%</span>
+                        {state.postTrust !== state.preTrust && (
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '10px', 
+                            fontSize: '11px', 
+                            fontWeight: 600,
+                            backgroundColor: state.postTrust > state.preTrust ? '#166534' : '#7f1d1d',
+                            color: state.postTrust > state.preTrust ? '#86efac' : '#fca5a5',
+                          }}>
+                            {state.postTrust > state.preTrust ? '↑' : '↓'} {Math.abs(state.postTrust - state.preTrust)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <input type="range" min="0" max="100" value={state.postTrust} onChange={e => setState(s => ({ ...s, postTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                      <span>Didn't rely on AI</span>
+                      <span>Heavily relied</span>
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
+                      Pre-AI expectation was {state.preTrust}% — 
+                      {state.postTrust > state.preTrust ? ' trust increased' : state.postTrust < state.preTrust ? ' trust decreased' : ' no change'}
                     </div>
                   </div>
-                  <input type="range" min="0" max="100" value={state.postTrust} onChange={e => setState(s => ({ ...s, postTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    <span>Didn't rely on AI</span>
-                    <span>Heavily relied</span>
-                  </div>
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
-                    Pre-AI expectation was {state.preTrust}% — 
-                    {state.postTrust > state.preTrust ? ' trust increased' : state.postTrust < state.preTrust ? ' trust decreased' : ' no change'}
-                  </div>
-                </div>
+                )}
                 
                 <button 
                   id="submit-final-btn"
                   onClick={proceedToDeviation} 
-                  disabled={!state.comprehensionAnswer}
-                  style={{ marginTop: '20px', padding: '16px 32px', backgroundColor: state.comprehensionAnswer ? '#22c55e' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.comprehensionAnswer ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                  {state.finalBirads !== state.initialBirads ? '📝 Document Deviation & Submit' : '✓ Submit Final Assessment'}
+                  disabled={isResearcher && !state.comprehensionAnswer}
+                  style={{ marginTop: '20px', padding: '16px 32px', backgroundColor: isResearcher ? (state.comprehensionAnswer ? '#22c55e' : '#475569') : '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: isResearcher ? (state.comprehensionAnswer ? 'pointer' : 'not-allowed') : 'pointer', fontSize: '16px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  {state.finalBirads !== state.initialBirads ? (
+                    <>
+                      <FileText size={16} />
+                      Document Deviation & Submit
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} />
+                      Submit Final Assessment
+                    </>
+                  )}
                   <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Enter]</span>
                 </button>
               </div>
@@ -4586,7 +5013,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'DEVIATION' && (
             <div style={{ maxWidth: '600px' }}>
               <div style={{ backgroundColor: '#f59e0b', color: '#78350f', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>⚠️ Deviation Documentation Required:</strong> You changed from BI-RADS {state.initialBirads} to BI-RADS {state.finalBirads}. Please document your rationale.
+                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={14} />
+                  Deviation Documentation Required:
+                </strong> You changed from BI-RADS {state.initialBirads} to BI-RADS {state.finalBirads}. Please document your rationale.
               </div>
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Deviation Rationale</label>
@@ -4613,14 +5043,27 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* COMPLETE */}
           {state.step === 'COMPLETE' && currentCase && (
             <div>
-              <h2 style={{ color: '#4ade80', marginTop: 0 }}>✅ Case Complete</h2>
+              <h2 style={{ color: '#4ade80', marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={20} />
+                Case Complete
+              </h2>
               {(() => {
                 const adda = computeADDA();
                 if (!adda) return null;
                 return (
                   <div style={{ backgroundColor: adda.adda === true ? '#166534' : adda.adda === false ? '#92400e' : '#334155', padding: '20px', borderRadius: '12px', marginBottom: '24px', border: `2px solid ${adda.adda === true ? '#22c55e' : adda.adda === false ? '#f59e0b' : '#475569'}` }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
-                      {adda.addaDenominator ? (adda.adda ? '✅ ADDA = TRUE' : '⚠️ ADDA = FALSE') : '➖ Not in ADDA denominator'}
+                      {adda.addaDenominator ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          {adda.adda ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                          {adda.adda ? 'ADDA = TRUE' : 'ADDA = FALSE'}
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <Info size={18} />
+                          Not in ADDA denominator
+                        </span>
+                      )}
                     </div>
                     <div style={{ color: '#94a3b8', marginTop: '8px', fontSize: '13px' }}>
                       change: {adda.changeOccurred.toString()} | ai_consistent: {adda.aiConsistentChange.toString()} | denominator: {adda.addaDenominator.toString()}
@@ -4628,14 +5071,56 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   </div>
                 );
               })()}
+              {(() => {
+                const latestMetrics = state.caseResults[state.caseResults.length - 1];
+                if (!latestMetrics) return null;
+                const preAiSeconds = latestMetrics.preAiReadMs ? (latestMetrics.preAiReadMs / 1000).toFixed(1) : '0.0';
+                const aiExposureSeconds = latestMetrics.aiExposureMs ? (latestMetrics.aiExposureMs / 1000).toFixed(1) : '0.0';
+                return (
+                  <div style={{ marginBottom: '24px', backgroundColor: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'white', fontWeight: 600 }}>
+                      <Scale size={16} />
+                      Defensibility Metrics (Event-Derived)
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '12px', color: '#94a3b8' }}>
+                      <div>
+                        <div>Pre-AI Read Time</div>
+                        <div style={{ color: 'white', fontWeight: 700 }}>{preAiSeconds}s</div>
+                      </div>
+                      <div>
+                        <div>AI Exposure Time</div>
+                        <div style={{ color: 'white', fontWeight: 700 }}>{aiExposureSeconds}s</div>
+                      </div>
+                      <div>
+                        <div>Decision Change Count</div>
+                        <div style={{ color: 'white', fontWeight: 700 }}>{latestMetrics.decisionChangeCount ?? 0}</div>
+                      </div>
+                      <div>
+                        <div>Override Count</div>
+                        <div style={{ color: 'white', fontWeight: 700 }}>{latestMetrics.overrideCount ?? 0}</div>
+                      </div>
+                      <div>
+                        <div>Rationale Provided</div>
+                        <div style={{ color: 'white', fontWeight: 700 }}>{latestMetrics.rationaleProvided ? 'Yes' : 'No'}</div>
+                      </div>
+                      <div>
+                        <div>Timing Flags</div>
+                        <div style={{ color: latestMetrics.timingFlagPreAiTooFast || latestMetrics.timingFlagAiExposureTooFast ? '#fbbf24' : '#4ade80', fontWeight: 700 }}>
+                          {latestMetrics.timingFlagPreAiTooFast || latestMetrics.timingFlagAiExposureTooFast ? 'Too fast' : 'Clear'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pre-AI</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.lockTime && state.caseStartTime ? ((state.lockTime.getTime() - state.caseStartTime.getTime()) / 1000).toFixed(1) : '0'}s</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.caseResults[state.caseResults.length - 1]?.preAiReadMs ? ((state.caseResults[state.caseResults.length - 1]?.preAiReadMs ?? 0) / 1000).toFixed(1) : '0'}s</div>
                 </div>
                 <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Post-AI</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.lockTime && state.caseStartTime ? (timeOnCase - (state.lockTime.getTime() - state.caseStartTime.getTime()) / 1000).toFixed(1) : '0'}s</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.caseResults[state.caseResults.length - 1]?.aiExposureMs ? ((state.caseResults[state.caseResults.length - 1]?.aiExposureMs ?? 0) / 1000).toFixed(1) : '0'}s</div>
                 </div>
                 <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
                   <div style={{ fontSize: '12px', color: '#94a3b8' }}>Total</div>
@@ -4653,7 +5138,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
               <div style={{ backgroundColor: '#1e3a5f', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #3b82f6' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>📊</span>
+                  <BarChart3 size={18} />
                   <span style={{ color: 'white', fontWeight: 700 }}>NASA-TLX Workload Assessment</span>
                   <span style={{ backgroundColor: '#3b82f6', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '10px' }}>MICRO</span>
                 </div>
@@ -4742,7 +5227,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* STUDY COMPLETE */}
           {state.step === 'STUDY_COMPLETE' && (
             <div>
-              <h2 style={{ color: '#4ade80', marginTop: 0 }}>🎉 Study Complete</h2>
+              <h2 style={{ color: '#4ade80', marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={20} />
+                Study Complete
+              </h2>
               
               {/* Prominent Verification Status Banner */}
               {state.exportReady && (
@@ -4765,9 +5253,8 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '32px',
                     }}>
-                      {state.verifierResult === 'PASS' ? '✓' : state.verifierResult === 'FAIL' ? '✗' : '?'}
+                      {state.verifierResult === 'PASS' ? <CheckCircle size={32} color="#4ade80" /> : state.verifierResult === 'FAIL' ? <AlertTriangle size={32} color="#f87171" /> : <AlertCircle size={32} color="#94a3b8" />}
                     </div>
                     <div>
                       <div style={{
@@ -4820,36 +5307,91 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 </div>
               </div>
 
+              {/* Methods Snapshot */}
+              {(() => {
+                if (!exportPackRef.current) return null;
+                const methodsSnapshot = buildMethodsSnapshot(
+                  exportPackRef.current.getEvents(),
+                  state.condition,
+                  state.caseQueue,
+                  state.caseResults,
+                  disclosurePolicy
+                );
+                return (
+                  <div style={{ backgroundColor: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'white', fontWeight: 700 }}>
+                      <ClipboardList size={16} />
+                      Methods Snapshot
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px', color: '#94a3b8' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#cbd5f5' }}>Condition Assignment</div>
+                        <div>Condition: {methodsSnapshot.conditionAssignment.condition}</div>
+                        <div>Disclosure format: {methodsSnapshot.conditionAssignment.disclosureFormat}</div>
+                        <div>Seed: {methodsSnapshot.conditionAssignment.seed}</div>
+                        <div>Assignment: {methodsSnapshot.conditionAssignment.assignmentMethod}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#cbd5f5' }}>Case Order</div>
+                        <div style={{ fontFamily: 'monospace' }}>{methodsSnapshot.caseOrder.join(' → ') || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#cbd5f5' }}>Timing Summary</div>
+                        <div>Avg pre-AI: {(methodsSnapshot.timingSummary.averagePreAiReadMs / 1000).toFixed(1)}s</div>
+                        <div>Avg AI exposure: {(methodsSnapshot.timingSummary.averageAiExposureMs / 1000).toFixed(1)}s</div>
+                        <div>Total duration: {methodsSnapshot.timingSummary.totalDurationMs ? `${Math.round(methodsSnapshot.timingSummary.totalDurationMs / 1000)}s` : 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#cbd5f5' }}>Disclosure Variant</div>
+                        <div>Format: {methodsSnapshot.errorRateDisclosure.format}</div>
+                        <div>Policy: {methodsSnapshot.errorRateDisclosure.policy}</div>
+                        <div style={{ marginTop: '8px', fontWeight: 600, color: '#cbd5f5' }}>Lock Points</div>
+                        <div>Initial lock: {methodsSnapshot.lockPoints.initialLockedTimestamp ?? 'N/A'}</div>
+                        <div>Final lock: {methodsSnapshot.lockPoints.finalLockedTimestamp ?? 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Cross-Exam Risk Flags */}
               <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #334155' }}>
-                <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, marginBottom: '12px' }}>⚖️ CROSS-EXAMINATION RISK FLAGS</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Scale size={12} />
+                  CROSS-EXAMINATION RISK FLAGS
+                </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {state.caseResults.some(r => r.totalTimeMs < 5000) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ FAST PRE-AI (&lt;5s)
+                  {state.caseResults.some(r => (r.preAiReadMs ?? 0) < TOO_FAST_PRE_AI_MS) && (
+                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertTriangle size={10} />
+                      FAST PRE-AI (&lt;5s)
                     </span>
                   )}
                   {state.caseResults.every(r => r.adda === true) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ ALWAYS AGREED WITH AI
+                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertTriangle size={10} />
+                      ALWAYS AGREED WITH AI
                     </span>
                   )}
                   {state.caseResults.some(r => r.deviationSkipped) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ DEVIATION SKIPPED
+                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertTriangle size={10} />
+                      DEVIATION SKIPPED
                     </span>
                   )}
                   {state.caseResults.some(r => r.comprehensionCorrect === false) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ COMPREHENSION FAILED
+                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertTriangle size={10} />
+                      COMPREHENSION FAILED
                     </span>
                   )}
-                  {!state.caseResults.some(r => r.totalTimeMs < 5000) && 
+                  {!state.caseResults.some(r => (r.preAiReadMs ?? 0) < TOO_FAST_PRE_AI_MS) && 
                    !state.caseResults.every(r => r.adda === true) && 
                    !state.caseResults.some(r => r.deviationSkipped) &&
                    !state.caseResults.some(r => r.comprehensionCorrect === false) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#166534', color: '#86efac', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ✓ NO FLAGS - DEFENSIBLE RECORD
+                    <span style={{ padding: '4px 10px', backgroundColor: '#166534', color: '#86efac', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle size={10} />
+                      NO FLAGS - DEFENSIBLE RECORD
                     </span>
                   )}
                 </div>
@@ -4857,21 +5399,25 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                <button onClick={generateExport} style={{ flex: 1, padding: '16px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                  📦 Generate Expert Witness Packet
+                <button onClick={generateExport} style={{ flex: 1, padding: '16px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Upload size={16} />
+                  Generate Expert Witness Packet
                 </button>
                 {state.exportReady && (
                   <>
-                    <button onClick={() => setShowPacketViewer(true)} style={{ padding: '16px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>
-                      👁️ View
+                    <button onClick={() => setShowPacketViewer(true)} style={{ padding: '16px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Eye size={16} />
+                      View
                     </button>
                     {!tamperDemoActive ? (
-                      <button onClick={runTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                        🔓 Tamper Demo
+                      <button onClick={runTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertTriangle size={14} />
+                        Tamper Demo
                       </button>
                     ) : (
-                      <button onClick={resetTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#166534', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                        ↩️ Reset Demo
+                      <button onClick={resetTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#166534', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <RefreshCw size={14} />
+                        Reset Demo
                       </button>
                     )}
                   </>
@@ -4891,7 +5437,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>
                       <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'white' }}>
-                        {tamperDemoActive ? '⚠️ TAMPERED PACKET DETECTED' : 'Expert Witness Packet Ready'}
+                        {tamperDemoActive ? 'TAMPERED PACKET DETECTED' : 'Expert Witness Packet Ready'}
                       </div>
                       <div style={{ color: state.verifierResult === 'PASS' ? '#86efac' : '#fca5a5' }}>
                         Verifier: {state.verifierResult}
@@ -4907,7 +5453,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                       boxShadow: state.verifierResult === 'FAIL' ? '0 0 20px rgba(239, 68, 68, 0.5)' : 'none',
                       animation: state.verifierResult === 'FAIL' ? 'pulse 1s infinite' : 'none'
                     }}>
-                      {state.verifierResult === 'PASS' ? '✓ CHAIN INTACT' : '✗ CHAIN BROKEN'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        {state.verifierResult === 'PASS' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                        {state.verifierResult === 'PASS' ? 'CHAIN INTACT' : 'CHAIN BROKEN'}
+                      </span>
                     </div>
                   </div>
 
@@ -4938,17 +5487,22 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
 
                   {/* Package Contents */}
                   <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '8px', color: 'white' }}>📁 Package (6 files):</div>
+                    <div style={{ fontWeight: 600, marginBottom: '8px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FileText size={14} />
+                      Package (7 files):
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '13px', color: '#94a3b8' }}>
                       <div>trial_manifest.json</div><div>events.jsonl</div><div>ledger.json</div>
-                      <div>verifier_output.json</div><div>derived_metrics.csv</div><div>codebook.md</div>
+                      <div>verifier_output.json</div><div>derived_metrics.csv</div><div>methods_snapshot.json</div>
+                      <div>codebook.md</div>
                     </div>
                   </div>
 
                   {/* Download Button */}
                   {!tamperDemoActive && (
-                    <a href={state.exportUrl!} download={state.exportFilename} style={{ display: 'inline-block', padding: '14px 28px', backgroundColor: '#22c55e', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '16px' }}>
-                      📥 Download ZIP
+                    <a href={state.exportUrl!} download={state.exportFilename} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 28px', backgroundColor: '#22c55e', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '16px' }}>
+                      <Download size={16} />
+                      Download ZIP
                     </a>
                   )}
                 </div>
@@ -4956,8 +5510,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
 
               {/* Restart Option */}
               <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                <button onClick={() => window.location.reload()} style={{ padding: '12px 24px', backgroundColor: '#334155', color: '#94a3b8', border: '1px solid #475569', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                  🔄 Start New Session
+                <button onClick={() => window.location.reload()} style={{ padding: '12px 24px', backgroundColor: '#334155', color: '#94a3b8', border: '1px solid #475569', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <RefreshCw size={14} />
+                  Start New Session
                 </button>
               </div>
             </div>
@@ -4965,10 +5520,13 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
         </div>
 
         {/* Event Log Sidebar (Researcher Mode Only) */}
-        {viewMode === 'RESEARCHER' && showEventLog && state.step !== 'SETUP' && exportPackRef.current && (
+        {isResearcher && showEventLog && state.step !== 'SETUP' && exportPackRef.current && (
           <div style={{ position: 'fixed', right: '20px', top: '20px', width: '280px', maxHeight: 'calc(100vh - 40px)', backgroundColor: '#0f172a', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px rgba(0,0,0,0.4)', border: '1px solid #334155', zIndex: 100 }}>
             <div style={{ padding: '12px 16px', backgroundColor: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: 'white', fontWeight: 600 }}>📋 Events ({state.eventCount})</div>
+              <div style={{ color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ClipboardList size={12} />
+                Events ({state.eventCount})
+              </div>
               <button onClick={() => setShowEventLog(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '16px' }}>×</button>
             </div>
             {/* Verification Status Panel */}
@@ -5001,9 +5559,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
             </div>
           </div>
         )}
-        {viewMode === 'RESEARCHER' && !showEventLog && state.step !== 'SETUP' && (
-          <button onClick={() => setShowEventLog(true)} style={{ position: 'fixed', right: '20px', top: '20px', padding: '12px 16px', backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, zIndex: 100 }}>
-            📋 Events ({state.eventCount})
+        {isResearcher && !showEventLog && state.step !== 'SETUP' && (
+          <button onClick={() => setShowEventLog(true)} style={{ position: 'fixed', right: '20px', top: '20px', padding: '12px 16px', backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, zIndex: 100, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ClipboardList size={12} />
+            Events ({state.eventCount})
           </button>
         )}
       </div>
