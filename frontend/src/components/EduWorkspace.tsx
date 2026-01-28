@@ -317,7 +317,7 @@ export function EduWorkspace({
             </p>
             <Button
               variant="primary"
-              onClick={() => alert('Coming next: Freeze & Export (EDU) → produces gate_report.canon.json + manifest.json + audit_chain.json')}
+              onClick={() => alert('Coming next: Freeze & Export (EDU) →produces export_manifest.json + events.jsonl + ledger.json')}
             >
               <ShieldCheck className="w-4 h-4" />
               Freeze & Export (coming)
