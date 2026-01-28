@@ -43,3 +43,12 @@ frontend/public/images/INbreast Release 1.0/
 frontend/public/images/inbreast/**
 !frontend/public/images/inbreast/.gitkeep
 !frontend/public/images/inbreast/README.md
+
+# Local artifacts (do not commit)
+artifacts/local/
+
+# Local artifacts (do not commit)
+artifacts/local/
+
+# local artifacts
+artifacts/

@@ -1,30 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ZIP="${1:-/Users/OldMaroon/Downloads/inbreast.zip}"
-WORK="${2:-/Users/OldMaroon/Downloads/inbreast_unzipped}"
-OUT="${3:-/Users/OldMaroon/Downloads/inbreast_png}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IMG_ROOT="$REPO_ROOT/frontend/public/images"
+TARGET_DIR="$IMG_ROOT/inbreast"
+TARGET_ZIP="$IMG_ROOT/inbreast.zip"
 
-if [ ! -f "$ZIP" ]; then
-  echo "ERROR: zip not found: $ZIP"
+mkdir -p "$IMG_ROOT"
+
+# If already populated, succeed (idempotent)
+if [[ -d "$TARGET_DIR" ]] && [[ "$(ls -A "$TARGET_DIR" 2>/dev/null | wc -l | tr -d ' ')" -gt 5 ]]; then
+  echo "OK: inbreast already installed at: $TARGET_DIR"
+  exit 0
+fi
+
+# If zip exists, unzip it
+if [[ -f "$TARGET_ZIP" ]]; then
+  echo "Unzipping: $TARGET_ZIP -> $IMG_ROOT"
+  rm -rf "$TARGET_DIR"
+  unzip -q "$TARGET_ZIP" -d "$IMG_ROOT"
+  if [[ -d "$TARGET_DIR" ]]; then
+    echo "OK: installed to: $TARGET_DIR"
+    exit 0
+  fi
+  echo "ERROR: unzip completed but $TARGET_DIR not found"
   exit 1
 fi
 
-mkdir -p "$WORK" "$OUT"
-echo "Unzipping..."
-unzip -q "$ZIP" -d "$WORK"
+cat <<MSG
+ERROR: INBREAST not found.
 
-# Find the AllDICOMs folder
-ALLDICOMS="$(find "$WORK" -type d -name AllDICOMs | head -1)"
-if [ -z "${ALLDICOMS:-}" ] || [ ! -d "$ALLDICOMS" ]; then
-  echo "ERROR: Could not locate AllDICOMs under $WORK"
-  exit 1
-fi
+Expected ONE of:
+  1) Unpacked dir: $TARGET_DIR
+  2) Zip file:     $TARGET_ZIP
 
-echo "Converting DICOM -> PNG..."
-python3 scripts/dcm_to_png.py "$ALLDICOMS" "$OUT"
+You already have working images in your repo; if you are onboarding a new machine,
+place inbreast.zip at the path above and re-run.
 
-echo "Linking into repo..."
-bash scripts/link-inbreast.sh "$OUT"
-
-echo "Done. PNGs live at: $OUT"
+MSG
+exit 1
