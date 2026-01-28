@@ -38,7 +38,11 @@ ALLOWED_HTML=(
     "frontend/demo.html"
 )
 
-HTML_FILES=$(find frontend -name "*.html" -not -path "*/node_modules/*" -not -path "*/.git/*" | sort)
+HTML_FILES=$(find frontend -name "*.html" \
+  -not -path "*/node_modules/*" \
+  -not -path "*/.git/*" \
+  -not -path "frontend/dist/*" \
+  | sort)
 for file in $HTML_FILES; do
     allowed=false
     for allowed_file in "${ALLOWED_HTML[@]}"; do
