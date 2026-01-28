@@ -210,6 +210,7 @@ export interface DerivedMetrics {
   sessionId: string;
   timestamp: string;
   condition: string;
+  caseId?: string;
 
   // Assessment values
   initialBirads: number;
@@ -239,6 +240,15 @@ export interface DerivedMetrics {
 
   // Comprehension
   comprehensionCorrect: boolean | null;
+
+  // Defensibility metrics
+  preAiReadMs?: number;
+  aiExposureMs?: number;
+  decisionChangeCount?: number;
+  overrideCount?: number;
+  rationaleProvided?: boolean;
+  timingFlagPreAiTooFast?: boolean;
+  timingFlagAiExposureTooFast?: boolean;
 
   // Timing (ms)
   totalTimeMs: number;

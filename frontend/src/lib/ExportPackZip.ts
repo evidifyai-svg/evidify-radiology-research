@@ -114,6 +114,7 @@ export class ExportPackZip {
   private caseQueue: ExportManifest['caseQueue'];
   private sessionStartTime: Date;
   private metricsPerCase: DerivedMetrics[] = [];
+  private methodsSnapshot: Record<string, unknown> | null = null;
 
   constructor(config: {
     sessionId: string;
@@ -204,6 +205,10 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     if (!exists) {
       this.metricsPerCase.push(metrics);
     }
+  }
+
+  setMethodsSnapshot(snapshot: Record<string, unknown>): void {
+    this.methodsSnapshot = snapshot;
   }
   /**
    * Run internal verifier
@@ -382,6 +387,10 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       'codebook.md': codebook,
     };
 
+    if (this.methodsSnapshot) {
+      payloadFiles['methods_snapshot.json'] = JSON.stringify(this.methodsSnapshot, null, 2);
+    }
+
     const exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }> = [];
     for (const filePath of Object.keys(payloadFiles).sort()) {
       const content = payloadFiles[filePath];
@@ -417,6 +426,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     zip.file('verifier_output.json', verifierOutputJson);
     zip.file('derived_metrics.csv', metricsCSV);
     zip.file('codebook.md', codebook);
+    if (this.methodsSnapshot) {
+      zip.file('methods_snapshot.json', JSON.stringify(this.methodsSnapshot, null, 2));
+    }
     
     // Generate ZIP blob
     const blob = await zip.generateAsync({ type: 'blob' });
