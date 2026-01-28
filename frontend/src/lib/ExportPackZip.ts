@@ -7,24 +7,11 @@
 
 import JSZip from 'jszip';
 
-// Re-export types from original
-export interface TrialEvent {
-  id: string;
-  seq: number;
-  type: string;
-  timestamp: string;
-  payload: Record<string, unknown>;
-}
+// Canonical types live in ExportPack.ts — import into local scope and re-export to avoid drift
+import type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
+export type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
 
-export interface LedgerEntry {
-  seq: number;
-  eventId: string;
-  eventType: string;
-  timestamp: string;
-  contentHash: string;
-  previousHash: string;
-  chainHash: string;
-}
+// Re-export types from original
 
 export interface ExportManifest {
   exportVersion: string;
@@ -65,29 +52,6 @@ export interface ExportManifest {
     codebook: string;
   };
   timestampTrustModel: string;
-}
-
-export interface DerivedMetrics {
-  sessionId: string;
-  caseId: string;
-  condition: string;
-  initialBirads: number;
-  finalBirads: number;
-  aiBirads: number;
-  aiConfidence: number;
-  changeOccurred: boolean;
-  aiConsistentChange: boolean;
-  aiInconsistentChange: boolean;
-  addaDenominator: boolean;
-  adda: boolean | null;
-  preAiTimeMs: number;
-  postAiTimeMs: number;
-  totalTimeMs: number;
-  deviationDocumented: boolean;
-  deviationSkipped: boolean;
-  comprehensionCheckPassed: boolean;
-  attentionCheckCase: boolean;
-  attentionCheckPassed: boolean | null;
 }
 
 export interface VerifierOutput {
@@ -227,13 +191,20 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
   /**
    * Add case metrics
    */
-addCaseMetrics(metrics: DerivedMetrics): void {
-    const exists = this.metricsPerCase.find(m => m.caseId === metrics.caseId);
+  addCaseMetrics(metrics: DerivedMetrics): void {
+    const metricsCaseId = (metrics as any).caseId as string | undefined;
+
+    // If this metrics object doesn't carry a caseId, just append it.
+    if (!metricsCaseId) {
+      this.metricsPerCase.push(metrics);
+      return;
+    }
+
+    const exists = this.metricsPerCase.find(m => (m as any).caseId === metricsCaseId);
     if (!exists) {
       this.metricsPerCase.push(metrics);
     }
   }
-
   /**
    * Run internal verifier
    */
@@ -398,11 +369,52 @@ addCaseMetrics(metrics: DerivedMetrics): void {
       timestampTrustModel: 'client_clock_untrusted',
     };
     
-    // Add files to ZIP
+        // --------------------
+    // P0: export_manifest.json + export_root_hash
+    // --------------------
+    const verifierOutputJson = JSON.stringify(verifierOutput, null, 2);
+
+    const payloadFiles: Record<string, string> = {
+      'events.jsonl': eventsJsonl,
+      'ledger.json': ledgerJson,
+      'verifier_output.json': verifierOutputJson,
+      'derived_metrics.csv': metricsCSV,
+      'codebook.md': codebook,
+    };
+
+    const exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }> = [];
+    for (const filePath of Object.keys(payloadFiles).sort()) {
+      const content = payloadFiles[filePath];
+      exportManifestEntries.push({
+        path: filePath,
+        sha256: await sha256Hex(content),
+        bytes: new TextEncoder().encode(content).byteLength,
+      });
+    }
+
+    const exportManifestObj = {
+      schema: 'evidify.export_manifest.v1',
+      created_utc: new Date().toISOString(),
+      entries: exportManifestEntries,
+    };
+
+    // Root hash = SHA-256(canonical export_manifest JSON)
+    const exportRootHash = await sha256Hex(canonicalJSON(exportManifestObj));
+    const exportManifestJson = JSON.stringify(exportManifestObj, null, 2);
+
+    // Put required fields onto trial_manifest.json (top-level)
+    (manifest as any).export_root_hash = exportRootHash;
+    (manifest as any).export_manifest_sha256 = exportRootHash;
+
+    // --------------------
+    // Add files to ZIP (7 files)
+    // --------------------
     zip.file('trial_manifest.json', JSON.stringify(manifest, null, 2));
+    zip.file('export_manifest.json', exportManifestJson);
+    zip.file('_DEBUG_SENTINEL.txt', 'ExportPackZip_v1_hit');
     zip.file('events.jsonl', eventsJsonl);
     zip.file('ledger.json', ledgerJson);
-    zip.file('verifier_output.json', JSON.stringify(verifierOutput, null, 2));
+    zip.file('verifier_output.json', verifierOutputJson);
     zip.file('derived_metrics.csv', metricsCSV);
     zip.file('codebook.md', codebook);
     

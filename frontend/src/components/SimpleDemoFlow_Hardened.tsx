@@ -12,7 +12,9 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ExportPackBuilder, { TrialEvent, EventType } from '../lib/ExportPack';
+import ExportPackBuilder, { TrialEvent } from '../lib/ExportPack';
+
+type EventType = string;
 import { PacketViewer } from './PacketViewer';
 import { MammogramDualViewSimple } from './research/MammogramDualViewSimple';
 
@@ -65,11 +67,18 @@ interface DemoState {
 // EVENT LOGGER
 // ============================================================================
 
-const createEvent = (type: EventType, payload: Record<string, unknown>): TrialEvent => ({
+const createEvent = (
+  type: EventType,
+  payload: Record<string, unknown>,
+  seq?: number
+): TrialEvent => ({
   id: crypto.randomUUID(),
+  // If caller doesn't supply seq, assign a safe monotonic default.
+  // (Good enough for demo; ExportPackZip/EventLogger is the "real" sequenced path.)
+  seq: seq ?? Date.now(),
   type,
   timestamp: new Date().toISOString(),
-  payload,
+  payload: payload as any,
 });
 
 // ============================================================================
@@ -1168,11 +1177,11 @@ const generateExport = useCallback(async () => {
               ✕ Close
             </button>
             <PacketViewer
-              events={state.events}
+              events={state.events as any}
               ledger={exportPack.getLedger?.() ?? []}
-              manifest={exportPack.getManifest?.() ?? {}}
-              derivedMetrics={exportPack.getDerivedMetrics?.() ?? {}}
-              verifierOutput={exportPack.getVerifierOutput?.() ?? { result: 'PASS', checks: [] }}
+              manifest={(exportPack as any).getManifest?.() ?? {}}
+              derivedMetrics={(exportPack as any).getDerivedMetrics?.() ?? {}}
+              verifierOutput={(exportPack as any).getVerifierOutput?.() ?? { result: 'PASS', checks: [] }}
               isOpen={showPacketViewer}
               onClose={() => setShowPacketViewer(false)}
             />

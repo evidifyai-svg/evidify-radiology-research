@@ -905,7 +905,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 borderLeft: '4px solid #a855f7',
               }}>
                 <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>
-                  VALIDITY INDICATORS (Analogous to MMPI Validity Scales)
+                  VALIDITY INDICATORS (Analogous to response consistency scales)
                 </div>
                 <div style={{ color: 'white', fontSize: '14px' }}>
                   Behavioral patterns that may indicate rushed reading, automation bias, or negligent dismissal.
@@ -3126,15 +3126,25 @@ export const ResearchDemoFlow: React.FC = () => {
     if (!state.caseQueue) return null;
     return getCurrentCase(state.caseQueue);
   }, [state.caseQueue]);
+// --- AI helper (compat: old aiResult vs newer case fields) ---
+const aiSuggestedBirads =
+  (currentCase as any)?.aiResult?.birads ??
+  (currentCase as any)?.aiBirads ??
+  4;
 
-  // ROI tracking (eye-tracking proxy)
-  const handleROIEnter = useCallback(async (roiId: string) => {
-    roiEnterTimeRef.current = Date.now();
-    if (eventLoggerRef.current && state.currentCase) {
-      await eventLoggerRef.current.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: state.currentCase.caseId });
-      setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
-    }
-  }, [state.currentCase]);
+const aiSuggestedConfidence =
+  (currentCase as any)?.aiResult?.confidence ??
+  (currentCase as any)?.aiConfidence ??
+  0.87;
+
+// ROI tracking (eye-tracking proxy)
+const handleROIEnter = useCallback(async (roiId: string) => {
+  roiEnterTimeRef.current = Date.now();
+  if (eventLoggerRef.current && currentCase) {
+    await eventLoggerRef.current.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: currentCase.caseId });
+    setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+  }
+}, [currentCase]);
 
   const handleROILeave = useCallback(async (roiId: string) => {
     if (roiEnterTimeRef.current > 0) {
@@ -3145,7 +3155,7 @@ export const ResearchDemoFlow: React.FC = () => {
         return { ...s, roiDwellTimes: newMap };
       });
       if (eventLoggerRef.current && state.currentCase && dwellMs > 100) {
-        await eventLoggerRef.current.addEvent('DWELL_TIME_ROI', { roiId, dwellMs, caseId: state.currentCase.caseId });
+        await eventLoggerRef.current!.addEvent('DWELL_TIME_ROI', { roiId, dwellMs, caseId: state.currentCase.caseId });
         setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
       }
     }
@@ -3161,7 +3171,7 @@ export const ResearchDemoFlow: React.FC = () => {
       }
     }));
     if (eventLoggerRef.current) {
-      await eventLoggerRef.current.addEvent('IMAGE_VIEWED', { interactionType: type, caseId: state.currentCase?.caseId });
+      await eventLoggerRef.current!.addEvent('IMAGE_VIEWED', { interactionType: type, caseId: state.currentCase?.caseId });
       setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
     }
   }, [state.currentCase]);
@@ -3181,26 +3191,41 @@ export const ResearchDemoFlow: React.FC = () => {
     
     const firstCase = getCurrentCase(queue);
     
-    exportPackRef.current = new ExportPackZip({
-      sessionId: state.sessionId,
-      protocolVersion: 'BRPLL-MAMMO-v1.0',
-      siteId: 'DEMO',
-      condition: { revealTiming: condition.condition, disclosureFormat: condition.disclosureFormat, seed: condition.seed, assignmentMethod: condition.assignmentMethod },
-      caseQueue: { 
-        queueId: `Q-${Date.now().toString(36)}`,
-        totalCases: queue.cases.length,
-        completedCases: 0,
-        caseIds: queue.cases.map(c => c.caseId),
-      },
-    });
+exportPackRef.current = new ExportPackZip({
+  sessionId: state.sessionId,
+  participantId: 'DEMO-PARTICIPANT',
+  studyId: 'BRPLL-DEMO',
+  protocolVersion: 'BRPLL-MAMMO-v1.0',
+  siteId: 'DEMO',
+  condition: {
+    revealTiming: condition.condition,
+    disclosureFormat: condition.disclosureFormat,
+    seed: condition.seed,
+    assignmentMethod: condition.assignmentMethod,
+  },
+  caseQueue: {
+    queueId: `Q-${Date.now().toString(36)}`,
+    totalCases: queue.cases.length,
+    completedCases: 0,
+    caseIds: queue.cases.map(c => c.caseId),
+  },
+});
     
-    eventLoggerRef.current = new EventLogger(exportPackRef.current);
-    await eventLoggerRef.current.logSessionStarted({
-      sessionId: state.sessionId, protocolVersion: 'BRPLL-MAMMO-v1.0', siteId: 'DEMO',
-    });
+await eventLoggerRef.current!.logSessionStarted({
+  participantId: 'DEMO-PARTICIPANT',
+  siteId: 'DEMO',
+  studyId: 'BRPLL-DEMO',
+  protocolVersion: 'BRPLL-MAMMO-v1.0',
+  browserInfo: {
+    userAgent: navigator.userAgent,
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    pixelRatio: window.devicePixelRatio ?? 1,
+  },
+});
     
     // Eye-tracking infrastructure port (stub for future hardware integration)
-    await eventLoggerRef.current.addEvent('EYE_TRACKER_STATUS', {
+    await eventLoggerRef.current!.addEvent('EYE_TRACKER_STATUS', {
       device: 'MOUSE_PROXY',
       status: 'ACTIVE',
       calibrationValid: true,
@@ -3208,7 +3233,7 @@ export const ResearchDemoFlow: React.FC = () => {
       note: 'Using mouse hover as gaze proxy. Ready for WebGazer/Tobii integration.',
     });
     
-    await eventLoggerRef.current.logRandomizationAssigned({
+    await eventLoggerRef.current!.logRandomizationAssigned({
       seed: condition.seed, condition: condition.condition, disclosureFormat: condition.disclosureFormat,
       assignmentMethod: condition.assignmentMethod, conditionMatrixHash: condition.conditionMatrixHash,
     });
@@ -3221,7 +3246,7 @@ const counterbalanceArm = (() => {
       return (parsed % 4) + 1;
     })();
     const caseOrderVariant = condition.seed ? (parseInt(condition.seed.slice(-2), 16) % 2 === 0 ? 'FORWARD' : 'REVERSE') : 'FORWARD';
-    await eventLoggerRef.current.addEvent('COUNTERBALANCING_ASSIGNED', {
+    await eventLoggerRef.current!.addEvent('COUNTERBALANCING_ASSIGNED', {
       scheme: 'LATIN_SQUARE_4x4',
       arm: `ARM-${counterbalanceArm}`,
       caseOrderVariant,
@@ -3231,7 +3256,7 @@ const counterbalanceArm = (() => {
     });
     
     if (firstCase) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
     }
     
     setState(s => ({
@@ -3250,7 +3275,7 @@ const counterbalanceArm = (() => {
   const submitCalibration = useCallback(async () => {
     if (!eventLoggerRef.current || state.calibrationBirads === null || !state.currentCase) return;
     
-    await eventLoggerRef.current.addEvent('CALIBRATION_RESPONSE', {
+    await eventLoggerRef.current!.addEvent('CALIBRATION_RESPONSE', {
       caseId: state.currentCase.caseId,
       selectedBirads: state.calibrationBirads,
       confidence: state.calibrationConfidence,
@@ -3264,12 +3289,12 @@ const counterbalanceArm = (() => {
   const continueFromCalibration = useCallback(async () => {
     if (!state.caseQueue || !eventLoggerRef.current) return;
     
-    await eventLoggerRef.current.addEvent('CALIBRATION_FEEDBACK_SHOWN', {
+    await eventLoggerRef.current!.addEvent('CALIBRATION_FEEDBACK_SHOWN', {
       caseId: state.currentCase?.caseId,
       userBirads: state.calibrationBirads,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
     });
-    await eventLoggerRef.current.addEvent('GROUND_TRUTH_REVEALED', {
+    await eventLoggerRef.current!.addEvent('GROUND_TRUTH_REVEALED', {
       caseId: state.currentCase?.caseId,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
       context: 'CALIBRATION_MODE_ONLY',
@@ -3280,7 +3305,7 @@ const counterbalanceArm = (() => {
     const nextCase = getCurrentCase(newQueue);
     
     if (nextCase) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
     }
     
     setState(s => ({
@@ -3302,25 +3327,50 @@ const counterbalanceArm = (() => {
   const lockImpression = useCallback(async () => {
     if (!eventLoggerRef.current || !state.currentCase || state.initialBirads === null) return;
     
-    const lockTime = new Date();
-    await eventLoggerRef.current.logFirstImpressionLocked({
-      sessionId: state.sessionId, caseId: state.currentCase.caseId, condition: state.condition?.condition || 'UNKNOWN',
-      selectedBirads: state.initialBirads, confidence: state.initialConfidence, preAiTimeMs: lockTime.getTime() - (state.caseStartTime?.getTime() || 0),
-      interactionCounts: state.interactionCounts, preTrust: state.preTrust,
-    });
-    
+const lockTime = new Date();
+
+await eventLoggerRef.current!.logFirstImpressionLocked(
+  state.initialBirads ?? 0,
+  state.initialConfidence ?? 0
+);
+
+await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
+  sessionId: state.sessionId,
+  caseId: state.currentCase.caseId,
+  condition: state.condition,
+  birads: state.initialBirads ?? 0,
+  confidence: state.initialConfidence ?? 0,
+  interactionCounts: state.interactionCounts,
+  preTrust: state.preTrust,
+  lockTimestamp: lockTime.toISOString(),
+});
+
     const aiRevealTime = new Date();
-    await eventLoggerRef.current.logAIRevealed({
-      aiBirads: state.currentCase.aiResult?.birads ?? 4, aiConfidence: state.currentCase.aiResult?.confidence ?? 0.87,
-    });
+
+    const aiSuggestedBirads =
+      (state.currentCase as any)?.aiResult?.birads ??
+      (state.currentCase as any)?.aiBirads ??
+      4;
+
+    const aiConfidence =
+      (state.currentCase as any)?.aiResult?.confidence ??
+      (state.currentCase as any)?.aiConfidence ??
+      0.87;
+    
+await eventLoggerRef.current!.logAIRevealed({
+  suggestedBirads: aiSuggestedBirads,
+  aiConfidence,
+  finding: (state.currentCase as any).finding ?? 'N/A',
+  displayMode: 'PANEL',
+});
     
     // Log disclosure with adaptive policy info
     const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
     const disclosureIntensity = disclosurePolicy === 'STATIC' ? 'STANDARD' : 
       caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL_DEBIAS';
     
-    await eventLoggerRef.current.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
-    await eventLoggerRef.current.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
+    await eventLoggerRef.current!.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
+    await eventLoggerRef.current!.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
       policy: disclosurePolicy,
       caseDifficulty,
       disclosureIntensity,
@@ -3338,7 +3388,7 @@ const counterbalanceArm = (() => {
   const handleComprehension = useCallback(async (answer: string) => {
     const correct = answer === 'missed_cancer';
     if (eventLoggerRef.current) {
-      await eventLoggerRef.current.addEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
+      await eventLoggerRef.current!.addEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
         questionId: 'FDR_FOR_COMPREHENSION', selectedAnswer: answer, correctAnswer: 'missed_cancer', isCorrect: correct,
       });
     }
@@ -3350,7 +3400,7 @@ const counterbalanceArm = (() => {
     const needsDeviation = state.finalBirads !== state.initialBirads;
     if (needsDeviation) {
       if (eventLoggerRef.current) {
-        await eventLoggerRef.current.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
+        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
       }
       setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
     } else {
@@ -3363,10 +3413,10 @@ const counterbalanceArm = (() => {
   const proceedToProbes = useCallback(async (skipDeviation = false) => {
     if (eventLoggerRef.current) {
       if (skipDeviation) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
         setDeviationsSkipped(prev => prev + 1);
       } else if (state.deviationRationale) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SUBMITTED', { 
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
           rationale: state.deviationRationale, 
           initialBirads: state.initialBirads, 
           finalBirads: state.finalBirads 
@@ -3384,10 +3434,10 @@ const counterbalanceArm = (() => {
     
     if (state.step === 'DEVIATION' && deviationRequired) {
       if (skipDeviation) {
-        await eventLoggerRef.current.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
         setDeviationsSkipped(prev => prev + 1);
       } else {
-        await eventLoggerRef.current.addEvent('DEVIATION_SUBMITTED', { rationale: state.deviationRationale, initialBirads: state.initialBirads, finalBirads: state.finalBirads });
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { rationale: state.deviationRationale, initialBirads: state.initialBirads, finalBirads: state.finalBirads });
       }
     }
     
@@ -3396,24 +3446,24 @@ const counterbalanceArm = (() => {
     }
     
     // Track AI agreement streak
-    const agreedWithAI = (state.finalBirads ?? state.initialBirads) === state.currentCase.aiResult?.birads;
+const agreedWithAI = (state.finalBirads ?? state.initialBirads) === aiSuggestedBirads;
     if (agreedWithAI) {
 setAiAgreementStreak(prev => prev + 1);
     } else {
       setAiAgreementStreak(0);
     }
     
-    await eventLoggerRef.current.logFinalAssessment(
+    await eventLoggerRef.current!.logFinalAssessment(
       state.currentCase.caseId,
       state.finalBirads ?? state.initialBirads ?? 0,
       state.finalConfidence,
       state.initialBirads ?? 0,
-      state.currentCase.aiResult?.birads ?? 4
+      aiSuggestedBirads
     );
-    await eventLoggerRef.current.addEvent('ATTENTION_COVERAGE_PROXY', {
+    await eventLoggerRef.current!.addEvent('ATTENTION_COVERAGE_PROXY', {
       roiDwellTimes: Object.fromEntries(state.roiDwellTimes), totalDwellMs: Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0),
     });
-    await eventLoggerRef.current.addEvent('TRUST_CALIBRATION', {
+    await eventLoggerRef.current!.addEvent('TRUST_CALIBRATION', {
       preTrust: state.preTrust,
       postTrust: state.postTrust,
       trustDelta: state.postTrust - state.preTrust,
@@ -3423,7 +3473,7 @@ setAiAgreementStreak(prev => prev + 1);
     // Log risk meter snapshot
     const totalDwell = Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0);
     const aiDwell = state.roiDwellTimes.get('ai_box') || 0;
-    await eventLoggerRef.current.addEvent('RISK_METER_SNAPSHOT', {
+    await eventLoggerRef.current!.addEvent('RISK_METER_SNAPSHOT', {
       caseId: state.currentCase.caseId,
       timeToLockMs: state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0,
       aiAgreementStreak: agreedWithAI ? aiAgreementStreak + 1 : 0,
@@ -3433,26 +3483,63 @@ setAiAgreementStreak(prev => prev + 1);
       agreedWithAI,
     });
     
-    await eventLoggerRef.current.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
+    await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
     // Compute metrics
     const metrics: DerivedMetrics = {
-      caseId: state.currentCase.caseId, sessionId: state.sessionId, condition: state.condition?.condition || 'UNKNOWN',
-      initialBirads: state.initialBirads ?? 0, finalBirads: state.finalBirads ?? state.initialBirads ?? 0,
-      aiBirads: state.currentCase.aiResult?.birads ?? 4, aiConfidence: state.currentCase.aiResult?.confidence ?? 0.87,
-      changeOccurred: state.finalBirads !== state.initialBirads, aiConsistentChange: state.finalBirads === state.currentCase.aiResult?.birads && state.finalBirads !== state.initialBirads,
-      aiInconsistentChange: state.finalBirads !== state.currentCase.aiResult?.birads && state.finalBirads !== state.initialBirads,
-      addaDenominator: state.initialBirads !== state.currentCase.aiResult?.birads, adda: state.initialBirads !== state.currentCase.aiResult?.birads && state.finalBirads === state.currentCase.aiResult?.birads,
-      deviationRequired: state.finalBirads !== state.initialBirads, deviationDocumented: state.deviationRationale.length > 0,
-      deviationSkipped: state.finalBirads !== state.initialBirads && state.deviationRationale.length === 0,
-      comprehensionCorrect: state.comprehensionCorrect,
-      totalTimeMs: timeOnCase * 1000,
-      lockToRevealMs: state.lockTime && state.aiRevealTime ? state.aiRevealTime.getTime() - state.lockTime.getTime() : 0,
+      sessionId: state.sessionId,
+      timestamp: new Date().toISOString(),
+      condition: state.condition?.condition ?? 'UNKNOWN',
+
+      initialBirads: state.initialBirads ?? 0,
+      finalBirads: state.finalBirads ?? state.initialBirads ?? 0,
+
+      aiBirads: aiSuggestedBirads,
+      aiConfidence: aiSuggestedConfidence,
+
+      changeOccurred: (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
+      aiConsistentChange:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.finalBirads ?? state.initialBirads) === aiSuggestedBirads,
+      aiInconsistentChange:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.finalBirads ?? state.initialBirads) !== aiSuggestedBirads,
+
+      addaDenominator:
+        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads,
+      adda:
+        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads
+          ? (state.finalBirads ?? state.initialBirads ?? 0) === aiSuggestedBirads
+          : null,
+
+      deviationRequired:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
+      deviationDocumented: (state.deviationRationale ?? '').trim().length > 0,
+      deviationSkipped:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.deviationRationale ?? '').trim().length === 0,
+      deviationText: (state.deviationRationale ?? '').trim() || undefined,
+
+      comprehensionCorrect: state.comprehensionCorrect ?? null,
+
+      totalTimeMs: Math.round(timeOnCase * 1000),
+      lockToRevealMs:
+        state.lockTime && state.aiRevealTime
+          ? state.aiRevealTime.getTime() - state.lockTime.getTime()
+          : 0,
       revealToFinalMs: state.aiRevealTime ? Date.now() - state.aiRevealTime.getTime() : 0,
+
+      revealTiming: state.condition?.condition ?? 'UNKNOWN',
+      disclosureFormat: state.condition?.disclosureFormat ?? 'UNKNOWN',
     };
-    
+
+const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
+
     setState(s => ({
-      ...s, step: 'COMPLETE', caseResults: [...s.caseResults, metrics], eventCount: exportPackRef.current?.getEvents().length || 0,
+      ...s,
+      step: 'COMPLETE',
+      caseResults: [...s.caseResults, { caseId: completedCaseId, ...metrics }],
+      eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
   }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
 
@@ -3464,7 +3551,7 @@ setAiAgreementStreak(prev => prev + 1);
     const newQueue = advanceQueue(state.caseQueue);
     
     if (isQueueComplete(newQueue)) {
-      await eventLoggerRef.current.logSessionEnded({ reason: 'completed', totalCases: state.caseResults.length });
+      await eventLoggerRef.current!.logSessionEnded({ reason: 'completed', totalCases: state.caseResults.length });
       setState(s => ({ ...s, step: 'STUDY_COMPLETE', caseQueue: newQueue, eventCount: exportPackRef.current?.getEvents().length || 0 }));
       return;
     }
@@ -3472,7 +3559,7 @@ setAiAgreementStreak(prev => prev + 1);
     const nextCaseDef = getCurrentCase(newQueue);
     
     if (nextCaseDef) {
-      await eventLoggerRef.current.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
     }
     
     setState(s => ({
@@ -3491,7 +3578,7 @@ setAiAgreementStreak(prev => prev + 1);
   const generateExport = useCallback(async () => {
     if (!exportPackRef.current || !eventLoggerRef.current) return;
     
-    await eventLoggerRef.current.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
+    await eventLoggerRef.current!.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
     
     // Add all case metrics before generating
     for (const metrics of state.caseResults) {
@@ -3528,13 +3615,15 @@ setAiAgreementStreak(prev => prev + 1);
   // ADDA calculation helper
   const computeADDA = useCallback(() => {
     if (!state.currentCase || state.initialBirads === null) return null;
-    const aiBirads = state.currentCase.aiResult?.birads ?? 4;
+    const aiBirads = aiSuggestedBirads;
     const finalBirads = state.finalBirads ?? state.initialBirads;
     const addaDenominator = state.initialBirads !== aiBirads;
     const changeOccurred = finalBirads !== state.initialBirads;
     const aiConsistentChange = changeOccurred && finalBirads === aiBirads;
     return { addaDenominator, changeOccurred, aiConsistentChange, adda: addaDenominator && aiConsistentChange };
   }, [state.currentCase, state.initialBirads, state.finalBirads]);
+
+  const isSetupScreen = state.step === 'SETUP';
 
   // ============== RENDER ==============
   return (
@@ -3552,7 +3641,7 @@ setAiAgreementStreak(prev => prev + 1);
           onDisclosurePolicyChange={async (policy) => {
             setDisclosurePolicy(policy);
             if (eventLoggerRef.current) {
-              await eventLoggerRef.current.addEvent('DISCLOSURE_POLICY_CHANGED', { 
+              await eventLoggerRef.current!.addEvent('DISCLOSURE_POLICY_CHANGED', { 
                 policy, 
                 caseId: state.currentCase?.caseId,
                 timestamp: new Date().toISOString()
@@ -3571,151 +3660,160 @@ setAiAgreementStreak(prev => prev + 1);
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && viewMode === 'RESEARCHER' ? '360px' : 'auto' }}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-              <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
-              {/* Operator View Badge (Researcher Mode Only) */}
-              {viewMode === 'RESEARCHER' && (
-                <div style={{
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  backgroundColor: '#a855f7',
-                  color: 'white',
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  border: '1px solid #c084fc',
-                }}>
-                  🔬 OPERATOR VIEW
-                </div>
-              )}
-              {/* Trial Phase Badge */}
-              {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
-                <div style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  backgroundColor: state.currentCase?.isCalibration ? '#f59e0b' : '#22c55e',
-                  color: state.currentCase?.isCalibration ? '#78350f' : '#052e16',
-                  border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
-                  animation: 'pulse 2s infinite',
-                }}>
-                  {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
-                </div>
-              )}
-            </div>
-            <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
-            <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-              🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
-              {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
-              <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
-            </div>
+        {isSetupScreen ? (
+          <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Research Study Launcher</h1>
+            <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
+              Start a participant session or open the researcher console for the Friday walkthrough.
+            </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-            <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+        ) : (
+          <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
+                {/* Operator View Badge (Researcher Mode Only) */}
+                {viewMode === 'RESEARCHER' && (
+                  <div style={{
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    backgroundColor: '#a855f7',
+                    color: 'white',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    border: '1px solid #c084fc',
+                  }}>
+                    🔬 OPERATOR VIEW
+                  </div>
+                )}
+                {/* Trial Phase Badge */}
+                {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
+                  <div style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    backgroundColor: state.currentCase?.isCalibration ? '#f59e0b' : '#22c55e',
+                    color: state.currentCase?.isCalibration ? '#78350f' : '#052e16',
+                    border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
+                    animation: 'pulse 2s infinite',
+                  }}>
+                    {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
+              <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
+                🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
+                {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
+                <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
+              </div>
             </div>
-            <button
-              onClick={() => setShowStudyDesign(true)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                border: '1px solid rgba(147, 197, 253, 0.5)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              📋 Study Design
-            </button>
-            <button
-              onClick={() => setShowStudyPack(true)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'rgba(34, 197, 94, 0.3)',
-                border: '1px solid rgba(134, 239, 172, 0.5)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              📦 Study Pack
-            </button>
-            {/* Keyboard Help */}
-            <button
-              onClick={() => setShowKeyboardHelp(true)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-              title="Keyboard shortcuts (?)"
-            >
-              ⌨️ <span style={{ opacity: 0.7 }}>?</span>
-            </button>
-            {/* Mode Toggle */}
-            <div style={{
-              display: 'flex',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              borderRadius: '8px',
-              padding: '2px',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
+                <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+              </div>
               <button
-                onClick={() => setViewMode('CLINICIAN')}
+                onClick={() => setShowStudyDesign(true)}
                 style={{
-                  padding: '6px 12px',
-                  backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                  border: '1px solid rgba(147, 197, 253, 0.5)',
+                  borderRadius: '8px',
                   color: 'white',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                👩‍⚕️ Clinician
+                📋 Study Design
               </button>
               <button
-                onClick={() => setViewMode('RESEARCHER')}
+                onClick={() => setShowStudyPack(true)}
                 style={{
-                  padding: '6px 12px',
-                  backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                  border: '1px solid rgba(134, 239, 172, 0.5)',
+                  borderRadius: '8px',
                   color: 'white',
                   cursor: 'pointer',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                🔬 Researcher
+                📦 Study Pack
               </button>
+              {/* Keyboard Help */}
+              <button
+                onClick={() => setShowKeyboardHelp(true)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Keyboard shortcuts (?)"
+              >
+                ⌨️ <span style={{ opacity: 0.7 }}>?</span>
+              </button>
+              {/* Mode Toggle */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                borderRadius: '8px',
+                padding: '2px',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}>
+                <button
+                  onClick={() => setViewMode('CLINICIAN')}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                  }}
+                >
+                  👩‍⚕️ Clinician
+                </button>
+                <button
+                  onClick={() => setViewMode('RESEARCHER')}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                  }}
+                >
+                  🔬 Researcher
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         {/* Mode-Specific Description Bar */}
         {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
@@ -3747,35 +3845,121 @@ setAiAgreementStreak(prev => prev + 1);
           
           {/* SETUP */}
           {state.step === 'SETUP' && (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              {/* Session Recovery Banner */}
-              <SessionRecoveryBanner
-                hasRecoverableSession={hasRecoverableSession}
-                recoveryData={recoveryData}
-                onRecover={handleRecoverSession}
-                onDiscard={handleDiscardRecovery}
-              />
-              
-              <h2 style={{ color: 'white' }}>Select Study Condition</h2>
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
-                {(['HUMAN_FIRST', 'AI_FIRST', 'CONCURRENT'] as RevealCondition[]).map(cond => (
-                  <button key={cond} onClick={() => startStudy(cond)} style={{
-                    padding: '24px 32px', backgroundColor: cond === 'HUMAN_FIRST' ? '#3b82f6' : '#334155', color: 'white',
-                    border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
-                  }}>
-                    <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
-                      {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
-                    </div>
-                    <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                      {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
-                    </div>
-                    {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '8px', fontSize: '11px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
-                  </button>
-                ))}
+            <div style={{ textAlign: 'center', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setViewMode('CLINICIAN');
+                    startStudy();
+                  }}
+                  style={{
+                    padding: '20px 28px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: '2px solid #60a5fa',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    minWidth: '220px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                  }}
+                >
+                  🧑‍⚕️ Run Participant Session
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('RESEARCHER');
+                    startStudy();
+                  }}
+                  style={{
+                    padding: '20px 28px',
+                    backgroundColor: '#7c3aed',
+                    color: 'white',
+                    border: '2px solid #a78bfa',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    minWidth: '220px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                  }}
+                >
+                  🔬 Researcher Console
+                </button>
               </div>
-              <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', maxWidth: '500px', margin: '0 auto', textAlign: 'left' }}>
-                <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
-              </div>
+
+              <details style={{ width: '100%', maxWidth: '720px', backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #334155', padding: '16px', textAlign: 'left' }}>
+                <summary style={{ cursor: 'pointer', color: 'white', fontWeight: 600, fontSize: '14px' }}>
+                  Advanced / Diagnostics
+                </summary>
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <SessionRecoveryBanner
+                    hasRecoverableSession={hasRecoverableSession}
+                    recoveryData={recoveryData}
+                    onRecover={handleRecoverSession}
+                    onDiscard={handleDiscardRecovery}
+                  />
+
+                  <div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px' }}>View Mode</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => setViewMode('CLINICIAN')}
+                        style={{
+                          padding: '8px 14px',
+                          backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : '#1f2937',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        👩‍⚕️ Clinician
+                      </button>
+                      <button
+                        onClick={() => setViewMode('RESEARCHER')}
+                        style={{
+                          padding: '8px 14px',
+                          backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : '#1f2937',
+                          border: '1px solid #334155',
+                          borderRadius: '8px',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        🔬 Researcher
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ color: 'white', marginBottom: '12px' }}>Select Study Condition</h3>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {(['HUMAN_FIRST', 'AI_FIRST', 'CONCURRENT'] as RevealCondition[]).map(cond => (
+                        <button key={cond} onClick={() => startStudy(cond)} style={{
+                          padding: '16px 20px', backgroundColor: cond === 'HUMAN_FIRST' ? '#3b82f6' : '#334155', color: 'white',
+                          border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
+                        }}>
+                          <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
+                            {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                            {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
+                          </div>
+                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px' }}>
+                    <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
+                  </div>
+                </div>
+              </details>
             </div>
           )}
 
@@ -4086,8 +4270,8 @@ setAiAgreementStreak(prev => prev + 1);
                     style={{ backgroundColor: '#7c3aed', padding: '20px', borderRadius: '12px', marginBottom: '16px', border: '2px solid #a855f7' }}
                   >
                     <div style={{ fontSize: '12px', color: '#c4b5fd', marginBottom: '8px' }}>AI ASSESSMENT</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {currentCase.aiResult?.birads ?? 4}</div>
-                    <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {((currentCase.aiResult?.confidence ?? 0.87) * 100).toFixed(0)}%</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {aiSuggestedBirads}</div>
+                    <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {(aiSuggestedConfidence * 100).toFixed(0)}%</div>
                   </div>
                   
                   {/* FDR/FOR Disclosure - Adaptive based on policy + difficulty */}
@@ -4521,7 +4705,7 @@ setAiAgreementStreak(prev => prev + 1);
               <button 
                 onClick={async () => {
                   if (eventLoggerRef.current) {
-                    await eventLoggerRef.current.addEvent('NASA_TLX_RECORDED', {
+                    await eventLoggerRef.current!.addEvent('NASA_TLX_RECORDED', {
                       caseId: state.currentCase?.caseId,
                       mentalDemand: tlxMental,
                       temporalDemand: tlxTemporal,
@@ -4787,7 +4971,7 @@ setAiAgreementStreak(prev => prev + 1);
                 eventCount={state.eventCount}
                 sessionId={state.sessionId}
                 isVerified={state.verifierResult === 'PASS' ? true : state.verifierResult === 'FAIL' ? false : null}
-                lastHash={exportPackRef.current.getLedger()?.slice(-1)[0]?.hash}
+                lastHash={exportPackRef.current.getLedger()?.slice(-1)[0]?.chainHash}
               />
               {/* QC Monitoring Dashboard */}
               <QCMonitoringDashboard
@@ -4844,7 +5028,7 @@ setAiAgreementStreak(prev => prev + 1);
         onComplete={async (probes) => {
           // Log probes
           if (eventLoggerRef.current) {
-            await eventLoggerRef.current.addEvent('POST_CASE_PROBES_COMPLETED', {
+            await eventLoggerRef.current!.addEvent('POST_CASE_PROBES_COMPLETED', {
               caseId: state.currentCase?.caseId,
               postTrust: probes.postTrust,
               preTrust: state.preTrust,

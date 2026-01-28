@@ -191,6 +191,7 @@ export interface DeviationPayload {
 }
 
 export interface FinalAssessmentPayload {
+  caseId: string;
   birads: number;
   confidence: number;
   changeFromInitial: boolean;
@@ -236,8 +237,12 @@ export interface AttentionCoverageProxyPayload {
 // EVENT LOGGER CLASS
 // ============================================================================
 
+type ExportPackLike = {
+  addEvent(type: string, payload: unknown): Promise<LedgerEntry>;
+};
+
 export class EventLogger {
-  private exportPack: ExportPackZip;
+  private exportPack: ExportPackLike;
   private interactionCounts: {
     zoom: number;
     pan: number;
@@ -281,7 +286,7 @@ export class EventLogger {
   /**
    * Generic event adder (for custom events)
    */
-  async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEntry> {
+  async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
     return this.exportPack.addEvent(type, payload);
   }
 
@@ -569,7 +574,7 @@ const payload: FinalAssessmentPayload = {
   /**
    * Get the export pack for generating ZIP
    */
-  getExportPack(): ExportPackZip {
+  getExportPack(): ExportPackLike {
     return this.exportPack;
   }
 }
