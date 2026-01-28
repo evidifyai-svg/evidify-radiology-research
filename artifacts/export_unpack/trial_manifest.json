@@ -1,0 +1,47 @@
+{
+  "exportVersion": "2.0.0",
+  "schemaVersion": "2.0.0",
+  "exportTimestamp": "2026-01-28T03:14:31.261Z",
+  "sessionId": "SES-mkxg67r3-ccsv",
+  "participantId": "DEMO-PARTICIPANT",
+  "siteId": "DEMO",
+  "studyId": "BRPLL-DEMO",
+  "protocolVersion": "BRPLL-MAMMO-v1.0",
+  "condition": {
+    "revealTiming": "CONCURRENT",
+    "disclosureFormat": "FDR_FOR",
+    "seed": "d69c38d2dcc568270344350cad1bb98b",
+    "assignmentMethod": "SEEDED_RANDOM"
+  },
+  "caseQueue": {
+    "queueId": "Q-mkxg68uo",
+    "totalCases": 4,
+    "completedCases": 3,
+    "caseIds": [
+      "BRPLL-CAL-001",
+      "BRPLL-001",
+      "BRPLL-002",
+      "BRPLL-003"
+    ]
+  },
+  "integrity": {
+    "eventCount": 415,
+    "firstEventHash": "a69d7bf2a3f2687a6799d00999b767fa61ed3782e5928d971f76c0c22becb459",
+    "finalChainHash": "d386c72d0c57de2ad5a8c36884824827047113d2134dc34da06d0eebdbfe145b",
+    "chainValid": true
+  },
+  "timing": {
+    "sessionStartTime": "2026-01-28T03:10:05.904Z",
+    "sessionEndTime": "2026-01-28T03:14:31.261Z",
+    "totalDurationMs": 265357
+  },
+  "fileChecksums": {
+    "events": "0edd3b66297083ed1143996c44f591caf3743c5e81a5c33b9773e191533bb23f",
+    "ledger": "da7b1a4dea8494336505eaf7b21ad8f857de10e597e69dca333bc0996e8cf611",
+    "metrics": "c474803420c4e3cc9ce08a515a5f6b38d377ee58bb4970b91e1b05db7121a29b",
+    "codebook": "cdbb5a914a3412f8f1d822a48e3c162e0e62fdec867e46e84772658315625fb0"
+  },
+  "timestampTrustModel": "client_clock_untrusted",
+  "export_root_hash": "dc92866dc8e33642d9ea8518be25532eabb6494deef27fd41bdd545387b886db",
+  "export_manifest_sha256": "dc92866dc8e33642d9ea8518be25532eabb6494deef27fd41bdd545387b886db"
+}

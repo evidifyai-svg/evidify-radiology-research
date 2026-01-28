@@ -1,0 +1,4 @@
+caseId,sessionId,timestamp,condition,initialBirads,finalBirads,aiBirads,aiConfidence,changeOccurred,aiConsistentChange,aiInconsistentChange,addaDenominator,adda,deviationRequired,deviationDocumented,deviationSkipped,deviationText,comprehensionCorrect,totalTimeMs,lockToRevealMs,revealToFinalMs,revealTiming,disclosureFormat
+"BRPLL-001","SES-mkxg67r3-ccsv","2026-01-28T03:12:25.662Z","CONCURRENT",3,3,4,0.87,false,false,false,true,false,false,false,false,,true,100701,1,40317,"CONCURRENT","FDR_FOR"
+"BRPLL-002","SES-mkxg67r3-ccsv","2026-01-28T03:13:32.810Z","CONCURRENT",5,4,4,0.87,true,true,false,true,true,true,true,false,"dsd fewde",true,62842,1,37031,"CONCURRENT","FDR_FOR"
+"BRPLL-003","SES-mkxg67r3-ccsv","2026-01-28T03:14:24.557Z","CONCURRENT",1,4,4,0.87,true,true,false,true,true,true,true,false,"ffewdfewdewd",true,50279,1,17788,"CONCURRENT","FDR_FOR"

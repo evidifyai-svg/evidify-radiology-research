@@ -1,0 +1,31 @@
+{
+  "schema": "evidify.export_manifest.v1",
+  "created_utc": "2026-01-28T03:14:31.277Z",
+  "entries": [
+    {
+      "path": "codebook.md",
+      "sha256": "cdbb5a914a3412f8f1d822a48e3c162e0e62fdec867e46e84772658315625fb0",
+      "bytes": 2821
+    },
+    {
+      "path": "derived_metrics.csv",
+      "sha256": "c474803420c4e3cc9ce08a515a5f6b38d377ee58bb4970b91e1b05db7121a29b",
+      "bytes": 858
+    },
+    {
+      "path": "events.jsonl",
+      "sha256": "0edd3b66297083ed1143996c44f591caf3743c5e81a5c33b9773e191533bb23f",
+      "bytes": 77136
+    },
+    {
+      "path": "ledger.json",
+      "sha256": "da7b1a4dea8494336505eaf7b21ad8f857de10e597e69dca333bc0996e8cf611",
+      "bytes": 173623
+    },
+    {
+      "path": "verifier_output.json",
+      "sha256": "73d44b52707b3099ad50c941b9c0ff142c5cb1e0f2a1729854127458a60204e1",
+      "bytes": 674
+    }
+  ]
+}
