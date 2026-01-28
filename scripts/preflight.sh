@@ -66,5 +66,11 @@ if [ -n "$TRACKED_INBREAST" ]; then
     exit 1
 fi
 echo "✓ INbreast dataset not tracked"
+# Guardrail: ensure forensic tooling doesn't bleed into runtime
+if [ ! -f "scripts/no-forensic-imports.sh" ]; then
+    echo "✗ scripts/no-forensic-imports.sh missing"
+    exit 1
+fi
+bash scripts/no-forensic-imports.sh
 
 echo "✓ Preflight passed"
