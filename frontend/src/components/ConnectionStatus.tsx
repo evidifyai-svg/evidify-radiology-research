@@ -194,7 +194,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
             <div style={{ color: '#94a3b8' }}>{config.description}</div>
             {status === 'offline' && (
               <div style={{ marginTop: '8px', color: '#a5b4fc', fontSize: '12px' }}>
-                🔒 All features work offline
+                 All features work offline
               </div>
             )}
             <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
@@ -231,7 +231,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
             color: config.color,
           }}
         >
-          {status === 'offline' ? '📴' : status === 'limited' ? '⚠️' : '✓'}
+          {status === 'offline' ? '' : status === 'limited' ? '' : ''}
         </div>
         <div>
           <div style={{ fontWeight: 600, fontSize: '16px', color: '#1e293b' }}>
@@ -274,7 +274,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
             color: '#4f46e5',
           }}
         >
-          <strong>🔒 Privacy Verified:</strong> You're working offline. This proves no data 
+          <strong> Privacy Verified:</strong> You're working offline. This proves no data 
           is being sent to external servers. All AI processing happens locally.
         </div>
       )}
@@ -375,7 +375,7 @@ export const OfflineBanner: React.FC = () => {
         animation: 'slideUp 0.3s ease',
       }}
     >
-      <span style={{ fontSize: '20px' }}>📴</span>
+      <span style={{ fontSize: '20px' }}></span>
       <div>
         <div style={{ fontWeight: 600, marginBottom: '2px' }}>Working Offline</div>
         <div style={{ fontSize: '13px', opacity: 0.9 }}>

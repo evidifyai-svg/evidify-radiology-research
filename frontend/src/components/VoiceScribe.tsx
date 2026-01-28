@@ -385,7 +385,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
   if (voiceStatus && !voiceStatus.whisper_installed) {
     return (
       <div className="voice-scribe voice-scribe--setup">
-        <div className="voice-scribe__icon voice-scribe__icon--warning">⚠️</div>
+        <div className="voice-scribe__icon voice-scribe__icon--warning"></div>
         <h2>Voice Scribe Setup Required</h2>
         <p>Whisper is not installed. To use Voice Scribe, install whisper.cpp:</p>
         <pre className="voice-scribe__code">
@@ -424,7 +424,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
         {/* Idle State */}
         {state.status === 'idle' && (
           <div className="voice-scribe__idle">
-            <div className="voice-scribe__mic-icon">🎤</div>
+            <div className="voice-scribe__mic-icon"></div>
             <h3>Quick Session Debrief</h3>
             <p className="voice-scribe__description">
               Speak naturally about your session for 60-90 seconds. 
@@ -448,7 +448,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
               onClick={startCountdown}
               className="btn btn--primary btn--large voice-scribe__start"
             >
-              <span className="btn__icon">🎤</span>
+              <span className="btn__icon"></span>
               Start Recording
             </button>
           </div>
@@ -497,7 +497,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
               onClick={stopRecording}
               className="btn btn--danger btn--large voice-scribe__stop"
             >
-              <span className="btn__icon">⏹</span>
+              <span className="btn__icon">Stop</span>
               Done Recording
             </button>
 
@@ -514,20 +514,20 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
             <h3>Processing your recording...</h3>
             <div className="voice-scribe__steps">
               <div className="voice-scribe__step voice-scribe__step--active">
-                <span className="voice-scribe__step-icon">🎤</span>
+                <span className="voice-scribe__step-icon"></span>
                 Transcribing audio
               </div>
               <div className="voice-scribe__step">
-                <span className="voice-scribe__step-icon">🤖</span>
+                <span className="voice-scribe__step-icon"></span>
                 Structuring note
               </div>
               <div className="voice-scribe__step">
-                <span className="voice-scribe__step-icon">🔍</span>
+                <span className="voice-scribe__step-icon"></span>
                 Checking for safety flags
               </div>
             </div>
             <p className="voice-scribe__privacy">
-              <span className="voice-scribe__lock">🔒</span>
+              <span className="voice-scribe__lock"></span>
               All processing happens on your device. No data leaves this computer.
             </p>
           </div>
@@ -580,7 +580,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
 
               {state.structuredNote.riskLevel && state.structuredNote.riskLevel !== 'low' && (
                 <div className="voice-scribe__risk-alert" data-level={state.structuredNote.riskLevel}>
-                  <span className="voice-scribe__risk-icon">⚠️</span>
+                  <span className="voice-scribe__risk-icon"></span>
                   <span>
                     {state.structuredNote.riskLevel === 'high' 
                       ? 'High risk factors detected. Review carefully before signing.'
@@ -618,7 +618,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
         {/* Complete State */}
         {state.status === 'complete' && (
           <div className="voice-scribe__complete">
-            <div className="voice-scribe__success-icon">✓</div>
+            <div className="voice-scribe__success-icon"></div>
             <h3>Note Created!</h3>
             <p>Your progress note has been saved and is ready for review.</p>
           </div>
@@ -627,7 +627,7 @@ export const VoiceScribe: React.FC<VoiceScribeProps> = ({
         {/* Error State */}
         {state.status === 'error' && (
           <div className="voice-scribe__error">
-            <div className="voice-scribe__error-icon">⚠️</div>
+            <div className="voice-scribe__error-icon"></div>
             <h3>Voice Recording Unavailable</h3>
             <pre style={{ 
               whiteSpace: 'pre-wrap', 

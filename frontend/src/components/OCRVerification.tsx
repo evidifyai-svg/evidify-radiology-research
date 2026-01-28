@@ -145,7 +145,7 @@ export function OCRVerificationDashboard({
       {/* Header */}
       <div className="p-4 border-b bg-gradient-to-r from-cyan-50 to-white">
         <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-          📄 OCR Verification Dashboard
+           OCR Verification Dashboard
         </h2>
         <p className="text-sm text-slate-500">
           Track and verify OCR-extracted text accuracy
@@ -209,7 +209,7 @@ export function OCRVerificationDashboard({
       {stats.lowConfidenceCitations > 0 && (
         <div className="p-3 bg-red-50 border-b border-red-100">
           <p className="text-sm text-red-700">
-            ⚠️ <strong>{stats.lowConfidenceCitations} citation(s)</strong> use low-confidence OCR text 
+             <strong>{stats.lowConfidenceCitations} citation(s)</strong> use low-confidence OCR text 
             that has not been verified. These should be verified against source images before export.
           </p>
         </div>
@@ -219,9 +219,9 @@ export function OCRVerificationDashboard({
       <div className="border-b">
         <div className="flex">
           {[
-            { id: 'overview', label: '📊 Overview' },
-            { id: 'pending', label: `⏳ Pending (${stats.pendingVerification})` },
-            { id: 'all', label: '📋 All Results' },
+            { id: 'overview', label: ' Overview' },
+            { id: 'pending', label: `Loading Pending (${stats.pendingVerification})` },
+            { id: 'all', label: ' All Results' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -286,7 +286,7 @@ export function OCRVerificationDashboard({
               
               {stats.lowConfidenceCitations === 0 && stats.pendingVerification === 0 && (
                 <div className="text-center py-8 text-slate-500">
-                  <p className="text-green-600 font-medium">✅ All OCR content verified or high-confidence</p>
+                  <p className="text-green-600 font-medium"> All OCR content verified or high-confidence</p>
                   <p className="text-sm mt-1">No verification actions required</p>
                 </div>
               )}
@@ -318,7 +318,7 @@ export function OCRVerificationDashboard({
                         </span>
                         {result.human_verified && (
                           <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
-                            ✓ Verified
+                             Verified
                           </span>
                         )}
                         {result.needs_verification && !result.human_verified && (
@@ -350,7 +350,7 @@ export function OCRVerificationDashboard({
                 onClick={() => setSelectedResult(null)}
                 className="text-slate-400 hover:text-slate-600"
               >
-                ✕
+                
               </button>
             </div>
             
@@ -366,7 +366,7 @@ export function OCRVerificationDashboard({
                 onClick={() => onViewPageImage(selectedResult.evidence_id, selectedResult.page_number)}
                 className="text-cyan-600 hover:text-cyan-800 text-sm mt-1"
               >
-                📄 View Original Page Image →
+                 View Original Page Image →
               </button>
             </div>
             
@@ -409,7 +409,7 @@ export function OCRVerificationDashboard({
                 onClick={handleVerify}
                 className="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
-                ✓ Confirm Verified
+                 Confirm Verified
               </button>
               <button
                 onClick={() => {
@@ -424,7 +424,7 @@ export function OCRVerificationDashboard({
             {/* Warning about changes */}
             {verificationText !== selectedResult.extracted_text && (
               <p className="text-xs text-amber-600 mt-2">
-                ⚠️ Text has been modified from OCR output. Changes will be logged.
+                 Text has been modified from OCR output. Changes will be logged.
               </p>
             )}
           </div>
@@ -434,7 +434,7 @@ export function OCRVerificationDashboard({
       {/* Footer */}
       <div className="p-3 border-t bg-cyan-50">
         <p className="text-xs text-cyan-700">
-          💡 Low-confidence OCR (below {CONFIDENCE_THRESHOLD}%) requires human verification 
+           Low-confidence OCR (below {CONFIDENCE_THRESHOLD}%) requires human verification 
           against the source image before it can be cited as fact.
         </p>
       </div>

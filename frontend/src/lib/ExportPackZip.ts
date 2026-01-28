@@ -68,6 +68,18 @@ export interface VerifierOutput {
     validLinks: number;
     brokenAt: number | null;
   };
+  sessionMetrics?: {
+    totalCases: number;
+    aiEligibleCases: number;
+    averagePreAiSeconds: number;
+    averagePostAiSeconds: number;
+    agreementRate: number;
+    overrideCount: number;
+    overridesWithRationale: number;
+    overrideReasons: Record<string, number>;
+    fastPreAiReads: number;
+    rubberStampFlag: boolean;
+  };
 }
 
 // ============================================================================
@@ -114,6 +126,7 @@ export class ExportPackZip {
   private caseQueue: ExportManifest['caseQueue'];
   private sessionStartTime: Date;
   private metricsPerCase: DerivedMetrics[] = [];
+  private sessionMetrics: VerifierOutput['sessionMetrics'] | null = null;
 
   constructor(config: {
     sessionId: string;
@@ -204,6 +217,10 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     if (!exists) {
       this.metricsPerCase.push(metrics);
     }
+  }
+
+  setSessionMetrics(metrics: VerifierOutput['sessionMetrics']): void {
+    this.sessionMetrics = metrics ?? null;
   }
   /**
    * Run internal verifier
@@ -317,6 +334,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     
     // Run verifier
     const verifierOutput = await this.runVerifier();
+    if (this.sessionMetrics) {
+      verifierOutput.sessionMetrics = this.sessionMetrics;
+    }
     
     // Generate events.jsonl
     const eventsJsonl = this.events.map(e => JSON.stringify(e)).join('\n');

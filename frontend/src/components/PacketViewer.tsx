@@ -156,7 +156,7 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
-            <span style={styles.headerIcon}>📦</span>
+            <span style={styles.headerIcon}></span>
             <h2 style={styles.title}>Export Package Contents</h2>
           </div>
           <div style={styles.headerRight}>
@@ -341,7 +341,7 @@ const LedgerTab: React.FC<LedgerTabProps> = ({ ledger, expandedIndex, onToggleEx
   return (
     <div style={styles.tabContent}>
       <div style={styles.ledgerHeader}>
-        <span style={styles.ledgerTitle}>🔗 Hash Chain Ledger</span>
+        <span style={styles.ledgerTitle}> Hash Chain Ledger</span>
         <span style={styles.ledgerInfo}>
           Genesis: <code>0000...0000</code>
         </span>
@@ -367,7 +367,7 @@ const LedgerTab: React.FC<LedgerTabProps> = ({ ledger, expandedIndex, onToggleEx
                     {entry.chainHash.slice(0, 8)}...{entry.chainHash.slice(-8)}
                   </code>
                   <span style={styles.ledgerExpandIcon}>
-                    {isExpanded ? '▼' : '▶'}
+                    {isExpanded ? 'Collapse' : 'Expand'}
                   </span>
                 </div>
               </div>
@@ -421,9 +421,9 @@ interface VerifierTabProps {
 
 const VerifierTab: React.FC<VerifierTabProps> = ({ output }) => {
   const statusColors = {
-    PASS: { bg: '#dcfce7', text: '#166534', icon: '✓' },
-    FAIL: { bg: '#fee2e2', text: '#991b1b', icon: '✗' },
-    WARN: { bg: '#fef3c7', text: '#92400e', icon: '⚠' },
+    PASS: { bg: '#dcfce7', text: '#166534', icon: '' },
+    FAIL: { bg: '#fee2e2', text: '#991b1b', icon: '' },
+    WARN: { bg: '#fef3c7', text: '#92400e', icon: '' },
   };
 
   // Calculate summary from checks array if not provided
@@ -446,7 +446,7 @@ const VerifierTab: React.FC<VerifierTabProps> = ({ output }) => {
           ...styles.resultIcon,
           color: output.result === 'PASS' ? '#22c55e' : '#ef4444',
         }}>
-          {output.result === 'PASS' ? '✓' : '✗'}
+          {output.result === 'PASS' ? '' : ''}
         </span>
         <div style={styles.resultText}>
           <span style={{
@@ -660,7 +660,7 @@ const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload }) => {
       <div style={styles.fileList}>
         {files.map((file, i) => (
           <div key={i} style={styles.fileRow}>
-            <span style={styles.fileIcon}>📄</span>
+            <span style={styles.fileIcon}></span>
             <div style={styles.fileInfo}>
               <span style={styles.fileName}>{file.name}</span>
               <span style={styles.fileDesc}>{file.desc}</span>
@@ -694,7 +694,7 @@ const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload }) => {
 
       {/* Download Button */}
       <button style={styles.downloadButton} onClick={onDownload}>
-        <span style={styles.downloadIcon}>⬇</span>
+        <span style={styles.downloadIcon}>Download</span>
         Download ZIP Package
       </button>
 

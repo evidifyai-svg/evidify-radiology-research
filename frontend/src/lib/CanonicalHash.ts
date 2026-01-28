@@ -475,25 +475,25 @@ export function runCanonicalHashTests(): void {
   const json2 = canonicalJSON(obj2);
   console.assert(json1 === json2, 'Key ordering should be deterministic');
   console.assert(json1 === '{"a":2,"m":3,"z":1}', `Expected sorted keys, got: ${json1}`);
-  console.log('✓ Key ordering deterministic');
+  console.log(' Key ordering deterministic');
   
   // Test 2: No whitespace
   const nested = { outer: { inner: [1, 2, 3] } };
   const nestedJson = canonicalJSON(nested);
   console.assert(!nestedJson.includes(' '), 'Should have no whitespace');
   console.assert(nestedJson === '{"outer":{"inner":[1,2,3]}}', `Got: ${nestedJson}`);
-  console.log('✓ No whitespace');
+  console.log(' No whitespace');
   
   // Test 3: Number normalization
   console.assert(canonicalJSON(1.0) === '1', `1.0 should be "1", got: ${canonicalJSON(1.0)}`);
   console.assert(canonicalJSON(-0) === '0', `-0 should be "0", got: ${canonicalJSON(-0)}`);
-  console.log('✓ Number normalization');
+  console.log(' Number normalization');
   
   // Test 4: String escaping
   const strWithQuote = 'say "hello"';
   const escaped = canonicalJSON(strWithQuote);
   console.assert(escaped === '"say \\"hello\\""', `Got: ${escaped}`);
-  console.log('✓ String escaping');
+  console.log(' String escaping');
   
   // Test 5: Hash chain
   const chain = new CanonicalHashChain();
@@ -509,7 +509,7 @@ export function runCanonicalHashTests(): void {
   const entry1 = chain.addEvent(event1);
   console.assert(entry1.seq === 0, 'First entry seq should be 0');
   console.assert(entry1.previousHash === GENESIS_HASH, 'First entry prev should be genesis');
-  console.log('✓ First event added');
+  console.log(' First event added');
   
   const event2: CanonicalEvent = {
     id: '550e8400-e29b-41d4-a716-446655440002',
@@ -522,21 +522,21 @@ export function runCanonicalHashTests(): void {
   const entry2 = chain.addEvent(event2);
   console.assert(entry2.seq === 1, 'Second entry seq should be 1');
   console.assert(entry2.previousHash === entry1.chainHash, 'Second prev should be first chain');
-  console.log('✓ Second event chained');
+  console.log(' Second event chained');
   
   // Test 6: Verify chain
   const result = chain.verify();
   console.assert(result.valid, `Chain should be valid: ${result.error}`);
-  console.log('✓ Chain verification passed');
+  console.log(' Chain verification passed');
   
   // Test 7: Cross-environment determinism
   const payload = { birads: 4, confidence: 0.85, notes: 'Test case' };
   const hash1 = computeContentHash(payload);
   const hash2 = computeContentHash({ confidence: 0.85, notes: 'Test case', birads: 4 });
   console.assert(hash1 === hash2, 'Same payload different order should hash same');
-  console.log('✓ Cross-environment determinism');
+  console.log(' Cross-environment determinism');
   
-  console.log('\n✅ All CanonicalHash tests passed');
+  console.log('\n All CanonicalHash tests passed');
 }
 
 // Run tests if executed directly

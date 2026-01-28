@@ -219,7 +219,7 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
                     </div>
                     <div className="text-sm text-gray-500">
                       {backup.file_count ?? 0} files • {formatBytes(backup.compressed_size_bytes ?? 0)}
-                      {backup.encrypted && ' • 🔒 Encrypted'}
+                      {backup.encrypted && ' •  Encrypted'}
                     </div>
                   </div>
                 </div>

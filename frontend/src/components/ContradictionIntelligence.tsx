@@ -69,42 +69,42 @@ const CONTRADICTION_TYPES: Record<ContradictionType, {
 }> = {
   direct: {
     label: 'Direct Contradiction',
-    icon: '⚡',
+    icon: '',
     description: 'Explicit factual conflict between two sources',
     example: '"Miranda was read" vs "Miranda was not read"',
     crossExamRisk: 'Attorney will highlight the exact conflict and demand explanation',
   },
   omission: {
     label: 'Omission Contradiction',
-    icon: '🕳️',
+    icon: '',
     description: 'Key detail absent from contemporaneous records but appears later',
     example: 'Trauma not mentioned in ER records but claimed in later interview',
     crossExamRisk: '"Why wasn\'t this documented at the time?"',
   },
   temporal_drift: {
     label: 'Temporal Drift',
-    icon: '📅',
+    icon: '',
     description: 'Account changes across different time points',
     example: 'Initial statement differs from deposition differs from trial testimony',
     crossExamRisk: '"Your story has changed three times. Which version is true?"',
   },
   contextual_drift: {
     label: 'Contextual Drift',
-    icon: '🎭',
+    icon: '',
     description: 'Presentation differs based on setting or audience',
     example: 'Presents differently in jail intake vs court interview vs family visit',
     crossExamRisk: '"Why did symptoms appear only when being evaluated?"',
   },
   method_result: {
     label: 'Method-Result Conflict',
-    icon: '📊',
+    icon: '',
     description: 'Test results conflict with self-report or clinical observation',
     example: 'Claims severe impairment but validity indices suggest overreporting',
     crossExamRisk: '"The tests don\'t support what the evaluee claims"',
   },
   document_chain: {
     label: 'Document Chain Conflict',
-    icon: '📄',
+    icon: '',
     description: 'Later document contradicts contemporaneous note',
     example: 'Attorney letter contradicts original police report',
     crossExamRisk: '"This letter was written after litigation began"',
@@ -177,7 +177,7 @@ export function ContradictionIntelligence({
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              ⚡ Contradiction Intelligence
+               Contradiction Intelligence
               <span className="text-sm font-normal text-slate-500">Cross-Exam Radar</span>
             </h2>
           </div>
@@ -196,12 +196,12 @@ export function ContradictionIntelligence({
           </div>
           {stats.impactingOpinions > 0 && (
             <div className="px-3 py-1 rounded-full bg-red-200 text-red-800">
-              ⚠️ {stats.impactingOpinions} affecting opinions
+               {stats.impactingOpinions} affecting opinions
             </div>
           )}
           {stats.critical > 0 && (
             <div className="px-3 py-1 rounded-full bg-red-300 text-red-900">
-              🚨 {stats.critical} critical
+               {stats.critical} critical
             </div>
           )}
         </div>
@@ -432,7 +432,7 @@ export function ContradictionIntelligence({
       {stats.unresolved > 0 && (
         <div className="p-3 border-t bg-red-50">
           <p className="text-xs text-red-700">
-            ⚠️ {stats.unresolved} unresolved contradiction(s) require attention before finalizing.
+             {stats.unresolved} unresolved contradiction(s) require attention before finalizing.
             {stats.impactingOpinions > 0 && (
               <span className="font-medium"> {stats.impactingOpinions} affect your opinions.</span>
             )}
@@ -582,7 +582,7 @@ export function ImpeachmentView({
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-gradient-to-r from-red-100 to-red-50">
         <h2 className="font-bold text-red-800 text-lg flex items-center gap-2">
-          🎯 Impeachment View
+           Impeachment View
           <span className="text-sm font-normal text-red-600">What opposing counsel will attack</span>
         </h2>
         <p className="text-sm text-red-600 mt-1">
@@ -594,7 +594,7 @@ export function ImpeachmentView({
       <div className="divide-y max-h-[400px] overflow-y-auto">
         {attacks.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-green-600 font-medium">✓ No obvious attack vectors identified</p>
+            <p className="text-green-600 font-medium"> No obvious attack vectors identified</p>
             <p className="text-xs text-slate-500 mt-1">Continue maintaining citation discipline</p>
           </div>
         ) : (

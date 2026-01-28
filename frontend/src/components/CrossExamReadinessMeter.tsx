@@ -404,7 +404,7 @@ export function CrossExamReadinessMeter({
       text: 'text-green-700',
       bgLight: 'bg-green-50',
       border: 'border-green-200',
-      label: '✓ Stable Under Hostile Review',
+      label: ' Stable Under Hostile Review',
       description: 'Report is defensible and ready for cross-examination',
     },
     needs_work: {
@@ -412,7 +412,7 @@ export function CrossExamReadinessMeter({
       text: 'text-amber-700',
       bgLight: 'bg-amber-50',
       border: 'border-amber-200',
-      label: '⚠ Needs Work',
+      label: ' Needs Work',
       description: 'Address blockers before finalizing',
     },
     dangerous: {
@@ -420,7 +420,7 @@ export function CrossExamReadinessMeter({
       text: 'text-red-700',
       bgLight: 'bg-red-50',
       border: 'border-red-200',
-      label: '⛔ Dangerous to File',
+      label: ' Dangerous to File',
       description: 'Critical issues that could result in impeachment',
     },
   };
@@ -499,7 +499,7 @@ export function CrossExamReadinessMeter({
       {metrics.blockers.length > 0 && (
         <div className="p-4 border-t bg-red-50">
           <h3 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">
-            <span>⛔</span> Blockers ({metrics.blockers.length})
+            <span></span> Blockers ({metrics.blockers.length})
           </h3>
           <ul className="space-y-1">
             {metrics.blockers.map((blocker, i) => (
@@ -520,7 +520,7 @@ export function CrossExamReadinessMeter({
       {metrics.warnings.length > 0 && (
         <div className="p-4 border-t bg-amber-50">
           <h3 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
-            <span>⚠️</span> Warnings ({metrics.warnings.length})
+            <span></span> Warnings ({metrics.warnings.length})
           </h3>
           <ul className="space-y-1">
             {metrics.warnings.map((warning, i) => (
@@ -536,7 +536,7 @@ export function CrossExamReadinessMeter({
       {/* Recommendations */}
       {metrics.recommendations.length > 0 && metrics.status !== 'stable' && (
         <div className="p-4 border-t">
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">💡 Next Steps</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2"> Next Steps</h3>
           <ul className="space-y-1">
             {metrics.recommendations.slice(0, 3).map((rec, i) => (
               <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
@@ -639,7 +639,7 @@ export function CrossExamReadinessCompact({
       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${color} hover:opacity-80 transition-opacity`}
       title="Cross-Exam Readiness Score"
     >
-      <span>{metrics.score >= 85 ? '✓' : metrics.score >= 60 ? '⚠' : '⛔'}</span>
+      <span>{metrics.score >= 85 ? '' : metrics.score >= 60 ? '' : ''}</span>
       <span>{metrics.score}%</span>
       {metrics.blockerCount > 0 && (
         <span className="text-xs opacity-75">({metrics.blockerCount} issues)</span>

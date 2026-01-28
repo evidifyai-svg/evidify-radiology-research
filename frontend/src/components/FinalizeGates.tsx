@@ -299,16 +299,16 @@ export function FinalizeGates({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              🚦 Finalize Gates
+               Finalize Gates
             </h2>
             <p className={`text-sm ${
               isClean ? 'text-green-700' : canExport ? 'text-amber-700' : 'text-red-700'
             }`}>
               {isClean 
-                ? '✓ All gates passed - ready to export'
+                ? ' All gates passed - ready to export'
                 : canExport
-                ? `⚠ ${warningGates.length} warning(s) - review before export`
-                : `⛔ ${failingGates.length} gate(s) blocking export`
+                ? ` ${warningGates.length} warning(s) - review before export`
+                : ` ${failingGates.length} gate(s) blocking export`
               }
             </p>
           </div>
@@ -321,7 +321,7 @@ export function FinalizeGates({
                 : 'bg-slate-300 text-slate-500 cursor-not-allowed'
             }`}
           >
-            {canExport ? '📤 Export Report' : '🔒 Export Blocked'}
+            {canExport ? ' Export Report' : ' Export Blocked'}
           </button>
         </div>
       </div>
@@ -343,7 +343,7 @@ export function FinalizeGates({
                 gate.status === 'warn' ? 'bg-amber-500 text-white' :
                 'bg-red-500 text-white'
               }`}>
-                {gate.status === 'pass' ? '✓' : gate.status === 'warn' ? '!' : '✗'}
+                {gate.status === 'pass' ? '' : gate.status === 'warn' ? '!' : ''}
               </div>
               
               {/* Content */}
@@ -395,9 +395,9 @@ export function FinalizeGates({
       {/* Summary Footer */}
       <div className="p-4 border-t bg-slate-50">
         <div className="flex justify-between text-sm">
-          <span className="text-green-600">✓ {passingGates.length} passed</span>
-          <span className="text-amber-600">⚠ {warningGates.length} warnings</span>
-          <span className="text-red-600">✗ {failingGates.length} blockers</span>
+          <span className="text-green-600"> {passingGates.length} passed</span>
+          <span className="text-amber-600"> {warningGates.length} warnings</span>
+          <span className="text-red-600"> {failingGates.length} blockers</span>
         </div>
       </div>
     </div>
@@ -426,7 +426,7 @@ export function ExportBlockerModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4">
         <div className="p-4 border-b bg-red-50">
-          <h2 className="font-bold text-red-800 text-lg">⛔ Export Blocked</h2>
+          <h2 className="font-bold text-red-800 text-lg"> Export Blocked</h2>
           <p className="text-sm text-red-600">
             {hardBlockers.length} critical issue(s) must be resolved before export
           </p>

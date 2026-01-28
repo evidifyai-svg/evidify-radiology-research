@@ -166,11 +166,11 @@ export const TestHarness: React.FC = () => {
     try {
       log('policy', '→ Calling getActivePolicy()...');
       const policy = await getActivePolicy();
-      log('policy', `✓ Organization: ${policy.organization}`);
-      log('policy', `✓ Version: ${policy.version}`);
-      log('policy', `✓ Export Policy: ${JSON.stringify(policy.export_policy, null, 2)}`);
+      log('policy', ` Organization: ${policy.organization}`);
+      log('policy', ` Version: ${policy.version}`);
+      log('policy', ` Export Policy: ${JSON.stringify(policy.export_policy, null, 2)}`);
     } catch (e) {
-      log('policy', `✗ Error: ${e}`);
+      log('policy', ` Error: ${e}`);
     }
   };
 
@@ -178,9 +178,9 @@ export const TestHarness: React.FC = () => {
     try {
       log('policy', '→ Calling getPolicyVersion()...');
       const version = await getPolicyVersion();
-      log('policy', `✓ Version Info: ${JSON.stringify(version, null, 2)}`);
+      log('policy', ` Version Info: ${JSON.stringify(version, null, 2)}`);
     } catch (e) {
-      log('policy', `✗ Error: ${e}`);
+      log('policy', ` Error: ${e}`);
     }
   };
 
@@ -193,12 +193,12 @@ export const TestHarness: React.FC = () => {
     try {
       log('perf', '→ Calling getPerformanceStats()...');
       const stats = await getPerformanceStats();
-      log('perf', `✓ Cache entries: ${stats.cache.entries}`);
-      log('perf', `✓ Cache hit rate: ${(stats.cache.hit_rate * 100).toFixed(1)}%`);
-      log('perf', `✓ Memory (RSS): ${stats.memory.rss_mb.toFixed(2)} MB`);
-      log('perf', `✓ Pending tasks: ${stats.pending_background_tasks}`);
+      log('perf', ` Cache entries: ${stats.cache.entries}`);
+      log('perf', ` Cache hit rate: ${(stats.cache.hit_rate * 100).toFixed(1)}%`);
+      log('perf', ` Memory (RSS): ${stats.memory.rss_mb.toFixed(2)} MB`);
+      log('perf', ` Pending tasks: ${stats.pending_background_tasks}`);
     } catch (e) {
-      log('perf', `✗ Error: ${e}`);
+      log('perf', ` Error: ${e}`);
     }
   };
 
@@ -206,9 +206,9 @@ export const TestHarness: React.FC = () => {
     try {
       log('perf', '→ Calling clearCaches()...');
       await clearCaches();
-      log('perf', '✓ Caches cleared');
+      log('perf', ' Caches cleared');
     } catch (e) {
-      log('perf', `✗ Error: ${e}`);
+      log('perf', ` Error: ${e}`);
     }
   };
 
@@ -216,9 +216,9 @@ export const TestHarness: React.FC = () => {
     try {
       log('perf', '→ Calling optimizeDatabase()...');
       await optimizeDatabase();
-      log('perf', '✓ Database optimization triggered');
+      log('perf', ' Database optimization triggered');
     } catch (e) {
-      log('perf', `✗ Error: ${e}`);
+      log('perf', ` Error: ${e}`);
     }
   };
 
@@ -238,10 +238,10 @@ export const TestHarness: React.FC = () => {
     const v2 = cache.get('key2');
     const v3 = cache.get('key3');
     
-    log('utils', `✓ get('key1'): ${v1}`);
-    log('utils', `✓ get('key2'): ${v2}`);
-    log('utils', `✓ get('key3'): ${v3} (should be null)`);
-    log('utils', `✓ Stats: ${JSON.stringify(cache.stats())}`);
+    log('utils', ` get('key1'): ${v1}`);
+    log('utils', ` get('key2'): ${v2}`);
+    log('utils', ` get('key3'): ${v3} (should be null)`);
+    log('utils', ` Stats: ${JSON.stringify(cache.stats())}`);
   };
 
   const testDebounceThrottle = () => {
@@ -259,8 +259,8 @@ export const TestHarness: React.FC = () => {
     }
     
     setTimeout(() => {
-      log('utils', `✓ Debounce called: ${debounceCount} time(s) (expected: 1)`);
-      log('utils', `✓ Throttle called: ${throttleCount} time(s) (expected: 1-2)`);
+      log('utils', ` Debounce called: ${debounceCount} time(s) (expected: 1)`);
+      log('utils', ` Throttle called: ${throttleCount} time(s) (expected: 1-2)`);
     }, 200);
   };
 
@@ -277,9 +277,9 @@ export const TestHarness: React.FC = () => {
     const r3 = expensive(5);
     const r4 = expensive(10);
     
-    log('utils', `✓ expensive(5) = ${r1}, ${r2}, ${r3}`);
-    log('utils', `✓ expensive(10) = ${r4}`);
-    log('utils', `✓ Compute count: ${computeCount} (expected: 2)`);
+    log('utils', ` expensive(5) = ${r1}, ${r2}, ${r3}`);
+    log('utils', ` expensive(10) = ${r4}`);
+    log('utils', ` Compute count: ${computeCount} (expected: 2)`);
   };
 
   const testVirtualList = () => {
@@ -291,7 +291,7 @@ export const TestHarness: React.FC = () => {
       containerHeight: 400,
     });
     
-    log('utils', `✓ Result: ${JSON.stringify(result)}`);
+    log('utils', ` Result: ${JSON.stringify(result)}`);
     log('utils', `  - startIndex: ${result.startIndex}`);
     log('utils', `  - endIndex: ${result.endIndex}`);
     log('utils', `  - offsetY: ${result.offsetY}`);
@@ -307,14 +307,14 @@ export const TestHarness: React.FC = () => {
     for (let i = 0; i < 1000000; i++) sum += i;
     
     const duration = endMeasure();
-    log('utils', `✓ Render time: ${duration.toFixed(2)}ms`);
+    log('utils', ` Render time: ${duration.toFixed(2)}ms`);
   };
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>🧪 Evidify v4.2.1-beta Test Harness</h1>
+        <h1 style={styles.title}> Evidify v4.2.1-beta Test Harness</h1>
         <p style={styles.subtitle}>
           Test all new features before beta release
         </p>
@@ -325,7 +325,7 @@ export const TestHarness: React.FC = () => {
         {/* Policy Settings */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>
-            🎛️ Policy Configuration
+             Policy Configuration
             <span style={{ ...styles.badge, ...styles.badgeInfo }}>Sprint 2</span>
           </h3>
           <button style={styles.button} onClick={() => setShowPolicy(true)}>
@@ -343,7 +343,7 @@ export const TestHarness: React.FC = () => {
         {/* Beta Onboarding */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>
-            🎓 Beta Onboarding
+             Beta Onboarding
             <span style={{ ...styles.badge, ...styles.badgeInfo }}>Sprint 4</span>
           </h3>
           <button style={styles.button} onClick={() => setShowOnboarding(true)}>
@@ -354,7 +354,7 @@ export const TestHarness: React.FC = () => {
             onClick={() => {
               localStorage.removeItem('evidify_onboarding_complete');
               localStorage.removeItem('evidify_beta_profile');
-              log('onboard', '✓ Onboarding state reset');
+              log('onboard', ' Onboarding state reset');
             }}
           >
             Reset Onboarding
@@ -365,7 +365,7 @@ export const TestHarness: React.FC = () => {
         {/* Backend Performance */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>
-            ⚡ Backend Performance
+             Backend Performance
             <span style={{ ...styles.badge, ...styles.badgeInfo }}>Sprint 4</span>
           </h3>
           <button style={styles.button} onClick={testPerformanceStats}>
@@ -383,7 +383,7 @@ export const TestHarness: React.FC = () => {
         {/* Frontend Utils */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>
-            🔧 Frontend Utilities
+             Frontend Utilities
             <span style={{ ...styles.badge, ...styles.badgeInfo }}>Sprint 4</span>
           </h3>
           <button style={styles.button} onClick={testFrontendCache}>
@@ -408,7 +408,7 @@ export const TestHarness: React.FC = () => {
       {/* MDM Info */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>
-          📦 MDM Packages
+           MDM Packages
           <span style={{ ...styles.badge, ...styles.badgeInfo }}>Sprint 3</span>
         </h3>
         <p style={{ color: '#718096', fontSize: '14px', marginBottom: '12px' }}>
@@ -448,7 +448,7 @@ Documentation:
         <BetaOnboarding
           onComplete={() => {
             setShowOnboarding(false);
-            log('onboard', '✓ Onboarding completed!');
+            log('onboard', ' Onboarding completed!');
           }}
           onSkip={() => {
             setShowOnboarding(false);

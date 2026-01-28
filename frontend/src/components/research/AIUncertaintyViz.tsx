@@ -220,11 +220,11 @@ export const AIFindingWithUncertainty: React.FC<AIFindingWithUncertaintyProps> =
         marginBottom: '16px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '24px' }}>🤖</span>
+          <span style={{ fontSize: '24px' }}></span>
           <div>
             <div style={{ fontWeight: 600, fontSize: '18px' }}>AI Suggestion</div>
             <div style={{ color: '#64748b', fontSize: '13px' }}>
-              {isUncertain ? '⚠️ Moderate uncertainty' : 'High confidence detection'}
+              {isUncertain ? ' Moderate uncertainty' : 'High confidence detection'}
             </div>
           </div>
         </div>
@@ -266,7 +266,7 @@ export const AIFindingWithUncertainty: React.FC<AIFindingWithUncertaintyProps> =
           marginBottom: '16px',
         }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', marginBottom: '8px' }}>
-            ⚠️ Uncertainty Factors
+             Uncertainty Factors
           </div>
           <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#78350f' }}>
             {uncertaintyFactors.map((factor, i) => (

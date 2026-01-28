@@ -50,11 +50,11 @@ interface CollateralReliabilityScoringProps {
 // ============================================================================
 
 const RELATIONSHIP_CATEGORIES = {
-  family: { label: 'Family Member', icon: '👨‍👩‍👧', biasRisk: 'high' },
-  professional: { label: 'Professional', icon: '👔', biasRisk: 'low' },
-  friend: { label: 'Friend/Acquaintance', icon: '🤝', biasRisk: 'moderate' },
-  legal: { label: 'Legal Party', icon: '⚖️', biasRisk: 'high' },
-  other: { label: 'Other', icon: '👤', biasRisk: 'unknown' },
+  family: { label: 'Family Member', icon: '', biasRisk: 'high' },
+  professional: { label: 'Professional', icon: '', biasRisk: 'low' },
+  friend: { label: 'Friend/Acquaintance', icon: '', biasRisk: 'moderate' },
+  legal: { label: 'Legal Party', icon: '', biasRisk: 'high' },
+  other: { label: 'Other', icon: '', biasRisk: 'unknown' },
 };
 
 // ============================================================================
@@ -118,7 +118,7 @@ export function CollateralReliabilityScoring({
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              👥 Collateral Reliability Scoring
+               Collateral Reliability Scoring
             </h2>
             <p className="text-sm text-slate-500">
               Transparent assessment of collateral source reliability
@@ -150,7 +150,7 @@ export function CollateralReliabilityScoring({
           </span>
           {stats.highBiasSources > 0 && (
             <span className="px-2 py-1 bg-amber-200 text-amber-800 rounded">
-              ⚠️ {stats.highBiasSources} high-bias source(s)
+               {stats.highBiasSources} high-bias source(s)
             </span>
           )}
         </div>
@@ -164,7 +164,7 @@ export function CollateralReliabilityScoring({
             viewMode === 'cards' ? 'bg-indigo-600 text-white' : 'bg-white border'
           }`}
         >
-          📋 Cards
+           Cards
         </button>
         <button
           onClick={() => setViewMode('matrix')}
@@ -172,7 +172,7 @@ export function CollateralReliabilityScoring({
             viewMode === 'matrix' ? 'bg-indigo-600 text-white' : 'bg-white border'
           }`}
         >
-          📊 Matrix
+           Matrix
         </button>
       </div>
       
@@ -215,7 +215,7 @@ export function CollateralReliabilityScoring({
                             <span className="font-medium text-slate-800">{source.name}</span>
                             {source.biasStrength === 'strong' && (
                               <span className="text-xs px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded">
-                                ⚠️ High Bias Risk
+                                 High Bias Risk
                               </span>
                             )}
                           </div>
@@ -244,10 +244,10 @@ export function CollateralReliabilityScoring({
                     {/* Quick Stats */}
                     <div className="mt-3 flex gap-4 text-xs">
                       <span className="text-green-600">
-                        ✓ {source.statementsCorroborated} corroborated
+                         {source.statementsCorroborated} corroborated
                       </span>
                       <span className="text-red-600">
-                        ✗ {source.statementsContradicted} contradicted
+                         {source.statementsContradicted} contradicted
                       </span>
                       <span className="text-slate-500">
                         ? {source.statementsUncorroborated} uncorroborated
@@ -444,7 +444,7 @@ export function CollateralReliabilityScoring({
       {/* Footer */}
       <div className="p-3 border-t bg-indigo-50">
         <p className="text-xs text-indigo-700">
-          💡 High-bias sources may still provide valuable information when corroborated by other sources. 
+           High-bias sources may still provide valuable information when corroborated by other sources. 
           Document bias factors to anticipate cross-examination.
         </p>
       </div>

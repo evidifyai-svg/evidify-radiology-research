@@ -700,7 +700,7 @@ export const ImpressionLedgerDisplay: React.FC = () => {
       {validationResult && (
         <div className={`p-3 rounded ${validationResult.valid ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
           <div className={`font-medium ${validationResult.valid ? 'text-green-400' : 'text-red-400'}`}>
-            {validationResult.valid ? '✓ Chain Valid' : '✗ Chain Invalid'}
+            {validationResult.valid ? ' Chain Valid' : ' Chain Invalid'}
           </div>
           {validationResult.errors.length > 0 && (
             <ul className="text-sm text-red-300 mt-2">

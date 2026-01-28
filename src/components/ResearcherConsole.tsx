@@ -172,7 +172,7 @@ const ResearcherConsole: React.FC<ResearcherConsoleProps> = ({ conditions, onCha
         borderBottom: '1px solid #4a5568',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }}>🔬</span>
+          <span style={{ fontSize: '16px' }}></span>
           <span style={{ fontWeight: 'bold' }}>Researcher Console</span>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
@@ -198,7 +198,7 @@ const ResearcherConsole: React.FC<ResearcherConsoleProps> = ({ conditions, onCha
               padding: '4px',
             }}
           >
-            ✕
+            
           </button>
         </div>
       </div>

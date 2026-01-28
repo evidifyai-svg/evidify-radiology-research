@@ -126,7 +126,7 @@ export function ResponseStyleDashboard({
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              📊 Response Style Dashboard
+               Response Style Dashboard
             </h2>
             <p className="text-sm text-slate-500">
               Validity, credibility, and bias documentation
@@ -164,10 +164,10 @@ export function ResponseStyleDashboard({
       <div className="border-b bg-slate-50">
         <div className="flex">
           {[
-            { id: 'validity', label: '📋 Validity Indices' },
-            { id: 'concordance', label: '🔗 Concordance' },
-            { id: 'incentives', label: '⚖️ Incentives' },
-            { id: 'summary', label: '📝 Summary' },
+            { id: 'validity', label: ' Validity Indices' },
+            { id: 'concordance', label: ' Concordance' },
+            { id: 'incentives', label: ' Incentives' },
+            { id: 'summary', label: ' Summary' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -554,7 +554,7 @@ export function ResponseStyleDashboard({
       {/* Footer Warning */}
       <div className="p-3 border-t bg-amber-50">
         <p className="text-xs text-amber-700">
-          ⚠️ This dashboard documents response style concerns but does not diagnose malingering. 
+           This dashboard documents response style concerns but does not diagnose malingering. 
           Conclusions about symptom validity require integration of multiple data sources.
         </p>
       </div>

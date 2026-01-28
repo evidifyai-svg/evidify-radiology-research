@@ -323,11 +323,11 @@ export const MammogramViewer: React.FC<MammogramViewerProps> = ({
             onClick={() => setViewsLinked(v => !v)}
             style={{ padding: '6px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 12 }}
           >
-            {viewsLinked ? '🔗 Linked' : '⛓️ Unlinked'}
+            {viewsLinked ? ' Linked' : ' Unlinked'}
           </button>
           {showAI && aiFindings.length > 0 && (
             <span style={{ marginLeft: 8, padding: '6px 12px', backgroundColor: '#7c3aed', borderRadius: 4, color: 'white', fontSize: 12, fontWeight: 500 }}>
-              🤖 AI Active
+               AI Active
             </span>
           )}
         </div>
@@ -356,7 +356,7 @@ export const MammogramViewer: React.FC<MammogramViewerProps> = ({
         color: '#9ca3af',
       }}>
         <span><strong>Controls:</strong> Scroll = zoom • Left-drag = pan • Right-drag = window/level</span>
-        <span style={{ color: '#f59e0b' }}>⚠️ Research simulation • Not for clinical use</span>
+        <span style={{ color: '#f59e0b' }}> Research simulation • Not for clinical use</span>
       </div>
     </div>
   );

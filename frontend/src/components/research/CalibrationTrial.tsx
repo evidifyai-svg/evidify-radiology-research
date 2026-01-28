@@ -98,7 +98,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
         borderRadius: '8px',
         border: '1px solid #fcd34d',
       }}>
-        <span style={{ fontSize: '24px' }}>📚</span>
+        <span style={{ fontSize: '24px' }}></span>
         <div>
           <div style={{ fontWeight: 600, color: '#92400e' }}>Calibration Case</div>
           <div style={{ fontSize: '13px', color: '#a16207' }}>
@@ -137,7 +137,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
               marginBottom: '16px',
               border: '1px solid #c4b5fd',
             }}>
-              <span style={{ marginRight: '8px' }}>🤖</span>
+              <span style={{ marginRight: '8px' }}></span>
               <strong>AI Suggestion:</strong> BI-RADS {case_.aiSuggestion.birads} 
               ({case_.aiSuggestion.confidence}% confidence)
             </div>
@@ -205,7 +205,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
       {phase === 'FEEDBACK' && (
         <div>
           <h3 style={{ marginTop: 0 }}>
-            {isCorrect ? '✅ Correct!' : isClose ? '⚠️ Close' : '❌ Incorrect'}
+            {isCorrect ? ' Correct!' : isClose ? ' Close' : ' Incorrect'}
           </h3>
 
           {/* Result comparison */}
@@ -249,7 +249,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
               <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>AI Suggested</div>
               <div style={{ fontSize: '28px', fontWeight: 'bold' }}>BI-RADS {case_.aiSuggestion.birads}</div>
               <div style={{ fontSize: '12px', color: case_.aiSuggestion.wasCorrect ? '#22c55e' : '#ef4444' }}>
-                {case_.aiSuggestion.wasCorrect ? '✓ Correct' : '✗ Incorrect'}
+                {case_.aiSuggestion.wasCorrect ? ' Correct' : ' Incorrect'}
               </div>
             </div>
           </div>
@@ -262,7 +262,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
             marginBottom: '16px',
             border: '1px solid #86efac',
           }}>
-            <div style={{ fontWeight: 600, marginBottom: '8px' }}>📋 Case Explanation</div>
+            <div style={{ fontWeight: 600, marginBottom: '8px' }}> Case Explanation</div>
             <p style={{ margin: 0, color: '#166534' }}>{case_.groundTruth.description}</p>
           </div>
 
@@ -274,7 +274,7 @@ export const CalibrationTrial: React.FC<CalibrationTrialProps> = ({
             marginBottom: '24px',
             border: '1px solid #93c5fd',
           }}>
-            <div style={{ fontWeight: 600, marginBottom: '8px' }}>💡 Teaching Points</div>
+            <div style={{ fontWeight: 600, marginBottom: '8px' }}> Teaching Points</div>
             <ul style={{ margin: 0, paddingLeft: '20px', color: '#1e40af' }}>
               {case_.groundTruth.teachingPoints.map((point, i) => (
                 <li key={i} style={{ marginBottom: '4px' }}>{point}</li>

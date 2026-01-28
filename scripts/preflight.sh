@@ -73,4 +73,11 @@ if [ ! -f "scripts/no-forensic-imports.sh" ]; then
 fi
 bash scripts/no-forensic-imports.sh
 
+# Guardrail: ensure clinician-facing UI contains no emoji glyphs
+if [ ! -f "scripts/no-emoji-runtime.sh" ]; then
+    echo "✗ scripts/no-emoji-runtime.sh missing"
+    exit 1
+fi
+bash scripts/no-emoji-runtime.sh
+
 echo "✓ Preflight passed"

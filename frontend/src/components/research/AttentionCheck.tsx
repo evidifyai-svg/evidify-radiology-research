@@ -162,7 +162,7 @@ export const AttentionCheckTrial: React.FC<AttentionCheckTrialProps> = ({
               gap: '12px',
               marginBottom: '12px',
             }}>
-              <span style={{ fontSize: '24px' }}>📋</span>
+              <span style={{ fontSize: '24px' }}></span>
               <div style={{ fontWeight: 600, color: '#92400e', fontSize: '18px' }}>
                 Attention Check
               </div>
@@ -209,7 +209,7 @@ export const AttentionCheckTrial: React.FC<AttentionCheckTrialProps> = ({
               fontSize: '14px',
               color: '#991b1b',
             }}>
-              ⚠️ This is a quality check case. Please review carefully.
+               This is a quality check case. Please review carefully.
             </div>
           )}
 
@@ -316,7 +316,7 @@ export const AttentionCheckSummary: React.FC<AttentionCheckManagerProps> = ({
           fontSize: '13px',
           fontWeight: 'bold',
         }}>
-          {studyValid ? '✓ VALID' : '✗ INVALID'}
+          {studyValid ? ' VALID' : ' INVALID'}
         </div>
       </div>
 
@@ -348,7 +348,7 @@ export const AttentionCheckSummary: React.FC<AttentionCheckManagerProps> = ({
           fontSize: '13px',
           color: '#991b1b',
         }}>
-          ⚠️ Data quality concern: {failed} attention check(s) failed. 
+           Data quality concern: {failed} attention check(s) failed. 
           Threshold is {config.failureThreshold}. Consider excluding from analysis.
         </div>
       )}
@@ -374,7 +374,7 @@ export const AttentionCheckSummary: React.FC<AttentionCheckManagerProps> = ({
           >
             <span>{r.caseId}</span>
             <span style={{ color: r.passed ? '#16a34a' : '#ef4444' }}>
-              {r.passed ? '✓ Pass' : '✗ Fail'}
+              {r.passed ? ' Pass' : ' Fail'}
             </span>
           </div>
         ))}

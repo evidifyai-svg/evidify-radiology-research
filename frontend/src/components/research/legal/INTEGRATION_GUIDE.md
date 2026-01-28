@@ -301,7 +301,7 @@ const RubberStampPanel: React.FC<{ ledger: ImpressionLedgerExport }> = ({ ledger
         <ul className="mt-2 text-sm">
           {flaggedIndicators.map(ind => (
             <li key={ind.indicator}>
-              ⚠️ {ind.indicator}: {ind.value}
+               {ind.indicator}: {ind.value}
             </li>
           ))}
         </ul>

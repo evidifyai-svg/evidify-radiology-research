@@ -302,7 +302,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
       {/* Header */}
       <div className="bg-orange-500/10 px-4 py-3 border-b border-orange-500/30">
         <div className="flex items-center gap-2">
-          <span className="text-orange-400 text-lg">⚠️</span>
+          <span className="text-orange-400 text-lg"></span>
           <h3 className="font-semibold text-white">Deviation Documentation Required</h3>
         </div>
         <p className="text-sm text-slate-300 mt-1">
@@ -316,7 +316,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
           <div>
             <div className="text-sm text-slate-400">AI Finding</div>
             <div className="text-white">
-              Score: {aiFinding.score} • {aiFinding.flagged ? '🚨 Flagged as Suspicious' : 'Not flagged'}
+              Score: {aiFinding.score} • {aiFinding.flagged ? ' Flagged as Suspicious' : 'Not flagged'}
             </div>
             {aiFinding.region && (
               <div className="text-sm text-slate-400 mt-1">
@@ -345,10 +345,10 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
                 : 'text-slate-400 hover:bg-slate-800'
             }`}
           >
-            {step === 1 && (step1Valid ? '✓ ' : '')}
-            {step === 2 && (step2Valid ? '✓ ' : '')}
+            {step === 1 && (step1Valid ? ' ' : '')}
+            {step === 2 && (step2Valid ? ' ' : '')}
             {step === 3 && ''}
-            {step === 4 && (step4Valid ? '✓ ' : '')}
+            {step === 4 && (step4Valid ? ' ' : '')}
             {step === 1 && 'Acknowledge'}
             {step === 2 && 'Rationale'}
             {step === 3 && 'Evidence'}
@@ -382,7 +382,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
                 </div>
                 {acknowledgedTimestamp && (
                   <div className="text-xs text-green-400 mt-1">
-                    ✓ Acknowledged at {new Date(acknowledgedTimestamp).toLocaleTimeString()}
+                     Acknowledged at {new Date(acknowledgedTimestamp).toLocaleTimeString()}
                   </div>
                 )}
               </div>
@@ -405,7 +405,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
                   </div>
                   {regionReviewedTimestamp && (
                     <div className="text-xs text-green-400 mt-1">
-                      ✓ Reviewed at {new Date(regionReviewedTimestamp).toLocaleTimeString()}
+                       Reviewed at {new Date(regionReviewedTimestamp).toLocaleTimeString()}
                     </div>
                   )}
                 </div>
@@ -635,7 +635,7 @@ export const DeviationSummary: React.FC<DeviationSummaryProps> = ({ documentatio
   return (
     <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-orange-400">⚠️</span>
+        <span className="text-orange-400"></span>
         <span className="font-medium text-white">Deviation Documented</span>
         <span className="text-xs text-slate-400 ml-auto">
           {new Date(documentation.completedAt).toLocaleTimeString()}
@@ -664,8 +664,8 @@ export const DeviationSummary: React.FC<DeviationSummaryProps> = ({ documentatio
       </div>
 
       <div className="mt-3 pt-3 border-t border-orange-500/20 flex items-center gap-4 text-xs text-slate-400">
-        <span>✓ AI finding acknowledged</span>
-        {documentation.regionReviewed && <span>✓ Region reviewed</span>}
+        <span> AI finding acknowledged</span>
+        {documentation.regionReviewed && <span> Region reviewed</span>}
         <span>Completed in {Math.round(documentation.timeToCompleteMs / 1000)}s</span>
       </div>
     </div>

@@ -229,7 +229,7 @@ export function TestimonyMode({
       <div className="bg-black/50 border-b border-slate-700 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            ⚖️ Testimony Mode
+             Testimony Mode
           </h1>
           <span className="px-2 py-1 bg-green-600/20 text-green-400 rounded text-sm">
             ACTIVE
@@ -246,7 +246,7 @@ export function TestimonyMode({
             onClick={onClose}
             className="text-slate-400 hover:text-white"
           >
-            ✕ Exit (Esc)
+             Exit (Esc)
           </button>
         </div>
       </div>
@@ -304,7 +304,7 @@ export function TestimonyMode({
                     className="p-4 bg-amber-900/30 border border-amber-700/50 rounded-lg cursor-pointer hover:bg-amber-900/50"
                     onClick={() => setSelectedResult({ type: 'limitation', quote: limitation, relevance: 100 })}
                   >
-                    <div className="text-amber-400 text-sm font-medium mb-1">⚠️ Limitation #{i + 1}</div>
+                    <div className="text-amber-400 text-sm font-medium mb-1"> Limitation #{i + 1}</div>
                     <p className="text-white">{limitation}</p>
                   </div>
                 ))}
@@ -324,7 +324,7 @@ export function TestimonyMode({
                     onClick={() => setSelectedResult({ type: 'opinion', claim: opinion, relevance: 100 })}
                   >
                     <div className="text-orange-400 text-sm font-medium mb-1">
-                      🎯 {opinion.claim_type.replace('_', ' ').toUpperCase()}
+                       {opinion.claim_type.replace('_', ' ').toUpperCase()}
                     </div>
                     <p className="text-white">{getClaimText(opinion)}</p>
                     <div className="text-slate-400 text-sm mt-2">
@@ -365,11 +365,11 @@ export function TestimonyMode({
                         result.type === 'opinion' ? 'text-orange-400' :
                         'text-slate-400'
                       }`}>
-                        {result.type === 'evidence' ? '📄 EVIDENCE' :
-                         result.type === 'quote' ? '💬 QUOTE' :
-                         result.type === 'limitation' ? '⚠️ LIMITATION' :
-                         result.type === 'opinion' ? '🎯 OPINION' :
-                         '📋 CLAIM'}
+                        {result.type === 'evidence' ? ' EVIDENCE' :
+                         result.type === 'quote' ? ' QUOTE' :
+                         result.type === 'limitation' ? ' LIMITATION' :
+                         result.type === 'opinion' ? ' OPINION' :
+                         ' CLAIM'}
                       </div>
                       
                       {result.type === 'evidence' && result.evidence && (
@@ -415,7 +415,7 @@ export function TestimonyMode({
                 onClick={() => setSelectedResult(null)}
                 className="text-slate-400 hover:text-white"
               >
-                ✕
+                
               </button>
             </div>
             
@@ -520,7 +520,7 @@ export function TestimonyMode({
                 </div>
                 <div className="p-3 bg-amber-900/30 rounded">
                   <p className="text-amber-300 text-sm">
-                    ⚠️ This limitation was disclosed in your report. 
+                     This limitation was disclosed in your report. 
                     Reference it if asked about the scope or certainty of your conclusions.
                   </p>
                 </div>

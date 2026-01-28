@@ -66,14 +66,14 @@ const WL_PRESETS: { name: string; window: number; level: number }[] = [
 ];
 
 const TOOLS: { id: ToolType; label: string; icon: string; shortcut: string }[] = [
-  { id: 'pan', label: 'Pan', icon: '✋', shortcut: 'P' },
-  { id: 'zoom', label: 'Zoom', icon: '🔍', shortcut: 'Z' },
-  { id: 'wl', label: 'W/L', icon: '☀️', shortcut: 'W' },
-  { id: 'length', label: 'Length', icon: '📏', shortcut: 'L' },
-  { id: 'angle', label: 'Angle', icon: '📐', shortcut: 'G' },
+  { id: 'pan', label: 'Pan', icon: '', shortcut: 'P' },
+  { id: 'zoom', label: 'Zoom', icon: '', shortcut: 'Z' },
+  { id: 'wl', label: 'W/L', icon: '', shortcut: 'W' },
+  { id: 'length', label: 'Length', icon: '', shortcut: 'L' },
+  { id: 'angle', label: 'Angle', icon: '', shortcut: 'G' },
   { id: 'area', label: 'Area', icon: '⬡', shortcut: 'A' },
-  { id: 'roi', label: 'ROI', icon: '⭕', shortcut: 'O' },
-  { id: 'annotate', label: 'Note', icon: '📝', shortcut: 'N' },
+  { id: 'roi', label: 'ROI', icon: 'ROI', shortcut: 'O' },
+  { id: 'annotate', label: 'Note', icon: '', shortcut: 'N' },
 ];
 
 // =============================================================================
@@ -353,7 +353,7 @@ export const MammogramViewerPACS: React.FC<ViewerProps> = ({
                 fontSize: '11px',
               }}
             >
-              🗑️
+              
             </button>
           )}
         </div>
@@ -435,7 +435,7 @@ export const MammogramViewerPACS: React.FC<ViewerProps> = ({
               background: 'linear-gradient(45deg, #1a1a2e 0%, #2d2d4a 100%)',
             }}>
               <div style={{ textAlign: 'center', color: '#475569' }}>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>🩻</div>
+                <div style={{ fontSize: '48px', marginBottom: '8px' }}></div>
                 <div style={{ fontSize: '12px' }}>{leftLabel}</div>
                 <div style={{ fontSize: '10px', opacity: 0.6 }}>Demo Image</div>
               </div>
@@ -531,7 +531,7 @@ export const MammogramViewerPACS: React.FC<ViewerProps> = ({
               background: 'linear-gradient(45deg, #1a1a2e 0%, #2d2d4a 100%)',
             }}>
               <div style={{ textAlign: 'center', color: '#475569' }}>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>🩻</div>
+                <div style={{ fontSize: '48px', marginBottom: '8px' }}></div>
                 <div style={{ fontSize: '12px' }}>{rightLabel}</div>
                 <div style={{ fontSize: '10px', opacity: 0.6 }}>Demo Image</div>
               </div>

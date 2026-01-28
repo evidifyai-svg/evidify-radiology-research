@@ -117,16 +117,16 @@ interface ApiResult<T> {
 // ============================================================================
 
 const ANNOTATION_TYPES = [
-  { id: 'key_fact', label: 'Key Fact', icon: '📌', color: 'bg-blue-100 border-blue-500' },
-  { id: 'test_result', label: 'Test Result', icon: '📊', color: 'bg-purple-100 border-purple-500' },
-  { id: 'collateral_statement', label: 'Collateral Statement', icon: '💬', color: 'bg-green-100 border-green-500' },
-  { id: 'self_report', label: 'Self Report', icon: '🗣️', color: 'bg-teal-100 border-teal-500' },
-  { id: 'timeline_event', label: 'Timeline Event', icon: '📅', color: 'bg-orange-100 border-orange-500' },
-  { id: 'contradiction', label: 'Contradiction', icon: '⚠️', color: 'bg-red-100 border-red-500' },
-  { id: 'limitation', label: 'Limitation', icon: '⚡', color: 'bg-yellow-100 border-yellow-500' },
-  { id: 'methodology_concern', label: 'Methodology Concern', icon: '🔬', color: 'bg-amber-100 border-amber-500' },
-  { id: 'hearsay_flag', label: 'Hearsay', icon: '👂', color: 'bg-rose-100 border-rose-500' },
-  { id: 'highlight', label: 'Highlight', icon: '✨', color: 'bg-gray-100 border-gray-500' },
+  { id: 'key_fact', label: 'Key Fact', icon: '', color: 'bg-blue-100 border-blue-500' },
+  { id: 'test_result', label: 'Test Result', icon: '', color: 'bg-purple-100 border-purple-500' },
+  { id: 'collateral_statement', label: 'Collateral Statement', icon: '', color: 'bg-green-100 border-green-500' },
+  { id: 'self_report', label: 'Self Report', icon: '', color: 'bg-teal-100 border-teal-500' },
+  { id: 'timeline_event', label: 'Timeline Event', icon: '', color: 'bg-orange-100 border-orange-500' },
+  { id: 'contradiction', label: 'Contradiction', icon: '', color: 'bg-red-100 border-red-500' },
+  { id: 'limitation', label: 'Limitation', icon: '', color: 'bg-yellow-100 border-yellow-500' },
+  { id: 'methodology_concern', label: 'Methodology Concern', icon: '', color: 'bg-amber-100 border-amber-500' },
+  { id: 'hearsay_flag', label: 'Hearsay', icon: '', color: 'bg-rose-100 border-rose-500' },
+  { id: 'highlight', label: 'Highlight', icon: '', color: 'bg-gray-100 border-gray-500' },
 ];
 
 const CLAIM_TYPES = [
@@ -506,7 +506,7 @@ export function EvidenceViewer({ evidence, pdfData, reportId, sections, onClose,
       // For now, add a simple indicator
       const indicator = document.createElement('div');
       indicator.className = 'absolute right-0 top-0 bg-purple-600 text-white text-xs px-1 rounded-bl';
-      indicator.textContent = annType?.icon || '📝';
+      indicator.textContent = annType?.icon || '';
       indicator.style.fontSize = '10px';
       textLayerRef.current!.appendChild(indicator);
     });
@@ -659,7 +659,7 @@ try {
         onClaimCreated?.(result.data.claim_id);
 
         // Show success
- alert(`✓ Claim created!\n\nCitation: ${result.data.citation_anchor.citation_string}\nHash: ${result.data.citation_anchor.excerpt_hash}`);
+ alert(` Claim created!\n\nCitation: ${result.data.citation_anchor.citation_string}\nHash: ${result.data.citation_anchor.excerpt_hash}`);
       } else {
         setError(result.error?.message || 'Failed to promote to claim');
       }
@@ -834,14 +834,14 @@ try {
                 <div className="flex gap-4 mt-2 text-sm text-slate-500">
                   <span className="px-2 py-0.5 bg-slate-100 rounded">{formatEvidenceType(evidence.evidence_type)}</span>
                   <span>Status: {getReviewStatus(evidence.review_status)}</span>
-                  {evidence.relied_upon && <span className="text-purple-600">✓ Relied Upon</span>}
+                  {evidence.relied_upon && <span className="text-purple-600"> Relied Upon</span>}
                 </div>
               </div>
               
               {/* Text Content Area */}
               <div className="prose prose-slate max-w-none">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                  <p className="text-green-800 text-sm font-medium mb-2">✓ Ready for Annotation</p>
+                  <p className="text-green-800 text-sm font-medium mb-2"> Ready for Annotation</p>
                   <p className="text-green-700 text-sm">
                     <strong>Select any text below</strong> to create an annotation, then promote it to a claim with automatic citation.
                   </p>
@@ -930,7 +930,7 @@ try {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span>{annType?.icon || '📝'}</span>
+                        <span>{annType?.icon || ''}</span>
                         <span className="text-xs font-medium text-slate-600">
                           {annType?.label || ann.annotation_type}
                         </span>
@@ -949,7 +949,7 @@ try {
 
                       {ann.linked_claim_id ? (
                         <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
-                          ✓ Claim linked
+                           Claim linked
                         </span>
                       ) : (
                         <button
@@ -1003,7 +1003,7 @@ try {
 
             {!reportId ? (
               <div className="text-center py-6">
-                <p className="text-amber-600 mb-2">⚠️ No active report</p>
+                <p className="text-amber-600 mb-2"> No active report</p>
                 <p className="text-sm text-slate-500">
                   Create a report from the Draft tab first, then come back to promote this annotation.
                 </p>
@@ -1092,7 +1092,7 @@ try {
         <div className="fixed bottom-4 right-4 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg">
           <div className="flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-4 text-red-500">✕</button>
+            <button onClick={() => setError(null)} className="ml-4 text-red-500"></button>
           </div>
         </div>
       )}

@@ -77,37 +77,37 @@ const EXHIBIT_TYPES: Record<ExhibitType, {
 }> = {
   chronology: {
     label: 'Chronology Exhibit',
-    icon: '📅',
+    icon: '',
     description: 'Timeline of events with source citations',
     columns: ['Date', 'Event', 'Sources', 'Corroboration Status'],
   },
   claim_evidence: {
     label: 'Claim-to-Evidence Table',
-    icon: '📎',
+    icon: '',
     description: 'Every factual claim mapped to supporting evidence',
     columns: ['Claim', 'Type', 'Evidence Source', 'Page/Quote'],
   },
   contradictions: {
     label: 'Contradictions Table',
-    icon: '⚡',
+    icon: '',
     description: 'All identified contradictions with resolutions',
     columns: ['Claim A', 'Claim B', 'Type', 'Status', 'Resolution'],
   },
   opinion_basis: {
     label: 'Opinion-to-Basis Table',
-    icon: '💭',
+    icon: '',
     description: 'Each opinion with its supporting foundation',
     columns: ['Opinion', 'Supporting Claims', 'Evidence Chain', 'Confidence'],
   },
   limitations_impact: {
     label: 'Limitations Impact Table',
-    icon: '⚠️',
+    icon: '',
     description: 'Disclosed limitations and their impact on opinions',
     columns: ['Limitation', 'Affected Opinions', 'Mitigation', 'Residual Risk'],
   },
   source_summary: {
     label: 'Source Summary',
-    icon: '📚',
+    icon: '',
     description: 'All evidence sources with key information',
     columns: ['Source', 'Type', 'Date', 'Key Facts Cited', 'Relied Upon'],
   },
@@ -223,7 +223,7 @@ export function ExhibitBuilder({
       {/* Header */}
       <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-white">
         <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-          📊 Exhibit Builder
+           Exhibit Builder
         </h2>
         <p className="text-sm text-slate-500">
           Auto-generate court-ready exhibits and tables
@@ -327,7 +327,7 @@ export function ExhibitBuilder({
             disabled={exhibitData.length === 0}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-slate-300"
           >
-            📥 Export {exhibitInfo.label}
+             Export {exhibitInfo.label}
           </button>
         </div>
       </div>
@@ -370,7 +370,7 @@ export function QuickExhibitCards({
         className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-left hover:bg-blue-100"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span>📎</span>
+          <span></span>
           <span className="font-medium text-blue-700">Claim-Evidence Table</span>
         </div>
         <p className="text-xs text-blue-600">
@@ -383,7 +383,7 @@ export function QuickExhibitCards({
         className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-left hover:bg-purple-100"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span>💭</span>
+          <span></span>
           <span className="font-medium text-purple-700">Opinion-Basis Table</span>
         </div>
         <p className="text-xs text-purple-600">
@@ -396,7 +396,7 @@ export function QuickExhibitCards({
         className="p-3 bg-red-50 border border-red-200 rounded-lg text-left hover:bg-red-100"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span>⚡</span>
+          <span></span>
           <span className="font-medium text-red-700">Contradictions Table</span>
         </div>
         <p className="text-xs text-red-600">
@@ -409,7 +409,7 @@ export function QuickExhibitCards({
         className="p-3 bg-green-50 border border-green-200 rounded-lg text-left hover:bg-green-100"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span>📚</span>
+          <span></span>
           <span className="font-medium text-green-700">Source Summary</span>
         </div>
         <p className="text-xs text-green-600">

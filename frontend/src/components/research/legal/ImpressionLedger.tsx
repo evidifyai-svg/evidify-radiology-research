@@ -565,11 +565,11 @@ export const LedgerTimeline: React.FC<LedgerTimelineProps> = ({
 
   const getEntryIcon = (type: LedgerEntryType) => {
     switch (type) {
-      case 'HUMAN_FIRST_IMPRESSION': return '👤';
-      case 'AI_OUTPUT_EXPOSURE': return '🤖';
-      case 'AI_FINDING_ACKNOWLEDGED': return '👁️';
-      case 'RECONCILIATION': return '⚖️';
-      default: return '📝';
+      case 'HUMAN_FIRST_IMPRESSION': return '';
+      case 'AI_OUTPUT_EXPOSURE': return '';
+      case 'AI_FINDING_ACKNOWLEDGED': return '';
+      case 'RECONCILIATION': return '';
+      default: return '';
     }
   };
 
@@ -592,7 +592,7 @@ export const LedgerTimeline: React.FC<LedgerTimelineProps> = ({
             ? 'bg-green-500/20 text-green-400' 
             : 'bg-red-500/20 text-red-400'
         }`}>
-          {ledger.integrity.valid ? '✓ Chain Verified' : '✗ Integrity Issue'}
+          {ledger.integrity.valid ? ' Chain Verified' : ' Integrity Issue'}
         </div>
       </div>
 
@@ -630,7 +630,7 @@ export const LedgerTimeline: React.FC<LedgerTimelineProps> = ({
                 <div className="text-sm text-slate-300 space-y-1">
                   {entry.aiFindings?.map(f => (
                     <div key={f.id}>
-                      Score: {f.score} • {f.flagged ? '🚨 Flagged' : '✓ Not flagged'}
+                      Score: {f.score} • {f.flagged ? ' Flagged' : ' Not flagged'}
                     </div>
                   ))}
                   {entry.disclosure?.shown && (
@@ -646,7 +646,7 @@ export const LedgerTimeline: React.FC<LedgerTimelineProps> = ({
 
               {entry.entryType === 'AI_FINDING_ACKNOWLEDGED' && (
                 <div className="text-sm text-green-400">
-                  ✓ Reader confirmed review of AI-flagged region
+                   Reader confirmed review of AI-flagged region
                 </div>
               )}
 
@@ -657,7 +657,7 @@ export const LedgerTimeline: React.FC<LedgerTimelineProps> = ({
                   </div>
                   {entry.deviation && (
                     <div className="text-xs text-orange-400">
-                      ⚠️ Deviation documented: {entry.deviation.reasonCodes.join(', ')}
+                       Deviation documented: {entry.deviation.reasonCodes.join(', ')}
                     </div>
                   )}
                 </div>

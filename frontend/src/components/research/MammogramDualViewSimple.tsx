@@ -493,9 +493,9 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 gap: 4,
               }}
             >
-              {tool === 'PAN' && '✋'}
-              {tool === 'MEASURE' && '📏'}
-              {tool === 'ROI' && '⬜'}
+              {tool === 'PAN' && ''}
+              {tool === 'MEASURE' && ''}
+              {tool === 'ROI' && 'ROI'}
               {tool}
             </button>
           ))}
@@ -532,7 +532,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           <div style={{ width: 1, height: 20, backgroundColor: '#4b5563', margin: '0 4px' }} />
           <button onClick={handleReset} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 11 }}>↺ Reset</button>
           <button onClick={() => setViewsLinked(v => !v)} style={{ padding: '5px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 11 }}>
-            {viewsLinked ? '🔗' : '⛓️'}
+            {viewsLinked ? '' : ''}
           </button>
         </div>
       </div>
@@ -547,7 +547,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           borderBottom: '1px solid #4338ca',
           gap: '12px',
         }}>
-          <span style={{ color: '#a5b4fc', fontSize: 10, fontWeight: 600 }}>🤖 AI OVERLAYS:</span>
+          <span style={{ color: '#a5b4fc', fontSize: 10, fontWeight: 600 }}> AI OVERLAYS:</span>
           {(['box', 'contour', 'heatmap'] as (keyof OverlayState)[]).map(overlay => (
             <button
               key={overlay}
@@ -564,9 +564,9 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 textTransform: 'capitalize',
               }}
             >
-              {overlay === 'box' && '⬜'}
+              {overlay === 'box' && 'Box'}
               {overlay === 'contour' && '◯'}
-              {overlay === 'heatmap' && '🔥'}
+              {overlay === 'heatmap' && ''}
               {' '}{overlay}
             </button>
           ))}
@@ -599,14 +599,14 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           <span><strong>Pan:</strong> Left-drag</span>
           <span><strong>W/L:</strong> Right-drag</span>
           <span><strong>Zoom:</strong> Scroll</span>
-          {activeTool === 'MEASURE' && <span style={{ color: '#fbbf24' }}><strong>📏 Measure:</strong> Click two points</span>}
-          {activeTool === 'ROI' && <span style={{ color: '#22d3ee' }}><strong>⬜ ROI:</strong> Click and drag</span>}
+          {activeTool === 'MEASURE' && <span style={{ color: '#fbbf24' }}><strong> Measure:</strong> Click two points</span>}
+          {activeTool === 'ROI' && <span style={{ color: '#22d3ee' }}><strong>ROI:</strong> Click and drag</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {measurements.length > 0 && (
-            <span style={{ color: '#fbbf24' }}>📏 {measurements.length} measurement{measurements.length > 1 ? 's' : ''}</span>
+            <span style={{ color: '#fbbf24' }}> {measurements.length} measurement{measurements.length > 1 ? 's' : ''}</span>
           )}
-          <span style={{ color: '#f59e0b' }}>⚠️ Research simulation</span>
+          <span style={{ color: '#f59e0b' }}> Research simulation</span>
         </div>
       </div>
     </div>

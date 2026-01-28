@@ -352,7 +352,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               ? 'bg-green-500/20 text-green-400' 
               : 'bg-red-500/20 text-red-400'
           }`}>
-            {packet.integrity.valid ? '✓ Chain Verified' : '✗ Integrity Issue'}
+            {packet.integrity.valid ? ' Chain Verified' : ' Integrity Issue'}
           </div>
         </div>
       </div>
@@ -453,7 +453,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               {packet.assessmentAnalysis.aiScore ?? '—'}
             </div>
             <div className="text-sm text-slate-400">
-              {packet.assessmentAnalysis.aiFlagged ? '🚨 Flagged' : '✓ Not Flagged'}
+              {packet.assessmentAnalysis.aiFlagged ? ' Flagged' : ' Not Flagged'}
             </div>
           </div>
           <div className="text-center p-4 bg-green-500/10 rounded-lg">
@@ -572,8 +572,8 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-orange-500/20 text-xs text-slate-400">
-              ✓ AI finding acknowledged at {new Date(packet.deviation.acknowledgedTimestamp).toLocaleTimeString()}
-              {packet.deviation.regionReviewed && ' • ✓ Flagged region reviewed'}
+               AI finding acknowledged at {new Date(packet.deviation.acknowledgedTimestamp).toLocaleTimeString()}
+              {packet.deviation.regionReviewed && ' •  Flagged region reviewed'}
               {' • '}Completed in {(packet.deviation.timeToCompleteMs / 1000).toFixed(1)}s
             </div>
           </div>
@@ -627,7 +627,7 @@ const SummaryItem: React.FC<{ label: string; value: boolean; required?: boolean 
     <div className={`font-semibold ${
       value ? 'text-green-400' : required ? 'text-red-400' : 'text-slate-400'
     }`}>
-      {value ? '✓ Yes' : required ? '✗ Missing' : '— No'}
+      {value ? ' Yes' : required ? ' Missing' : '— No'}
     </div>
   </div>
 );
@@ -654,7 +654,7 @@ const IntegrityCheck: React.FC<{ label: string; passed: boolean }> = ({ label, p
     passed ? 'bg-green-500/10' : 'bg-red-500/10'
   }`}>
     <div className={`text-lg ${passed ? 'text-green-400' : 'text-red-400'}`}>
-      {passed ? '✓' : '✗'}
+      {passed ? '' : ''}
     </div>
     <div className="text-xs text-slate-400">{label}</div>
   </div>

@@ -50,6 +50,40 @@ interface DemoState {
   eventCount: number;
 }
 
+interface SessionMetrics {
+  totalCases: number;
+  aiEligibleCases: number;
+  averagePreAiSeconds: number;
+  averagePostAiSeconds: number;
+  agreementRate: number;
+  overrideCount: number;
+  overridesWithRationale: number;
+  overrideReasons: Record<string, number>;
+  fastPreAiReads: number;
+  rubberStampFlag: boolean;
+}
+
+const OVERRIDE_REASON_RULES: Array<{ key: string; match: RegExp }> = [
+  { key: 'mass', match: /\bmass|spiculated|lesion\b/i },
+  { key: 'calcification', match: /\bcalcification|calcifications|microcalc\b/i },
+  { key: 'asymmetry', match: /\basymmetry|architectural distortion\b/i },
+  { key: 'density', match: /\bdensity|dense tissue|breast density\b/i },
+  { key: 'prior', match: /\bprior|comparison|previous\b/i },
+  { key: 'artifact', match: /\bartifact|motion|positioning\b/i },
+];
+
+const classifyOverrideReason = (rationale?: string | null): string => {
+  if (!rationale) return 'unspecified';
+  const normalized = rationale.trim();
+  if (!normalized) return 'unspecified';
+  for (const rule of OVERRIDE_REASON_RULES) {
+    if (rule.match.test(normalized)) {
+      return rule.key;
+    }
+  }
+  return 'other';
+};
+
 // ============================================================================
 // STUDY CONTROL SURFACE COMPONENT
 // ============================================================================
@@ -100,7 +134,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
         }}
       >
         <div style={{ color: 'white', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          🔬 STUDY CONTROL
+          STUDY CONTROL
           <span style={{ 
             backgroundColor: '#22c55e', 
             color: 'white', 
@@ -112,7 +146,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
             LIVE
           </span>
         </div>
-        <span style={{ color: 'white', fontSize: '14px' }}>{isCollapsed ? '▼' : '▲'}</span>
+        <span style={{ color: 'white', fontSize: '11px' }}>{isCollapsed ? 'Expand' : 'Collapse'}</span>
       </div>
       
       {!isCollapsed && (
@@ -135,8 +169,8 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
               fontWeight: 700,
               fontSize: '14px'
             }}>
-              {condition.condition === 'HUMAN_FIRST' ? '🧠 HUMAN_FIRST' : 
-               condition.condition === 'AI_FIRST' ? '🤖 AI_FIRST' : '⚡ CONCURRENT'}
+              {condition.condition === 'HUMAN_FIRST' ? 'HUMAN_FIRST' : 
+               condition.condition === 'AI_FIRST' ? 'AI_FIRST' : 'CONCURRENT'}
             </div>
           </div>
           
@@ -160,7 +194,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>ASSIGNMENT</div>
             <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-              {condition.assignmentMethod === 'SEEDED_RANDOM' ? '🎲 Seeded Random' : '✋ Manual Override'}
+              {condition.assignmentMethod === 'SEEDED_RANDOM' ? 'Seeded Random' : 'Manual Override'}
             </div>
           </div>
           
@@ -175,7 +209,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 return (
                   <div 
                     key={caseId}
-                    title={`${caseId}${isCalibration ? ' (Calibration)' : ''}${isCompleted ? ' ✓ Complete' : isCurrent ? ' ← Current' : ' Pending'}`}
+                    title={`${caseId}${isCalibration ? ' (Calibration)' : ''}${isCompleted ? ' Complete' : isCurrent ? ' Current' : ' Pending'}`}
                     style={{
                       padding: '4px 8px',
                       borderRadius: '4px',
@@ -191,9 +225,9 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                       gap: '4px',
                     }}
                   >
-                    {isCompleted && <span style={{ color: '#4ade80' }}>✓</span>}
-                    {isCurrent && <span style={{ color: '#fbbf24' }}>▶</span>}
-                    {isCalibration ? '📚' : ''}{caseId.length > 12 ? caseId.slice(0, 10) + '..' : caseId}
+                    {isCompleted && <span style={{ color: '#4ade80' }}>Done</span>}
+                    {isCurrent && <span style={{ color: '#fbbf24' }}>Current</span>}
+                    {isCalibration ? 'CAL ' : ''}{caseId.length > 12 ? caseId.slice(0, 10) + '..' : caseId}
                   </div>
                 );
               })}
@@ -243,7 +277,6 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 alignItems: 'center',
                 gap: '4px'
               }}>
-                <span style={{ color: '#22c55e' }}>✓</span>
                 <span>Logged to RANDOMIZATION_ASSIGNED event</span>
               </div>
             </div>
@@ -253,7 +286,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>DISCLOSURE FORMAT</div>
             <div style={{ color: '#94a3b8', fontSize: '12px' }}>
-              📊 FDR/FOR (4% / 12%)
+              FDR/FOR (4% / 12%)
             </div>
           </div>
           
@@ -303,7 +336,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 fontSize: '10px',
                 color: '#c4b5fd'
               }}>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>🧠 Adaptive Mode Active</div>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Adaptive Mode Active</div>
                 <div>Disclosure intensity varies by case difficulty:</div>
                 <div style={{ marginTop: '4px', display: 'flex', gap: '8px' }}>
                   <span style={{ color: '#86efac' }}>EASY: minimal</span>
@@ -383,7 +416,7 @@ const AttentionMetricsPanel: React.FC<AttentionMetricsPanelProps> = ({
         alignItems: 'center',
         gap: '8px'
       }}>
-        👁️ ATTENTION INSTRUMENTATION
+        ATTENTION INSTRUMENTATION
         <span style={{ 
           backgroundColor: '#164e63', 
           color: '#22d3ee', 
@@ -434,12 +467,10 @@ const AttentionMetricsPanel: React.FC<AttentionMetricsPanelProps> = ({
       {/* Interaction Counts */}
       <div style={{ display: 'flex', gap: '16px', paddingTop: '12px', borderTop: '1px solid #334155' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '14px' }}>🔍</span>
           <span style={{ color: 'white', fontWeight: 600 }}>{interactionCounts.zooms}</span>
           <span style={{ fontSize: '10px', color: '#64748b' }}>zooms</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '14px' }}>✋</span>
           <span style={{ color: 'white', fontWeight: 600 }}>{interactionCounts.pans}</span>
           <span style={{ fontSize: '10px', color: '#64748b' }}>pans</span>
         </div>
@@ -474,6 +505,7 @@ interface ExpertWitnessPacketProps {
   ledger: any[];
   verifierResult: 'PASS' | 'FAIL' | null;
   tamperDetected: boolean;
+  sessionMetrics: SessionMetrics;
 }
 
 const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
@@ -485,6 +517,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
   ledger,
   verifierResult,
   tamperDetected,
+  sessionMetrics,
 }) => {
   const [activeTab, setActiveTab] = useState<'timeline' | 'legal' | 'validity' | 'raw'>('timeline');
   
@@ -497,19 +530,19 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
   );
   
   // Compute validity indicators
+  const comprehensionEvents = events.filter(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+  const comprehensionPassed = comprehensionEvents.filter(e => (e.payload as any)?.isCorrect === true).length;
+  const comprehensionFailed = comprehensionEvents.filter(e => (e.payload as any)?.isCorrect === false).length;
+
   const validityIndicators = {
-    fastPreAI: caseResults.filter(r => (r.timeToLockMs || 0) < 5000).length,
-    totalCases: caseResults.length,
-    aiAgreementRate: caseResults.length > 0 
-      ? Math.round((caseResults.filter(r => r.adda).length / caseResults.length) * 100) 
-      : 0,
-    deviationsDocumented: caseResults.filter(r => r.deviationRationale && r.deviationRationale.length > 0).length,
-    deviationsRequired: caseResults.filter(r => r.changeOccurred).length,
-    comprehensionPassed: caseResults.filter(r => r.comprehensionCorrect === true).length,
-    comprehensionFailed: caseResults.filter(r => r.comprehensionCorrect === false).length,
-    avgPreAITime: caseResults.length > 0
-      ? Math.round(caseResults.reduce((sum, r) => sum + (r.timeToLockMs || 0), 0) / caseResults.length / 1000)
-      : 0,
+    fastPreAI: sessionMetrics.fastPreAiReads,
+    totalCases: sessionMetrics.totalCases,
+    aiAgreementRate: Math.round(sessionMetrics.agreementRate * 100),
+    deviationsDocumented: sessionMetrics.overridesWithRationale,
+    deviationsRequired: sessionMetrics.overrideCount,
+    comprehensionPassed,
+    comprehensionFailed,
+    avgPreAITime: Math.round(sessionMetrics.averagePreAiSeconds),
   };
   
   // Legal defense assessment
@@ -566,7 +599,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
               marginBottom: '4px',
             }}>
               <h2 style={{ color: 'white', margin: 0, fontSize: '20px' }}>
-                ⚖️ Expert Witness Packet
+                Expert Witness Packet
               </h2>
               <div style={{
                 padding: '4px 12px',
@@ -576,7 +609,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 backgroundColor: tamperDetected ? '#dc2626' : '#22c55e',
                 color: tamperDetected ? 'white' : '#052e16',
               }}>
-                {tamperDetected ? '❌ INTEGRITY COMPROMISED' : '✓ VERIFIED AUTHENTIC'}
+                {tamperDetected ? 'INTEGRITY COMPROMISED' : 'VERIFIED AUTHENTIC'}
               </div>
             </div>
             <div style={{ color: '#94a3b8', fontSize: '12px', fontFamily: 'monospace' }}>
@@ -603,10 +636,10 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
           borderBottom: '1px solid #333',
         }}>
           {[
-            { id: 'timeline', label: '📋 Decision Timeline', icon: '🔗' },
-            { id: 'legal', label: '⚖️ Legal Summary', icon: '📜' },
-            { id: 'validity', label: '🎯 Validity Indicators', icon: '📊' },
-            { id: 'raw', label: '🔐 Raw Ledger', icon: '💾' },
+            { id: 'timeline', label: 'Decision Timeline' },
+            { id: 'legal', label: 'Legal Summary' },
+            { id: 'validity', label: 'Validity Indicators' },
+            { id: 'raw', label: 'Raw Ledger' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -744,7 +777,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                           fontSize: '10px',
                           color: '#64748b',
                         }}>
-                          <span>🔗 Linked to:</span>
+                          <span> Linked to:</span>
                           <code style={{ color: '#60a5fa' }}>{prevHash}...</code>
                         </div>
                         
@@ -791,9 +824,6 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 marginBottom: '24px',
                 textAlign: 'center',
               }}>
-                <div style={{ fontSize: '48px', marginBottom: '8px' }}>
-                  {overallDefensibility >= 3 ? '✅' : overallDefensibility >= 2 ? '⚠️' : '❌'}
-                </div>
                 <div style={{ color: 'white', fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>
                   {overallDefensibility >= 3 ? 'DEFENSIBLE RECORD' : 
                    overallDefensibility >= 2 ? 'PARTIALLY DEFENSIBLE' : 'HIGH RISK'}
@@ -806,7 +836,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
               {/* Key Legal Questions */}
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ color: 'white', fontSize: '16px', marginBottom: '16px' }}>
-                  📜 Key Legal Questions Answered
+                  Key Legal Questions Answered
                 </h3>
                 
                 {[
@@ -881,7 +911,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                 border: '1px solid #3b82f6',
               }}>
                 <div style={{ color: '#93c5fd', fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>
-                  💡 CROSS-EXAMINATION DEFENSE POINTS
+                   CROSS-EXAMINATION DEFENSE POINTS
                 </div>
                 <ul style={{ color: '#94a3b8', fontSize: '12px', margin: 0, paddingLeft: '20px' }}>
                   <li style={{ marginBottom: '4px' }}>Initial assessment was locked BEFORE AI disclosure</li>
@@ -1078,7 +1108,7 @@ ${ledger.slice(0, 10).map((entry, i) => `    {
                   fontSize: '12px',
                   fontWeight: 600,
                 }}>
-                  📥 Download JSON
+                   Download JSON
                 </button>
               </div>
             </div>
@@ -1213,7 +1243,7 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
         }}>
           <div>
             <h2 style={{ color: 'white', margin: 0, fontSize: '18px' }}>
-              📊 Post-Case Assessment
+               Post-Case Assessment
             </h2>
             <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
               Case: {caseId}
@@ -1299,9 +1329,9 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
               color: 'white',
               fontSize: '12px',
             }}>
-              {postTrust > preTrust ? '📈 Trust increased from expectation' :
-               postTrust < preTrust ? '📉 Trust decreased from expectation' :
-               '➡️ Trust matched expectation'}
+              {postTrust > preTrust ? 'Trust increased from expectation' :
+               postTrust < preTrust ? 'Trust decreased from expectation' :
+               'Trust matched expectation'}
             </div>
           </div>
         )}
@@ -1422,8 +1452,8 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
             }}
           >
             {currentStep === 'TLX' || (currentStep === 'COMPREHENSION' && !includeTLX) 
-              ? '✓ Complete Case' 
-              : 'Next →'}
+              ? 'Complete Case' 
+              : 'Next'}
           </button>
         </div>
       </div>
@@ -1484,7 +1514,7 @@ const KeyboardHelpModal: React.FC<{ isVisible: boolean; onClose: () => void }> =
           marginBottom: '20px',
         }}>
           <h2 style={{ color: 'white', margin: 0, fontSize: '18px' }}>
-            ⌨️ Keyboard Shortcuts
+            Keyboard Keyboard Shortcuts
           </h2>
           <button
             onClick={onClose}
@@ -1542,7 +1572,7 @@ const KeyboardHelpModal: React.FC<{ isVisible: boolean; onClose: () => void }> =
           color: '#888',
           textAlign: 'center',
         }}>
-          💡 Keyboard shortcuts are logged for workflow analysis
+           Keyboard shortcuts are logged for workflow analysis
         </div>
       </div>
     </div>
@@ -1734,15 +1764,15 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
   };
 
   const packContents = [
-    { name: 'PROTOCOL.md', desc: 'IRB-ready study protocol (BRPLL-MAMMO-v1.0)', icon: '📋' },
-    { name: 'CONDITIONS.json', desc: 'Condition matrix with factor definitions', icon: '🎯' },
-    { name: 'COUNTERBALANCING.csv', desc: 'Latin square assignment table (4×4)', icon: '🔀' },
-    { name: 'CODEBOOK.md', desc: 'Variable definitions + event schemas', icon: '📖' },
-    { name: 'CONSENT_TEMPLATE.md', desc: 'Participant consent script (editable)', icon: '✍️' },
-    { name: 'ANALYSIS_SKELETON.R', desc: 'Mixed-effects model starter code', icon: '📊' },
-    { name: 'MRMC_MAPPING.md', desc: 'iMRMC export format documentation', icon: '🔗' },
-    { name: 'VERIFIER.sh', desc: 'Standalone hash chain verifier CLI', icon: '🔐' },
-    { name: 'REPLICATION_GUIDE.md', desc: '30-minute site setup instructions', icon: '🚀' },
+    { name: 'PROTOCOL.md', desc: 'IRB-ready study protocol (BRPLL-MAMMO-v1.0)', icon: 'File' },
+    { name: 'CONDITIONS.json', desc: 'Condition matrix with factor definitions', icon: 'File' },
+    { name: 'COUNTERBALANCING.csv', desc: 'Latin square assignment table (4×4)', icon: 'File' },
+    { name: 'CODEBOOK.md', desc: 'Variable definitions + event schemas', icon: 'File' },
+    { name: 'CONSENT_TEMPLATE.md', desc: 'Participant consent script (editable)', icon: 'File' },
+    { name: 'ANALYSIS_SKELETON.R', desc: 'Mixed-effects model starter code', icon: 'File' },
+    { name: 'MRMC_MAPPING.md', desc: 'iMRMC export format documentation', icon: 'File' },
+    { name: 'VERIFIER.sh', desc: 'Standalone hash chain verifier CLI', icon: 'File' },
+    { name: 'REPLICATION_GUIDE.md', desc: '30-minute site setup instructions', icon: 'File' },
   ];
   
   return (
@@ -1780,7 +1810,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
         }}>
           <div>
             <h2 style={{ margin: 0, color: 'white', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              📦 Study Pack v1.0
+               Study Pack v1.0
               <span style={{ 
                 fontSize: '10px', 
                 backgroundColor: 'rgba(255,255,255,0.2)', 
@@ -1806,7 +1836,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               fontSize: '14px'
             }}
           >
-            ✕
+            
           </button>
         </div>
         
@@ -1889,7 +1919,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
             fontSize: '12px',
             color: '#bfdbfe'
           }}>
-            <strong style={{ color: 'white' }}>🏛️ Multi-Site Ready:</strong> This pack includes site-specific configuration templates. 
+            <strong style={{ color: 'white' }}>Multi-Site Ready:</strong> This pack includes site-specific configuration templates. 
             Each collaborating institution can generate their own session IDs and seeds while maintaining 
             protocol fidelity for federated analysis.
           </div>
@@ -1916,9 +1946,9 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
                 }}
               >
                 {generating ? (
-                  <>⏳ Generating Pack...</>
+                  <>Generating Pack...</>
                 ) : (
-                  <>📦 Download Study Pack v1.0</>
+                  <>Download Study Pack v1.0</>
                 )}
               </button>
             ) : (
@@ -1932,7 +1962,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
                   gap: '10px',
                   marginBottom: '12px'
                 }}>
-                  <span style={{ fontSize: '24px' }}>✅</span>
+                  <span style={{ fontSize: '24px' }}></span>
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ color: 'white', fontWeight: 700 }}>Study_Pack_BRPLL_MAMMO_v1.0.zip</div>
                     <div style={{ color: '#86efac', fontSize: '12px' }}>Ready for download (2.4 MB)</div>
@@ -1968,7 +1998,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ IRB-Ready
+               IRB-Ready
             </span>
             <span style={{ 
               padding: '4px 10px', 
@@ -1978,7 +2008,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ MRMC-Compatible
+               MRMC-Compatible
             </span>
           </div>
         </div>
@@ -2032,7 +2062,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
           borderRadius: '14px 14px 0 0',
         }}>
           <div>
-            <h2 style={{ margin: 0, color: 'white', fontSize: '18px' }}>📋 Study Design Summary</h2>
+            <h2 style={{ margin: 0, color: 'white', fontSize: '18px' }}> Study Design Summary</h2>
             <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: '12px' }}>Pre-registered research protocol • BRPLL-MAMMO-v1.0</p>
           </div>
           <button 
@@ -2047,7 +2077,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '14px'
             }}
           >
-            ✕ Close
+             Close
           </button>
         </div>
         
@@ -2180,19 +2210,19 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
             <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid #334155' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}></span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Pre-AI time &lt; 3 seconds</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}></span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Failed comprehension check 3+ times</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}></span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Total case time &gt; 10 minutes</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}></span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Incomplete calibration trials</span>
                 </div>
               </div>
@@ -2233,7 +2263,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ Pre-registered
+               Pre-registered
             </span>
             <span style={{ 
               padding: '4px 10px', 
@@ -2243,7 +2273,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ Analysis Plan Locked
+               Analysis Plan Locked
             </span>
           </div>
         </div>
@@ -2326,7 +2356,7 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           textTransform: 'uppercase',
           letterSpacing: '1px',
         }}>
-          📊 QC Monitor
+          QC Monitor
         </div>
         <div style={{
           padding: '2px 8px',
@@ -2336,7 +2366,7 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           backgroundColor: hasAnomalies ? '#92400e' : '#166534',
           color: hasAnomalies ? '#fcd34d' : '#4ade80',
         }}>
-          {hasAnomalies ? '⚠️ FLAGS' : '✓ CLEAN'}
+          {hasAnomalies ? 'FLAGS' : 'CLEAN'}
         </div>
       </div>
       
@@ -2366,7 +2396,7 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
         }}>
           <div style={{ color: '#64748b' }}>Fast Reads</div>
           <div style={{ color: fastReads > 0 ? '#fcd34d' : '#4ade80', fontWeight: 600 }}>
-            {fastReads} {fastReads > 0 && '⚠️'}
+            {fastReads}
           </div>
         </div>
         
@@ -2386,9 +2416,9 @@ const QCMonitoringDashboard: React.FC<QCDashboardProps> = ({
           borderRadius: '4px',
           borderLeft: `3px solid ${comprehensionFailures > 0 ? '#dc2626' : '#22c55e'}`,
         }}>
-          <div style={{ color: '#64748b' }}>Comprehension ❌</div>
+          <div style={{ color: '#64748b' }}>Comprehension Failures</div>
           <div style={{ color: comprehensionFailures > 0 ? '#f87171' : '#4ade80', fontWeight: 600 }}>
-            {comprehensionFailures} {comprehensionFailures > 0 && '⚠️'}
+            {comprehensionFailures}
           </div>
         </div>
         
@@ -2473,7 +2503,7 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
           justifyContent: 'center',
           fontSize: '24px',
         }}>
-          💾
+          
         </div>
         <div>
           <div style={{ color: 'white', fontWeight: 600, fontSize: '14px' }}>
@@ -2501,7 +2531,7 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
             fontSize: '13px',
           }}
         >
-          ↩️ Resume Session
+          Resume Session
         </button>
         <button
           onClick={onDiscard}
@@ -2516,7 +2546,7 @@ const SessionRecoveryBanner: React.FC<SessionRecoveryBannerProps> = ({
             fontSize: '13px',
           }}
         >
-          🗑️ Discard
+          Discard
         </button>
       </div>
     </div>
@@ -2574,6 +2604,50 @@ const HangingProtocolSelector: React.FC<HangingProtocolProps> = ({
   );
 };
 
+const CaseVignettePanel: React.FC<{ caseDef: CaseDefinition }> = ({ caseDef }) => {
+  return (
+    <div style={{
+      backgroundColor: '#0f172a',
+      border: '1px solid #334155',
+      borderRadius: '10px',
+      padding: '12px 16px',
+      marginBottom: '16px',
+    }}>
+      <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginBottom: '8px' }}>Case Summary</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '12px', color: '#e2e8f0' }}>
+        <div>
+          <div style={{ color: '#64748b', fontSize: '10px' }}>Patient Age</div>
+          <div>{caseDef.metadata.patientAge}</div>
+        </div>
+        <div>
+          <div style={{ color: '#64748b', fontSize: '10px' }}>Breast Density</div>
+          <div>{caseDef.metadata.breastDensity}</div>
+        </div>
+        <div>
+          <div style={{ color: '#64748b', fontSize: '10px' }}>Indication</div>
+          <div>{caseDef.metadata.indication}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ClinicianShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+      {children}
+    </div>
+  );
+};
+
+const ResearcherShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+      {children}
+    </div>
+  );
+};
+
 interface VerificationStatusProps {
   eventCount: number;
   sessionId: string;
@@ -2611,7 +2685,7 @@ const VerificationStatusPanel: React.FC<VerificationStatusProps> = ({
           textTransform: 'uppercase',
           letterSpacing: '1px',
         }}>
-          🔐 Chain Status
+           Chain Status
         </div>
         <div style={{
           padding: '2px 8px',
@@ -2621,7 +2695,7 @@ const VerificationStatusPanel: React.FC<VerificationStatusProps> = ({
           backgroundColor: isVerified === null ? '#334155' : isVerified ? '#166534' : '#991b1b',
           color: isVerified === null ? '#94a3b8' : isVerified ? '#4ade80' : '#fca5a5',
         }}>
-          {isVerified === null ? 'PENDING' : isVerified ? '✓ INTACT' : '✗ BROKEN'}
+          {isVerified === null ? 'PENDING' : isVerified ? ' INTACT' : ' BROKEN'}
         </div>
       </div>
       
@@ -2714,7 +2788,7 @@ const AutomationBiasRiskMeter: React.FC<RiskMeterProps> = ({
           alignItems: 'center',
           gap: '8px'
         }}>
-          ⚠️ AUTOMATION BIAS RISK
+          AUTOMATION BIAS RISK
           <span style={{ 
             backgroundColor: riskBg, 
             color: riskColor, 
@@ -2850,6 +2924,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const [previousBirads, setPreviousBirads] = useState<number | null>(null);
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
+  const [exportView, setExportView] = useState<'SUMMARY' | 'AUDIT'>('SUMMARY');
   
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
@@ -3121,6 +3196,103 @@ export const ResearchDemoFlow: React.FC = () => {
     if (!state.caseQueue) return null;
     return getQueueProgress(state.caseQueue);
   }, [state.caseQueue]);
+
+  const sessionMetrics = useMemo<SessionMetrics>(() => {
+    const events = exportPackRef.current?.getEvents() ?? [];
+    const perCase: Record<string, {
+      caseId: string;
+      isCalibration: boolean;
+      preAiTimeMs?: number;
+      postAiTimeMs?: number;
+      aiSuggestedBirads?: number | null;
+      finalBirads?: number | null;
+      deviationRationale?: string | null;
+    }> = {};
+
+    let currentCaseId: string | null = null;
+    let currentIsCalibration = false;
+
+    for (const event of events) {
+      if (event.type === 'CASE_LOADED') {
+        const payload = event.payload as { caseId?: string; isCalibration?: boolean };
+        currentCaseId = payload.caseId ?? null;
+        currentIsCalibration = Boolean(payload.isCalibration);
+        if (currentCaseId && !perCase[currentCaseId]) {
+          perCase[currentCaseId] = { caseId: currentCaseId, isCalibration: currentIsCalibration };
+        } else if (currentCaseId) {
+          perCase[currentCaseId].isCalibration = currentIsCalibration;
+        }
+      }
+
+      if (!currentCaseId) continue;
+
+      const caseEntry = perCase[currentCaseId] ?? { caseId: currentCaseId, isCalibration: currentIsCalibration };
+      perCase[currentCaseId] = caseEntry;
+
+      if (event.type === 'FIRST_IMPRESSION_LOCKED') {
+        const payload = event.payload as { timeToLockMs?: number };
+        caseEntry.preAiTimeMs = payload.timeToLockMs ?? caseEntry.preAiTimeMs;
+      }
+
+      if (event.type === 'AI_REVEALED') {
+        const payload = event.payload as { suggestedBirads?: number | null };
+        caseEntry.aiSuggestedBirads = payload.suggestedBirads ?? caseEntry.aiSuggestedBirads ?? null;
+      }
+
+      if (event.type === 'FINAL_ASSESSMENT') {
+        const payload = event.payload as { caseId?: string; birads?: number; postAiTimeMs?: number };
+        const caseId = payload.caseId ?? currentCaseId;
+        if (!perCase[caseId]) {
+          perCase[caseId] = { caseId, isCalibration: currentIsCalibration };
+        }
+        perCase[caseId].finalBirads = payload.birads ?? perCase[caseId].finalBirads ?? null;
+        perCase[caseId].postAiTimeMs = payload.postAiTimeMs ?? perCase[caseId].postAiTimeMs;
+      }
+
+      if (event.type === 'DEVIATION_SUBMITTED') {
+        const payload = event.payload as { rationale?: string };
+        caseEntry.deviationRationale = payload.rationale ?? caseEntry.deviationRationale ?? null;
+      }
+    }
+
+    const cases = Object.values(perCase).filter(c => !c.isCalibration && c.finalBirads !== undefined);
+    const preAiTimes = cases.map(c => c.preAiTimeMs).filter((v): v is number => typeof v === 'number');
+    const postAiTimes = cases.map(c => c.postAiTimeMs).filter((v): v is number => typeof v === 'number');
+    const aiEligible = cases.filter(c => c.aiSuggestedBirads !== undefined && c.aiSuggestedBirads !== null);
+    const agreementCount = aiEligible.filter(c => c.finalBirads === c.aiSuggestedBirads).length;
+    const overrides = aiEligible.filter(c => c.finalBirads !== c.aiSuggestedBirads);
+
+    const overrideReasons: Record<string, number> = {};
+    for (const override of overrides) {
+      const reasonKey = classifyOverrideReason(override.deviationRationale);
+      overrideReasons[reasonKey] = (overrideReasons[reasonKey] ?? 0) + 1;
+    }
+
+    const averagePreAiSeconds = preAiTimes.length
+      ? preAiTimes.reduce((sum, v) => sum + v, 0) / preAiTimes.length / 1000
+      : 0;
+    const averagePostAiSeconds = postAiTimes.length
+      ? postAiTimes.reduce((sum, v) => sum + v, 0) / postAiTimes.length / 1000
+      : 0;
+    const agreementRate = aiEligible.length ? agreementCount / aiEligible.length : 0;
+    const fastPreAiReads = preAiTimes.filter(v => v < 5000).length;
+    const overrideCount = overrides.length;
+    const overridesWithRationale = overrides.filter(o => Boolean(o.deviationRationale && o.deviationRationale.trim())).length;
+    const rubberStampFlag = averagePreAiSeconds > 0 && averagePreAiSeconds < 5 && agreementRate >= 0.95 && overrideCount === 0;
+
+    return {
+      totalCases: cases.length,
+      aiEligibleCases: aiEligible.length,
+      averagePreAiSeconds,
+      averagePostAiSeconds,
+      agreementRate,
+      overrideCount,
+      overridesWithRationale,
+      overrideReasons,
+      fastPreAiReads,
+      rubberStampFlag,
+    };
+  }, [state.eventCount, state.caseResults.length]);
 
   const currentCase = useMemo(() => {
     if (!state.caseQueue) return null;
@@ -3401,38 +3573,6 @@ await eventLoggerRef.current!.logAIRevealed({
     setState(s => ({ ...s, comprehensionAnswer: answer, comprehensionCorrect: correct, eventCount: exportPackRef.current?.getEvents().length || 0 }));
   }, []);
 
-  // Proceed to deviation or probes
-  const proceedToDeviation = useCallback(async () => {
-    const needsDeviation = state.finalBirads !== state.initialBirads;
-    if (needsDeviation) {
-      if (eventLoggerRef.current) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
-      }
-      setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
-    } else {
-      // No deviation needed - show probes modal
-      setShowProbesModal(true);
-    }
-  }, [state.initialBirads, state.finalBirads]);
-  
-  // Called after deviation step to show probes
-  const proceedToProbes = useCallback(async (skipDeviation = false) => {
-    if (eventLoggerRef.current) {
-      if (skipDeviation) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
-        setDeviationsSkipped(prev => prev + 1);
-      } else if (state.deviationRationale) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
-          rationale: state.deviationRationale, 
-          initialBirads: state.initialBirads, 
-          finalBirads: state.finalBirads 
-        });
-      }
-    }
-    setShowProbesModal(true);
-  }, [state.deviationRationale, state.initialBirads, state.finalBirads]);
-
-  // Submit final assessment
   const submitFinalAssessment = useCallback(async (skipDeviation = false) => {
     if (!eventLoggerRef.current || !state.currentCase) return;
     
@@ -3549,6 +3689,46 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
     }));
   }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
 
+  // Proceed to deviation or probes
+  const proceedToDeviation = useCallback(async () => {
+    const needsDeviation = state.finalBirads !== state.initialBirads;
+    if (needsDeviation) {
+      if (eventLoggerRef.current) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
+      }
+      setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
+    } else {
+      if (viewMode === 'CLINICIAN') {
+        await submitFinalAssessment();
+      } else {
+        // No deviation needed - show probes modal
+        setShowProbesModal(true);
+      }
+    }
+  }, [state.initialBirads, state.finalBirads, submitFinalAssessment, viewMode]);
+  
+  // Called after deviation step to show probes
+  const proceedToProbes = useCallback(async (skipDeviation = false) => {
+    if (eventLoggerRef.current) {
+      if (skipDeviation) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        setDeviationsSkipped(prev => prev + 1);
+      } else if (state.deviationRationale) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
+          rationale: state.deviationRationale, 
+          initialBirads: state.initialBirads, 
+          finalBirads: state.finalBirads 
+        });
+      }
+    }
+    if (viewMode === 'CLINICIAN') {
+      await submitFinalAssessment(skipDeviation);
+      return;
+    }
+    setShowProbesModal(true);
+  }, [state.deviationRationale, state.initialBirads, state.finalBirads, submitFinalAssessment, viewMode]);
+
+  // Submit final assessment
   // Next case
   const nextCase = useCallback(async () => {
     if (!state.caseQueue || !eventLoggerRef.current) return;
@@ -3585,6 +3765,19 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
     if (!exportPackRef.current || !eventLoggerRef.current) return;
     
     await eventLoggerRef.current!.addEvent('EXPORT_GENERATED', { casesCompleted: state.caseResults.length });
+
+    exportPackRef.current.setSessionMetrics({
+      totalCases: sessionMetrics.totalCases,
+      aiEligibleCases: sessionMetrics.aiEligibleCases,
+      averagePreAiSeconds: sessionMetrics.averagePreAiSeconds,
+      averagePostAiSeconds: sessionMetrics.averagePostAiSeconds,
+      agreementRate: sessionMetrics.agreementRate,
+      overrideCount: sessionMetrics.overrideCount,
+      overridesWithRationale: sessionMetrics.overridesWithRationale,
+      overrideReasons: sessionMetrics.overrideReasons,
+      fastPreAiReads: sessionMetrics.fastPreAiReads,
+      rubberStampFlag: sessionMetrics.rubberStampFlag,
+    });
     
     // Add all case metrics before generating
     for (const metrics of state.caseResults) {
@@ -3597,7 +3790,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
     setState(s => ({ ...s, exportReady: true, exportUrl: url, exportFilename: filename, verifierResult: verifierOutput.result as 'PASS' | 'FAIL', eventCount: exportPackRef.current?.getEvents().length || 0 }));
     setTamperDemoActive(false);
     setTamperFailureCode(null);
-  }, [state.caseResults]);
+  }, [state.caseResults, sessionMetrics]);
 
   // Tamper Demo - simulates what happens when export is modified
   const runTamperDemo = useCallback(() => {
@@ -3630,10 +3823,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
   }, [state.currentCase, state.initialBirads, state.finalBirads]);
 
   const isSetupScreen = state.step === 'SETUP';
+  const isClinicianView = viewMode === 'CLINICIAN';
+  const isResearcherView = viewMode === 'RESEARCHER';
+  const overrideReasonEntries = Object.entries(sessionMetrics.overrideReasons).sort((a, b) => b[1] - a[1]);
+  const Shell = isClinicianView ? ClinicianShell : ResearcherShell;
 
   // ============== RENDER ==============
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+    <Shell>
       {/* Study Control Surface - Left Panel (Researcher Mode Only) */}
       {state.condition && viewMode === 'RESEARCHER' && (
         <StudyControlSurface
@@ -3670,16 +3867,17 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
             <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Research Study Launcher</h1>
             <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
-              Start a participant session or open the researcher console for the Friday walkthrough.
+              Start a participant session or open the researcher console for review.
             </p>
           </div>
         ) : (
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                <h1 style={{ margin: 0, fontSize: '26px' }}>Evidify Research Platform</h1>
-                {/* Operator View Badge (Researcher Mode Only) */}
-                {viewMode === 'RESEARCHER' && (
+                <h1 style={{ margin: 0, fontSize: '26px' }}>
+                  {isClinicianView ? 'Radiology Review Session' : 'Evidify Research Platform'}
+                </h1>
+                {isResearcherView && (
                   <div style={{
                     padding: '4px 10px',
                     borderRadius: '4px',
@@ -3691,11 +3889,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     textTransform: 'uppercase',
                     border: '1px solid #c084fc',
                   }}>
-                    🔬 OPERATOR VIEW
+                     OPERATOR VIEW
                   </div>
                 )}
-                {/* Trial Phase Badge */}
-                {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
+                {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && isResearcherView && (
                   <div style={{
                     padding: '6px 14px',
                     borderRadius: '20px',
@@ -3706,139 +3903,133 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     border: `2px solid ${state.currentCase?.isCalibration ? '#fcd34d' : '#4ade80'}`,
                     animation: 'pulse 2s infinite',
                   }}>
-                    {state.currentCase?.isCalibration ? '📚 CALIBRATION TRIAL • FEEDBACK ON' : '🔬 STUDY TRIAL • NO FEEDBACK'}
+                    {state.currentCase?.isCalibration ? 'CALIBRATION TRIAL • FEEDBACK ON' : 'STUDY TRIAL • NO FEEDBACK'}
                   </div>
                 )}
               </div>
-              <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit</p>
+              <p style={{ margin: '4px 0 0', opacity: 0.9 }}>
+                {isClinicianView
+                  ? 'Structured mammography review with AI disclosure.'
+                  : 'Human-First AI • FDR/FOR Disclosure • Tamper-Evident Audit'}
+              </p>
               <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-                🔑 {state.sessionId} {state.condition && <span style={{ marginLeft: '16px' }}>🎯 {state.condition.condition}</span>}
-                {progress && <span style={{ marginLeft: '16px' }}>📋 Case {progress.current}/{progress.total}</span>}
-                <span style={{ marginLeft: '16px' }}>⏱️ {timeOnCase.toFixed(1)}s</span>
+                {state.sessionId}
+                {state.condition && isResearcherView && <span style={{ marginLeft: '16px' }}>{state.condition.condition}</span>}
+                {progress && <span style={{ marginLeft: '16px' }}>Case {progress.current}/{progress.total}</span>}
+                <span style={{ marginLeft: '16px' }}>Time {timeOnCase.toFixed(1)}s</span>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
-                <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
-              </div>
-              <button
-                onClick={() => setShowStudyDesign(true)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                  border: '1px solid rgba(147, 197, 253, 0.5)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                📋 Study Design
-              </button>
-              <button
-                onClick={() => setShowStudyPack(true)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'rgba(34, 197, 94, 0.3)',
-                  border: '1px solid rgba(134, 239, 172, 0.5)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                📦 Study Pack
-              </button>
-              {/* Keyboard Help */}
-              <button
-                onClick={() => setShowKeyboardHelp(true)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-                title="Keyboard shortcuts (?)"
-              >
-                ⌨️ <span style={{ opacity: 0.7 }}>?</span>
-              </button>
-              {/* Mode Toggle */}
-              <div style={{
-                display: 'flex',
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                borderRadius: '8px',
-                padding: '2px',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}>
+            {isResearcherView && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
+                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+                </div>
                 <button
-                  onClick={() => setViewMode('CLINICIAN')}
+                  onClick={() => setShowStudyDesign(true)}
                   style={{
-                    padding: '6px 12px',
-                    backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                    border: '1px solid rgba(147, 197, 253, 0.5)',
+                    borderRadius: '8px',
                     color: 'white',
                     cursor: 'pointer',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: 600,
                   }}
                 >
-                  👩‍⚕️ Clinician
+                  Study Design
                 </button>
                 <button
-                  onClick={() => setViewMode('RESEARCHER')}
+                  onClick={() => setShowStudyPack(true)}
                   style={{
-                    padding: '6px 12px',
-                    backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
-                    border: 'none',
-                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                    border: '1px solid rgba(134, 239, 172, 0.5)',
+                    borderRadius: '8px',
                     color: 'white',
                     cursor: 'pointer',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: 600,
                   }}
                 >
-                  🔬 Researcher
+                  Study Pack
                 </button>
+                <button
+                  onClick={() => setShowKeyboardHelp(true)}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    borderRadius: '8px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                  }}
+                  title="Keyboard shortcuts (?)"
+                >
+                  Keyboard Shortcuts
+                </button>
+                <div style={{
+                  display: 'flex',
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  borderRadius: '8px',
+                  padding: '2px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}>
+                  <button
+                    onClick={() => setViewMode('CLINICIAN')}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Clinician
+                  </button>
+                  <button
+                    onClick={() => setViewMode('RESEARCHER')}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: viewMode === 'RESEARCHER' ? '#a855f7' : 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Researcher
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         
         {/* Mode-Specific Description Bar */}
-        {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && (
+        {state.step !== 'SETUP' && state.step !== 'STUDY_COMPLETE' && isResearcherView && (
           <div style={{
-            backgroundColor: viewMode === 'RESEARCHER' ? '#1a1a2e' : '#1e3a5f',
+            backgroundColor: '#1a1a2e',
             padding: '10px 24px',
-            borderBottom: `1px solid ${viewMode === 'RESEARCHER' ? '#a855f7' : '#3b82f6'}`,
+            borderBottom: '1px solid #a855f7',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
             <div style={{ color: '#94a3b8', fontSize: '11px' }}>
-              {viewMode === 'RESEARCHER' 
-                ? '🔬 RESEARCHER VIEW: Full instrumentation, event logging, study controls visible. Seeds and protocol parameters exposed.'
-                : '👩‍⚕️ CLINICIAN VIEW: Streamlined reading interface. Research instrumentation hidden.'}
+              Researcher view: instrumentation, event logging, and study controls are enabled.
             </div>
             <div style={{ 
               fontSize: '10px', 
-              color: viewMode === 'RESEARCHER' ? '#c084fc' : '#60a5fa',
+              color: '#c084fc',
               fontWeight: 600,
             }}>
               Press ? for keyboard shortcuts
@@ -3870,7 +4061,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     fontWeight: 700,
                   }}
                 >
-                  🧑‍⚕️ Run Participant Session
+                  Run Participant Session
                 </button>
                 <button
                   onClick={() => {
@@ -3889,7 +4080,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     fontWeight: 700,
                   }}
                 >
-                  🔬 Researcher Console
+                  Researcher Console
                 </button>
               </div>
 
@@ -3921,7 +4112,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           fontWeight: 600,
                         }}
                       >
-                        👩‍⚕️ Clinician
+                        Clinician
                       </button>
                       <button
                         onClick={() => setViewMode('RESEARCHER')}
@@ -3936,7 +4127,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           fontWeight: 600,
                         }}
                       >
-                        🔬 Researcher
+                        Researcher
                       </button>
                     </div>
                   </div>
@@ -3950,19 +4141,19 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           border: '2px solid ' + (cond === 'HUMAN_FIRST' ? '#60a5fa' : '#475569'), borderRadius: '12px', cursor: 'pointer', minWidth: '180px',
                         }}>
                           <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>
-                            {cond === 'HUMAN_FIRST' ? '🧠 Human First' : cond === 'AI_FIRST' ? '🤖 AI First' : '⚡ Concurrent'}
+                            {cond === 'HUMAN_FIRST' ? ' Human First' : cond === 'AI_FIRST' ? ' AI First' : ' Concurrent'}
                           </div>
                           <div style={{ fontSize: '11px', opacity: 0.8 }}>
                             {cond === 'HUMAN_FIRST' ? 'Lock before AI' : cond === 'AI_FIRST' ? 'See AI first' : 'AI visible'}
                           </div>
-                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>⭐ RECOMMENDED</div>}
+                          {cond === 'HUMAN_FIRST' && <div style={{ marginTop: '6px', fontSize: '10px', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '12px' }}>Recommended</div>}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px' }}>
-                    <strong>📋 Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
+                    <strong>Protocol:</strong> 1 calibration case + 3 study cases • FDR/FOR disclosure • Comprehension check • Deviation documentation
                   </div>
                 </div>
               </details>
@@ -3973,7 +4164,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'CALIBRATION' && currentCase && (
             <div>
               <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>📚 Training Case:</strong> Make your assessment. You'll see ground truth feedback.
+                <strong> Training Case:</strong> Make your assessment. You'll see ground truth feedback.
               </div>
               <div 
                 onMouseEnter={() => handleROIEnter('mammogram')} 
@@ -4009,14 +4200,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     {[0,1,2,3,4,5,6].map(n => <option key={n} value={n}>BI-RADS {n}</option>)}
                   </select>
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press 0-5 to quick-select
+                    Keyboard: Press 0-5 to quick-select.
                   </div>
                 </div>
                 <div>
                   <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Confidence: {state.calibrationConfidence}%</label>
                   <input type="range" min="0" max="100" value={state.calibrationConfidence} onChange={e => setState(s => ({ ...s, calibrationConfidence: Number(e.target.value) }))} style={{ width: '100%' }} />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press +/- to adjust
+                    Keyboard: Press +/- to adjust.
                   </div>
                 </div>
               </div>
@@ -4043,8 +4234,8 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 marginBottom: '24px',
                 display: 'inline-block'
               }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>
-                  📚 CALIBRATION MODE — GROUND TRUTH VISIBLE
+                  <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>
+                  CALIBRATION MODE — GROUND TRUTH VISIBLE
                 </div>
                 <div style={{ fontSize: '11px', opacity: 0.9 }}>
                   This feedback is shown only during calibration. Study trials will NOT reveal ground truth.
@@ -4063,7 +4254,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 </div>
               </div>
               <div style={{ color: state.calibrationBirads === currentCase.groundTruth?.birads ? '#4ade80' : '#fbbf24', fontSize: '18px', marginBottom: '24px' }}>
-                {state.calibrationBirads === currentCase.groundTruth?.birads ? '✅ Correct!' : '⚠️ Review the case presentation for learning'}
+                {state.calibrationBirads === currentCase.groundTruth?.birads ? 'Correct.' : 'Review the case presentation.'}
               </div>
               
               {/* Study Trial Transition Notice */}
@@ -4082,7 +4273,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               </div>
               
               <button onClick={continueFromCalibration} style={{ padding: '16px 32px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                🔬 Begin Study Trials →
+                Begin Study Trials
               </button>
             </div>
           )}
@@ -4091,8 +4282,12 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'INITIAL' && currentCase && (
             <div>
               <div style={{ backgroundColor: '#3b82f6', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
-                <strong>🧠 Initial Assessment:</strong> Review the mammogram and lock your impression BEFORE seeing AI.
+                <strong>Initial Assessment:</strong> Review the mammogram and lock your impression before viewing AI output.
               </div>
+
+              {isClinicianView && (
+                <CaseVignettePanel caseDef={currentCase} />
+              )}
               
               {/* Viewer Controls Bar */}
               <div style={{
@@ -4138,7 +4333,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     borderRadius: '4px',
                     fontFamily: 'monospace',
                   }}>
-                    ⏱️ {timeOnCase}s
+                    Time {timeOnCase}s
                   </div>
                   {/* Reset Button */}
                   <button
@@ -4204,39 +4399,41 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     {[0,1,2,3,4,5,6].map(n => <option key={n} value={n}>BI-RADS {n}</option>)}
                   </select>
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press 0-5 to quick-select
+                    Keyboard: Press 0-5 to quick-select.
                   </div>
                 </div>
                 <div>
                   <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Confidence: {state.initialConfidence}%</label>
                   <input type="range" min="0" max="100" value={state.initialConfidence} onChange={e => setState(s => ({ ...s, initialConfidence: Number(e.target.value) }))} style={{ width: '100%' }} />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    ⌨️ Press +/- to adjust
+                    Keyboard: Press +/- to adjust.
                   </div>
                 </div>
               </div>
               
-              {/* Pre-AI Trust */}
-              <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
-                    🤖 Expected Trust in AI
-                  </label>
-                  <span style={{ color: '#60a5fa', fontWeight: 700 }}>{state.preTrust}%</span>
+              {/* Pre-AI Trust (Researcher Mode Only) */}
+              {isResearcherView && (
+                <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
+                      Expected Trust in AI
+                    </label>
+                    <span style={{ color: '#60a5fa', fontWeight: 700 }}>{state.preTrust}%</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={state.preTrust} onChange={e => setState(s => ({ ...s, preTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                    <span>Will not rely on AI</span>
+                    <span>Will rely heavily</span>
+                  </div>
                 </div>
-                <input type="range" min="0" max="100" value={state.preTrust} onChange={e => setState(s => ({ ...s, preTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                  <span>Won't rely on AI</span>
-                  <span>Will heavily rely</span>
-                </div>
-              </div>
+              )}
               
               <button 
                 id="lock-impression-btn"
                 onClick={lockImpression} 
                 disabled={state.initialBirads === null}
                 style={{ marginTop: '24px', padding: '16px 32px', backgroundColor: state.initialBirads !== null ? '#f59e0b' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                🔒 Lock First Impression & Reveal AI
+                 Lock First Impression & Reveal AI
                 <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Space]</span>
               </button>
             </div>
@@ -4246,8 +4443,12 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'AI_REVEALED' && currentCase && (
             <div>
               <div style={{ backgroundColor: '#7c3aed', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>🤖 AI Assessment Revealed:</strong> Review AI opinion and FDR/FOR disclosure. You may update your assessment.
+                <strong>AI Assessment Revealed:</strong> Review the AI output and error rate disclosure. You may update your assessment.
               </div>
+
+              {isClinicianView && (
+                <CaseVignettePanel caseDef={currentCase} />
+              )}
               
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
                 {/* Viewer */}
@@ -4309,7 +4510,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                             color: 'white',
                             textAlign: 'center'
                           }}>
-                            🧠 ADAPTIVE: {caseDifficulty} CASE → {caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL+DEBIAS'} DISCLOSURE
+                             ADAPTIVE: {caseDifficulty} CASE → {caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL+DEBIAS'} DISCLOSURE
                           </div>
                         )}
                         
@@ -4328,7 +4529,6 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                           </>
                         ) : (
                           <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', padding: '12px 0' }}>
-                            <div style={{ fontSize: '14px', marginBottom: '4px' }}>📊</div>
                             <div>Minimal disclosure mode (easy case)</div>
                             <div style={{ fontSize: '10px', marginTop: '4px', color: '#64748b' }}>AI suggestion shown without detailed error rates</div>
                           </div>
@@ -4344,7 +4544,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                             border: '2px solid #ef4444'
                           }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, color: '#fca5a5', marginBottom: '6px' }}>
-                              ⚠️ HARD CASE: AUTOMATION BIAS WARNING
+                              HARD CASE: AUTOMATION BIAS WARNING
                             </div>
                             <div style={{ fontSize: '11px', color: '#fecaca' }}>
                               This case has features that frequently lead to over-reliance on AI. 
@@ -4371,7 +4571,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                               alignItems: 'center',
                               gap: '6px'
                             }}>
-                              <span>🔍</span>
+                              <span></span>
                               <span>POLICY DECISION REASONING</span>
                             </div>
                             <div style={{ color: '#c7d2fe' }}>
@@ -4395,12 +4595,8 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                                 paddingTop: '6px', 
                                 borderTop: '1px solid #4338ca',
                                 color: '#94a3b8',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
                               }}>
-                                <span style={{ color: '#22c55e' }}>✓</span>
-                                <span>Logged: ADAPTIVE_DISCLOSURE_DECISION</span>
+                                Logged: ADAPTIVE_DISCLOSURE_DECISION
                               </div>
                             </div>
                           </div>
@@ -4409,91 +4605,95 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                     );
                   })()}
                   
-                  {/* Model Card (Collapsible) */}
-                  <div style={{ marginTop: '12px' }}>
-                    <button 
-                      onClick={() => setShowModelCard(!showModelCard)}
-                      style={{ 
-                        width: '100%',
-                        padding: '10px 12px', 
-                        backgroundColor: '#1e293b', 
-                        color: '#94a3b8', 
-                        border: '1px solid #334155', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer', 
-                        fontSize: '11px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span>🤖 AI Model Card</span>
-                      <span>{showModelCard ? '▲' : '▼'}</span>
-                    </button>
-                    {showModelCard && (
-                      <div style={{ 
-                        marginTop: '8px', 
-                        padding: '12px', 
-                        backgroundColor: '#0f172a', 
-                        borderRadius: '8px',
-                        border: '1px solid #334155',
-                        fontSize: '11px'
-                      }}>
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ color: '#64748b' }}>Model:</span>
-                          <span style={{ color: 'white', marginLeft: '8px' }}>MammoCAD v2.1</span>
-                        </div>
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ color: '#64748b' }}>Training:</span>
-                          <span style={{ color: 'white', marginLeft: '8px' }}>142K mammograms</span>
-                        </div>
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ color: '#64748b' }}>Operating Point:</span>
-                          <span style={{ color: 'white', marginLeft: '8px' }}>Sens 88% / Spec 92%</span>
-                        </div>
-                        <div style={{ marginBottom: '8px' }}>
-                          <span style={{ color: '#64748b' }}>Last Calibrated:</span>
-                          <span style={{ color: 'white', marginLeft: '8px' }}>2025-11-15</span>
-                        </div>
-                        <div style={{ 
-                          marginTop: '8px', 
-                          padding: '6px', 
-                          backgroundColor: '#7f1d1d', 
-                          borderRadius: '4px',
-                          color: '#fca5a5',
-                          fontSize: '10px'
-                        }}>
-                          ⚠️ Research use only. Not FDA cleared for clinical diagnosis.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Comprehension Check */}
-                  <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px' }}>
-                    <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Comprehension Check</div>
-                    <div style={{ fontSize: '13px', color: 'white', marginBottom: '12px' }}>Which error type is MORE likely with this AI?</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {[
-                        { id: 'false_alarm', label: 'False alarm (FDR = 4%)' },
-                        { id: 'missed_cancer', label: 'Missed cancer (FOR = 12%)' },
-                      ].map(opt => (
-                        <button key={opt.id} onClick={() => handleComprehension(opt.id)}
-                          style={{
-                            padding: '10px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                            backgroundColor: state.comprehensionAnswer === opt.id ? (state.comprehensionCorrect ? '#166534' : '#991b1b') : '#334155',
-                            color: 'white', fontSize: '13px',
-                          }}>
-                          {opt.label}
+                  {isResearcherView && (
+                    <>
+                      {/* Model Card (Collapsible) */}
+                      <div style={{ marginTop: '12px' }}>
+                        <button 
+                          onClick={() => setShowModelCard(!showModelCard)}
+                          style={{ 
+                            width: '100%',
+                            padding: '10px 12px', 
+                            backgroundColor: '#1e293b', 
+                            color: '#94a3b8', 
+                            border: '1px solid #334155', 
+                            borderRadius: '8px', 
+                            cursor: 'pointer', 
+                            fontSize: '11px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <span>AI Model Card</span>
+                          <span>{showModelCard ? 'Collapse' : 'Expand'}</span>
                         </button>
-                      ))}
-                    </div>
-                    {state.comprehensionAnswer && (
-                      <div style={{ marginTop: '12px', padding: '8px', borderRadius: '6px', backgroundColor: state.comprehensionCorrect ? '#166534' : '#7f1d1d', color: 'white', fontSize: '12px' }}>
-                        {state.comprehensionCorrect ? '✓ Correct! FOR=12% > FDR=4%' : '✗ FOR=12% means missed cancers are more likely'}
+                        {showModelCard && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            padding: '12px', 
+                            backgroundColor: '#0f172a', 
+                            borderRadius: '8px',
+                            border: '1px solid #334155',
+                            fontSize: '11px'
+                          }}>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: '#64748b' }}>Model:</span>
+                              <span style={{ color: 'white', marginLeft: '8px' }}>MammoCAD v2.1</span>
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: '#64748b' }}>Training:</span>
+                              <span style={{ color: 'white', marginLeft: '8px' }}>142K mammograms</span>
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: '#64748b' }}>Operating Point:</span>
+                              <span style={{ color: 'white', marginLeft: '8px' }}>Sens 88% / Spec 92%</span>
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ color: '#64748b' }}>Last Calibrated:</span>
+                              <span style={{ color: 'white', marginLeft: '8px' }}>2025-11-15</span>
+                            </div>
+                            <div style={{ 
+                              marginTop: '8px', 
+                              padding: '6px', 
+                              backgroundColor: '#7f1d1d', 
+                              borderRadius: '4px',
+                              color: '#fca5a5',
+                              fontSize: '10px'
+                            }}>
+                              Research use only. Not FDA cleared for clinical diagnosis.
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                      
+                      {/* Comprehension Check */}
+                      <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Comprehension Check</div>
+                        <div style={{ fontSize: '13px', color: 'white', marginBottom: '12px' }}>Which error type is more likely with this AI?</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {[
+                            { id: 'false_alarm', label: 'False alarm (FDR = 4%)' },
+                            { id: 'missed_cancer', label: 'Missed cancer (FOR = 12%)' },
+                          ].map(opt => (
+                            <button key={opt.id} onClick={() => handleComprehension(opt.id)}
+                              style={{
+                                padding: '10px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                backgroundColor: state.comprehensionAnswer === opt.id ? (state.comprehensionCorrect ? '#166534' : '#991b1b') : '#334155',
+                                color: 'white', fontSize: '13px',
+                              }}>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        {state.comprehensionAnswer && (
+                          <div style={{ marginTop: '12px', padding: '8px', borderRadius: '6px', backgroundColor: state.comprehensionCorrect ? '#166534' : '#7f1d1d', color: 'white', fontSize: '12px' }}>
+                            {state.comprehensionCorrect ? 'Correct. FOR = 12% is greater than FDR = 4%.' : 'Incorrect. FOR = 12% means missed cancers are more likely.'}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               
@@ -4521,7 +4721,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               {/* Final Assessment */}
               <div style={{ marginTop: '24px', padding: '20px', backgroundColor: '#0f172a', borderRadius: '12px' }}>
                 <div style={{ fontSize: '14px', color: 'white', fontWeight: 600, marginBottom: '16px' }}>
-                  Final Assessment {state.finalBirads !== state.initialBirads && <span style={{ color: '#f59e0b' }}>⚠️ CHANGED from BI-RADS {state.initialBirads}</span>}
+                  Final Assessment {state.finalBirads !== state.initialBirads && <span style={{ color: '#f59e0b' }}>Changed from BI-RADS {state.initialBirads}</span>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '500px' }}>
                   <div>
@@ -4537,45 +4737,47 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   </div>
                 </div>
                 
-                {/* Post-AI Trust with Delta */}
-                <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
-                      🤖 Actual Reliance on AI
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ color: '#a855f7', fontWeight: 700 }}>{state.postTrust}%</span>
-                      {state.postTrust !== state.preTrust && (
-                        <span style={{ 
-                          padding: '2px 8px', 
-                          borderRadius: '10px', 
-                          fontSize: '11px', 
-                          fontWeight: 600,
-                          backgroundColor: state.postTrust > state.preTrust ? '#166534' : '#7f1d1d',
-                          color: state.postTrust > state.preTrust ? '#86efac' : '#fca5a5',
-                        }}>
-                          {state.postTrust > state.preTrust ? '↑' : '↓'} {Math.abs(state.postTrust - state.preTrust)}
-                        </span>
-                      )}
+                {/* Post-AI Trust with Delta (Researcher Mode Only) */}
+                {isResearcherView && (
+                  <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>
+                        Actual Reliance on AI
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ color: '#a855f7', fontWeight: 700 }}>{state.postTrust}%</span>
+                        {state.postTrust !== state.preTrust && (
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '10px', 
+                            fontSize: '11px', 
+                            fontWeight: 600,
+                            backgroundColor: state.postTrust > state.preTrust ? '#166534' : '#7f1d1d',
+                            color: state.postTrust > state.preTrust ? '#86efac' : '#fca5a5',
+                          }}>
+                            {state.postTrust > state.preTrust ? 'Up' : 'Down'} {Math.abs(state.postTrust - state.preTrust)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <input type="range" min="0" max="100" value={state.postTrust} onChange={e => setState(s => ({ ...s, postTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                      <span>Did not rely on AI</span>
+                      <span>Relied heavily</span>
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
+                      Pre-AI expectation was {state.preTrust}% — 
+                      {state.postTrust > state.preTrust ? ' trust increased' : state.postTrust < state.preTrust ? ' trust decreased' : ' no change'}
                     </div>
                   </div>
-                  <input type="range" min="0" max="100" value={state.postTrust} onChange={e => setState(s => ({ ...s, postTrust: Number(e.target.value) }))} style={{ width: '100%' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                    <span>Didn't rely on AI</span>
-                    <span>Heavily relied</span>
-                  </div>
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b' }}>
-                    Pre-AI expectation was {state.preTrust}% — 
-                    {state.postTrust > state.preTrust ? ' trust increased' : state.postTrust < state.preTrust ? ' trust decreased' : ' no change'}
-                  </div>
-                </div>
+                )}
                 
                 <button 
                   id="submit-final-btn"
                   onClick={proceedToDeviation} 
-                  disabled={!state.comprehensionAnswer}
-                  style={{ marginTop: '20px', padding: '16px 32px', backgroundColor: state.comprehensionAnswer ? '#22c55e' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.comprehensionAnswer ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                  {state.finalBirads !== state.initialBirads ? '📝 Document Deviation & Submit' : '✓ Submit Final Assessment'}
+                  disabled={isResearcherView ? !state.comprehensionAnswer : false}
+                  style={{ marginTop: '20px', padding: '16px 32px', backgroundColor: !isResearcherView || state.comprehensionAnswer ? '#22c55e' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: !isResearcherView || state.comprehensionAnswer ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
+                  {state.finalBirads !== state.initialBirads ? 'Document Rationale and Submit' : 'Submit Final Assessment'}
                   <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Enter]</span>
                 </button>
               </div>
@@ -4586,7 +4788,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {state.step === 'DEVIATION' && (
             <div style={{ maxWidth: '600px' }}>
               <div style={{ backgroundColor: '#f59e0b', color: '#78350f', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
-                <strong>⚠️ Deviation Documentation Required:</strong> You changed from BI-RADS {state.initialBirads} to BI-RADS {state.finalBirads}. Please document your rationale.
+                <strong>Deviation Documentation Required:</strong> You changed from BI-RADS {state.initialBirads} to BI-RADS {state.finalBirads}. Please document your rationale.
               </div>
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Deviation Rationale</label>
@@ -4600,12 +4802,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
               <div style={{ display: 'flex', gap: '16px' }}>
                 <button onClick={() => proceedToProbes(false)} disabled={!state.deviationRationale.trim()}
                   style={{ flex: 1, padding: '16px', backgroundColor: state.deviationRationale.trim() ? '#22c55e' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.deviationRationale.trim() ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                  ✓ Submit with Documentation
+                   Submit with Documentation
                 </button>
-                <button onClick={() => proceedToProbes(true)}
-                  style={{ padding: '16px 24px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                  Skip Documentation
-                </button>
+                {isResearcherView && (
+                  <button onClick={() => proceedToProbes(true)}
+                    style={{ padding: '16px 24px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
+                    Skip Documentation
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -4613,14 +4817,14 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* COMPLETE */}
           {state.step === 'COMPLETE' && currentCase && (
             <div>
-              <h2 style={{ color: '#4ade80', marginTop: 0 }}>✅ Case Complete</h2>
+              <h2 style={{ color: '#4ade80', marginTop: 0 }}>Case Complete</h2>
               {(() => {
                 const adda = computeADDA();
                 if (!adda) return null;
                 return (
                   <div style={{ backgroundColor: adda.adda === true ? '#166534' : adda.adda === false ? '#92400e' : '#334155', padding: '20px', borderRadius: '12px', marginBottom: '24px', border: `2px solid ${adda.adda === true ? '#22c55e' : adda.adda === false ? '#f59e0b' : '#475569'}` }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
-                      {adda.addaDenominator ? (adda.adda ? '✅ ADDA = TRUE' : '⚠️ ADDA = FALSE') : '➖ Not in ADDA denominator'}
+                      {adda.addaDenominator ? (adda.adda ? 'ADDA = TRUE' : 'ADDA = FALSE') : 'Not in ADDA denominator'}
                     </div>
                     <div style={{ color: '#94a3b8', marginTop: '8px', fontSize: '13px' }}>
                       change: {adda.changeOccurred.toString()} | ai_consistent: {adda.aiConsistentChange.toString()} | denominator: {adda.addaDenominator.toString()}
@@ -4643,7 +4847,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                 </div>
               </div>
               <button onClick={() => nextCase()} style={{ width: '100%', padding: '16px', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total} →` : 'Complete Study →'}
+                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total}` : 'Complete Study'}
               </button>
             </div>
           )}
@@ -4653,7 +4857,6 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
               <div style={{ backgroundColor: '#1e3a5f', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #3b82f6' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>📊</span>
                   <span style={{ color: 'white', fontWeight: 700 }}>NASA-TLX Workload Assessment</span>
                   <span style={{ backgroundColor: '#3b82f6', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '10px' }}>MICRO</span>
                 </div>
@@ -4734,7 +4937,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   fontWeight: 600 
                 }}
               >
-                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total} →` : 'Complete Study →'}
+                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total}` : 'Complete Study'}
               </button>
             </div>
           )}
@@ -4742,52 +4945,37 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           {/* STUDY COMPLETE */}
           {state.step === 'STUDY_COMPLETE' && (
             <div>
-              <h2 style={{ color: '#4ade80', marginTop: 0 }}>🎉 Study Complete</h2>
-              
-              {/* Prominent Verification Status Banner */}
-              {state.exportReady && (
+              <h2 style={{ color: '#4ade80', marginTop: 0 }}>Study Complete</h2>
+
+              {isResearcherView && state.exportReady && (
                 <div style={{
-                  padding: '20px',
+                  padding: '16px',
                   borderRadius: '12px',
-                  marginBottom: '24px',
+                  marginBottom: '20px',
                   backgroundColor: state.verifierResult === 'PASS' ? '#052e16' : state.verifierResult === 'FAIL' ? '#450a0a' : '#1e293b',
-                  border: `2px solid ${state.verifierResult === 'PASS' ? '#22c55e' : state.verifierResult === 'FAIL' ? '#dc2626' : '#475569'}`,
+                  border: `1px solid ${state.verifierResult === 'PASS' ? '#22c55e' : state.verifierResult === 'FAIL' ? '#dc2626' : '#475569'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div>
                     <div style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      backgroundColor: state.verifierResult === 'PASS' ? '#166534' : state.verifierResult === 'FAIL' ? '#991b1b' : '#334155',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '32px',
+                      color: state.verifierResult === 'PASS' ? '#4ade80' : state.verifierResult === 'FAIL' ? '#f87171' : '#94a3b8',
+                      fontSize: '18px',
+                      fontWeight: 700,
                     }}>
-                      {state.verifierResult === 'PASS' ? '✓' : state.verifierResult === 'FAIL' ? '✗' : '?'}
+                      {state.verifierResult === 'PASS' ? 'Verification Passed' :
+                       state.verifierResult === 'FAIL' ? 'Verification Failed' : 'Awaiting Verification'}
                     </div>
-                    <div>
-                      <div style={{
-                        color: state.verifierResult === 'PASS' ? '#4ade80' : state.verifierResult === 'FAIL' ? '#f87171' : '#94a3b8',
-                        fontSize: '24px',
-                        fontWeight: 700,
-                      }}>
-                        {state.verifierResult === 'PASS' ? 'VERIFICATION PASSED' : 
-                         state.verifierResult === 'FAIL' ? 'VERIFICATION FAILED' : 'AWAITING VERIFICATION'}
-                      </div>
-                      <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>
-                        {state.verifierResult === 'PASS' ? 'Hash chain intact • Signature valid • No tampering detected' :
-                         state.verifierResult === 'FAIL' ? `Integrity compromised: ${tamperFailureCode || 'Unknown error'}` :
-                         'Generate export to verify chain integrity'}
-                      </div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>
+                      {state.verifierResult === 'PASS' ? 'Hash chain intact and signature valid.' :
+                       state.verifierResult === 'FAIL' ? `Integrity issue: ${tamperFailureCode || 'Unknown error'}` :
+                       'Generate export to verify chain integrity.'}
                     </div>
                   </div>
                   {state.verifierResult && (
                     <div style={{
-                      padding: '8px 16px',
+                      padding: '6px 12px',
                       backgroundColor: state.verifierResult === 'PASS' ? '#166534' : '#991b1b',
                       borderRadius: '8px',
                       color: 'white',
@@ -4799,165 +4987,216 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
                   )}
                 </div>
               )}
-              
-              {/* Session Summary Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isClinicianView ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ padding: '16px', backgroundColor: '#166534', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>{state.caseResults.length}</div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>{sessionMetrics.totalCases}</div>
                   <div style={{ fontSize: '12px', color: '#86efac' }}>Cases</div>
                 </div>
-                <div style={{ padding: '16px', backgroundColor: '#581c87', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>{state.caseResults.filter(r => r.adda === true).length}</div>
-                  <div style={{ fontSize: '12px', color: '#c4b5fd' }}>ADDA=TRUE</div>
-                </div>
-                <div style={{ padding: '16px', backgroundColor: '#92400e', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>{state.caseResults.filter(r => r.changeOccurred).length}</div>
-                  <div style={{ fontSize: '12px', color: '#fcd34d' }}>Changes</div>
+                <div style={{ padding: '16px', backgroundColor: '#1e3a5f', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>{sessionMetrics.averagePreAiSeconds.toFixed(1)}s</div>
+                  <div style={{ fontSize: '12px', color: '#93c5fd' }}>Avg Pre-AI</div>
                 </div>
                 <div style={{ padding: '16px', backgroundColor: '#1e3a5f', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>{state.eventCount}</div>
-                  <div style={{ fontSize: '12px', color: '#93c5fd' }}>Events</div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>{sessionMetrics.averagePostAiSeconds.toFixed(1)}s</div>
+                  <div style={{ fontSize: '12px', color: '#93c5fd' }}>Avg Post-AI</div>
                 </div>
+                {isResearcherView && (
+                  <div style={{ padding: '16px', backgroundColor: '#581c87', borderRadius: '12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'white' }}>{Math.round(sessionMetrics.agreementRate * 100)}%</div>
+                    <div style={{ fontSize: '12px', color: '#c4b5fd' }}>AI Agreement</div>
+                  </div>
+                )}
               </div>
 
-              {/* Cross-Exam Risk Flags */}
-              <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #334155' }}>
-                <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, marginBottom: '12px' }}>⚖️ CROSS-EXAMINATION RISK FLAGS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {state.caseResults.some(r => r.totalTimeMs < 5000) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ FAST PRE-AI (&lt;5s)
-                    </span>
-                  )}
-                  {state.caseResults.every(r => r.adda === true) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ ALWAYS AGREED WITH AI
-                    </span>
-                  )}
-                  {state.caseResults.some(r => r.deviationSkipped) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ DEVIATION SKIPPED
-                    </span>
-                  )}
-                  {state.caseResults.some(r => r.comprehensionCorrect === false) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ⚠️ COMPREHENSION FAILED
-                    </span>
-                  )}
-                  {!state.caseResults.some(r => r.totalTimeMs < 5000) && 
-                   !state.caseResults.every(r => r.adda === true) && 
-                   !state.caseResults.some(r => r.deviationSkipped) &&
-                   !state.caseResults.some(r => r.comprehensionCorrect === false) && (
-                    <span style={{ padding: '4px 10px', backgroundColor: '#166534', color: '#86efac', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                      ✓ NO FLAGS - DEFENSIBLE RECORD
-                    </span>
-                  )}
+              {isResearcherView && (
+                <div style={{ backgroundColor: '#1e293b', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '1px solid #334155' }}>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, marginBottom: '12px' }}>Cross-Examination Risk Flags</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {sessionMetrics.fastPreAiReads > 0 && (
+                      <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                        Fast pre-AI reads
+                      </span>
+                    )}
+                    {sessionMetrics.agreementRate === 1 && sessionMetrics.aiEligibleCases > 0 && (
+                      <span style={{ padding: '4px 10px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                        Always agreed with AI
+                      </span>
+                    )}
+                    {sessionMetrics.overrideCount > sessionMetrics.overridesWithRationale && (
+                      <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                        Missing rationale on overrides
+                      </span>
+                    )}
+                    {sessionMetrics.rubberStampFlag && (
+                      <span style={{ padding: '4px 10px', backgroundColor: '#92400e', color: '#fcd34d', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                        Potential rubber-stamp pattern
+                      </span>
+                    )}
+                    {sessionMetrics.fastPreAiReads === 0 && sessionMetrics.overrideCount === sessionMetrics.overridesWithRationale && !sessionMetrics.rubberStampFlag && (
+                      <span style={{ padding: '4px 10px', backgroundColor: '#166534', color: '#86efac', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
+                        No flags detected
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              
-              {/* Action Buttons */}
+              )}
+
               <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                 <button onClick={generateExport} style={{ flex: 1, padding: '16px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                  📦 Generate Expert Witness Packet
+                  Generate Export Packet
                 </button>
-                {state.exportReady && (
+                {state.exportReady && isResearcherView && (
                   <>
                     <button onClick={() => setShowPacketViewer(true)} style={{ padding: '16px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>
-                      👁️ View
+                      View Packet
                     </button>
                     {!tamperDemoActive ? (
                       <button onClick={runTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                        🔓 Tamper Demo
+                        Tamper Demo
                       </button>
                     ) : (
                       <button onClick={resetTamperDemo} style={{ padding: '16px 24px', backgroundColor: '#166534', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
-                        ↩️ Reset Demo
+                        Reset Demo
                       </button>
                     )}
                   </>
                 )}
               </div>
-              
-              {/* Export Result Panel */}
+
               {state.exportReady && (
-                <div style={{ 
-                  backgroundColor: state.verifierResult === 'PASS' ? '#166534' : '#7f1d1d', 
-                  padding: '24px', 
-                  borderRadius: '16px', 
-                  border: `3px solid ${state.verifierResult === 'PASS' ? '#22c55e' : '#ef4444'}`,
-                  transition: 'all 0.3s ease'
+                <div style={{
+                  backgroundColor: '#0f172a',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  border: '1px solid #334155',
                 }}>
-                  {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'white' }}>
-                        {tamperDemoActive ? '⚠️ TAMPERED PACKET DETECTED' : 'Expert Witness Packet Ready'}
-                      </div>
-                      <div style={{ color: state.verifierResult === 'PASS' ? '#86efac' : '#fca5a5' }}>
-                        Verifier: {state.verifierResult}
-                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '16px', color: 'white' }}>Export Package</div>
+                      <div style={{ color: '#94a3b8', fontSize: '12px' }}>{state.exportFilename}</div>
                     </div>
-                    <div style={{ 
-                      backgroundColor: state.verifierResult === 'PASS' ? '#22c55e' : '#ef4444', 
-                      color: 'white', 
-                      padding: '12px 20px', 
-                      borderRadius: '24px', 
-                      fontWeight: 700,
-                      fontSize: '16px',
-                      boxShadow: state.verifierResult === 'FAIL' ? '0 0 20px rgba(239, 68, 68, 0.5)' : 'none',
-                      animation: state.verifierResult === 'FAIL' ? 'pulse 1s infinite' : 'none'
-                    }}>
-                      {state.verifierResult === 'PASS' ? '✓ CHAIN INTACT' : '✗ CHAIN BROKEN'}
-                    </div>
-                  </div>
-
-                  {/* Tamper Demo Failure Details */}
-                  {tamperDemoActive && tamperFailureCode && (
-                    <div style={{ 
-                      backgroundColor: '#450a0a', 
-                      padding: '16px', 
-                      borderRadius: '8px', 
-                      marginBottom: '16px',
-                      border: '2px solid #dc2626'
-                    }}>
-                      <div style={{ fontFamily: 'monospace', marginBottom: '8px' }}>
-                        <span style={{ color: '#ef4444', fontWeight: 700 }}>FAILURE CODE:</span>
-                        <span style={{ color: '#fca5a5', marginLeft: '8px' }}>{tamperFailureCode}</span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#fca5a5', fontFamily: 'monospace' }}>
-                        {tamperFailureCode === 'CHAIN_BROKEN' && 'Hash chain integrity violated at event #47. Expected: 8f3a2b... Got: 0000000...'}
-                        {tamperFailureCode === 'CONTENT_TAMPERED' && 'Event payload modified after signing. Field "finalBirads" changed from 4 to 2'}
-                        {tamperFailureCode === 'TIMESTAMP_REGRESSION' && 'Non-monotonic timestamp detected. Event #52 predates event #51 by 3.2s'}
-                      </div>
-                      <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#7f1d1d', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '11px', color: '#f87171', fontWeight: 600 }}>LEGAL IMPLICATION:</div>
-                        <div style={{ fontSize: '12px', color: '#fecaca' }}>This export cannot be used as evidence. The audit trail has been compromised.</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Package Contents */}
-                  <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '8px', color: 'white' }}>📁 Package (6 files):</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '13px', color: '#94a3b8' }}>
-                      <div>trial_manifest.json</div><div>events.jsonl</div><div>ledger.json</div>
-                      <div>verifier_output.json</div><div>derived_metrics.csv</div><div>codebook.md</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {(['SUMMARY', 'AUDIT'] as const).map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => setExportView(tab)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: '1px solid #334155',
+                            backgroundColor: exportView === tab ? '#1e293b' : 'transparent',
+                            color: exportView === tab ? 'white' : '#94a3b8',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {tab === 'SUMMARY' ? 'Summary' : 'Audit'}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Download Button */}
-                  {!tamperDemoActive && (
-                    <a href={state.exportUrl!} download={state.exportFilename} style={{ display: 'inline-block', padding: '14px 28px', backgroundColor: '#22c55e', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '16px' }}>
-                      📥 Download ZIP
-                    </a>
+                  {exportView === 'SUMMARY' ? (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>AI Agreement</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>{Math.round(sessionMetrics.agreementRate * 100)}%</div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Overrides</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>{sessionMetrics.overrideCount}</div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Rationale Rate</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>
+                            {sessionMetrics.overrideCount > 0 ? `${Math.round((sessionMetrics.overridesWithRationale / sessionMetrics.overrideCount) * 100)}%` : 'N/A'}
+                          </div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Rubber Stamp</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>{sessionMetrics.rubberStampFlag ? 'Flagged' : 'Not flagged'}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>Decisions</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 0.8fr', gap: '6px', fontSize: '11px', color: '#e2e8f0' }}>
+                            <div style={{ color: '#64748b', fontWeight: 600 }}>Case</div>
+                            <div style={{ color: '#64748b', fontWeight: 600 }}>Initial</div>
+                            <div style={{ color: '#64748b', fontWeight: 600 }}>Final</div>
+                            <div style={{ color: '#64748b', fontWeight: 600 }}>AI</div>
+                            {state.caseResults.map(result => (
+                              <React.Fragment key={result.caseId}>
+                                <div>{result.caseId}</div>
+                                <div>{result.initialBirads}</div>
+                                <div>{result.finalBirads}</div>
+                                <div>{result.aiBirads ?? 'N/A'}</div>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>Override Reasons</div>
+                          {overrideReasonEntries.length === 0 ? (
+                            <div style={{ color: '#64748b', fontSize: '11px' }}>No overrides recorded.</div>
+                          ) : (
+                            <div style={{ display: 'grid', gap: '6px', fontSize: '11px', color: '#e2e8f0' }}>
+                              {overrideReasonEntries.map(([reason, count]) => (
+                                <div key={reason} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>{reason}</span>
+                                  <span>{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Events</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>{state.eventCount}</div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Chain Status</div>
+                          <div style={{ color: 'white', fontWeight: 700 }}>{state.verifierResult ?? 'Pending'}</div>
+                        </div>
+                        <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8' }}>Session ID</div>
+                          <div style={{ color: 'white', fontWeight: 700, fontFamily: 'monospace' }}>{state.sessionId}</div>
+                        </div>
+                      </div>
+                      <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px' }}>Package Files</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', fontSize: '11px', color: '#e2e8f0' }}>
+                          <div>trial_manifest.json</div>
+                          <div>export_manifest.json</div>
+                          <div>events.jsonl</div>
+                          <div>ledger.json</div>
+                          <div>verifier_output.json</div>
+                          <div>derived_metrics.csv</div>
+                          <div>codebook.md</div>
+                        </div>
+                      </div>
+                      <div>
+                        <a href={state.exportUrl!} download={state.exportFilename} style={{ display: 'inline-block', padding: '12px 24px', backgroundColor: '#22c55e', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
+                          Download Export ZIP
+                        </a>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
 
-              {/* Restart Option */}
               <div style={{ marginTop: '24px', textAlign: 'center' }}>
                 <button onClick={() => window.location.reload()} style={{ padding: '12px 24px', backgroundColor: '#334155', color: '#94a3b8', border: '1px solid #475569', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                  🔄 Start New Session
+                  Start New Session
                 </button>
               </div>
             </div>
@@ -4968,7 +5207,7 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
         {viewMode === 'RESEARCHER' && showEventLog && state.step !== 'SETUP' && exportPackRef.current && (
           <div style={{ position: 'fixed', right: '20px', top: '20px', width: '280px', maxHeight: 'calc(100vh - 40px)', backgroundColor: '#0f172a', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px rgba(0,0,0,0.4)', border: '1px solid #334155', zIndex: 100 }}>
             <div style={{ padding: '12px 16px', backgroundColor: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: 'white', fontWeight: 600 }}>📋 Events ({state.eventCount})</div>
+              <div style={{ color: 'white', fontWeight: 600 }}>Events ({state.eventCount})</div>
               <button onClick={() => setShowEventLog(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '16px' }}>×</button>
             </div>
             {/* Verification Status Panel */}
@@ -5002,9 +5241,9 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           </div>
         )}
         {viewMode === 'RESEARCHER' && !showEventLog && state.step !== 'SETUP' && (
-          <button onClick={() => setShowEventLog(true)} style={{ position: 'fixed', right: '20px', top: '20px', padding: '12px 16px', backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, zIndex: 100 }}>
-            📋 Events ({state.eventCount})
-          </button>
+            <button onClick={() => setShowEventLog(true)} style={{ position: 'fixed', right: '20px', top: '20px', padding: '12px 16px', backgroundColor: '#1e293b', color: 'white', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, zIndex: 100 }}>
+              Events ({state.eventCount})
+            </button>
         )}
       </div>
 
@@ -5080,9 +5319,10 @@ const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNK
           ledger={exportPackRef.current.getLedger()}
           verifierResult={state.verifierResult}
           tamperDetected={tamperDemoActive}
+          sessionMetrics={sessionMetrics}
         />
       )}
-    </div>
+    </Shell>
   );
 };
 

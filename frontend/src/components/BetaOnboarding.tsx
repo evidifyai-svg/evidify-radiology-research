@@ -319,12 +319,12 @@ const styles: Record<string, React.CSSProperties> = {
 // ============================================
 
 const STEPS: OnboardingStep[] = [
-  { id: 'welcome', title: 'Welcome', description: 'Introduction to Evidify', icon: '👋' },
-  { id: 'system', title: 'System Check', description: 'Verify requirements', icon: '⚙️' },
-  { id: 'profile', title: 'Profile', description: 'Your information', icon: '👤' },
-  { id: 'privacy', title: 'Privacy', description: 'How your data is protected', icon: '🔒' },
-  { id: 'features', title: 'Features', description: 'Key capabilities', icon: '✨' },
-  { id: 'ready', title: 'Ready', description: 'Start documenting', icon: '🚀' },
+  { id: 'welcome', title: 'Welcome', description: 'Introduction to Evidify', icon: '' },
+  { id: 'system', title: 'System Check', description: 'Verify requirements', icon: '' },
+  { id: 'profile', title: 'Profile', description: 'Your information', icon: '' },
+  { id: 'privacy', title: 'Privacy', description: 'How your data is protected', icon: '' },
+  { id: 'features', title: 'Features', description: 'Key capabilities', icon: '' },
+  { id: 'ready', title: 'Ready', description: 'Start documenting', icon: '' },
 ];
 
 export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSkip }) => {
@@ -406,8 +406,8 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
     switch (status) {
       case 'pending': return '○';
       case 'checking': return '◌';
-      case 'pass': return '✓';
-      case 'fail': return '✗';
+      case 'pass': return '';
+      case 'fail': return '';
       case 'warning': return '!';
     }
   };
@@ -466,33 +466,33 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </p>
             
             <div style={styles.trustBadge}>
-              🔒 Your data never leaves your device
+               Your data never leaves your device
             </div>
 
             <div style={styles.featureGrid}>
               <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>🎤</div>
+                <div style={styles.featureIcon}></div>
                 <div style={styles.featureTitle}>Voice Scribe</div>
                 <div style={styles.featureDescription}>
                   90 seconds of speaking → complete structured note
                 </div>
               </div>
               <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>🛡️</div>
+                <div style={styles.featureIcon}></div>
                 <div style={styles.featureTitle}>Local-First</div>
                 <div style={styles.featureDescription}>
                   Works identically offline. PHI never transmitted.
                 </div>
               </div>
               <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>⚖️</div>
+                <div style={styles.featureIcon}></div>
                 <div style={styles.featureTitle}>Defensible</div>
                 <div style={styles.featureDescription}>
                   Hash-chained audit trail holds up in court.
                 </div>
               </div>
               <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>🧠</div>
+                <div style={styles.featureIcon}></div>
                 <div style={styles.featureTitle}>Clinical Growth</div>
                 <div style={styles.featureDescription}>
                   Built around the supervision debrief model.
@@ -501,7 +501,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={styles.tipBox}>
-              <div style={styles.tipTitle}>💡 Beta Tip</div>
+              <div style={styles.tipTitle}> Beta Tip</div>
               <div style={styles.tipText}>
                 As a beta user, your feedback shapes the product. Use the feedback 
                 button (bottom right) anytime to share what's working and what isn't.
@@ -540,7 +540,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
 
             {systemChecks.some(c => c.status === 'fail' && c.required) && (
               <div style={{ ...styles.tipBox, backgroundColor: '#fff5f5', borderColor: '#fc8181' }}>
-                <div style={{ ...styles.tipTitle, color: '#c53030' }}>⚠️ Required Component Missing</div>
+                <div style={{ ...styles.tipTitle, color: '#c53030' }}> Required Component Missing</div>
                 <div style={{ ...styles.tipText, color: '#822727' }}>
                   Please install the missing components before continuing. 
                   See the QUICKSTART.md guide for installation instructions.
@@ -620,7 +620,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </p>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px' }}>
-              <div style={styles.featureTitle}>🔐 End-to-End Encryption</div>
+              <div style={styles.featureTitle}> End-to-End Encryption</div>
               <div style={styles.featureDescription}>
                 All clinical data is encrypted with AES-256-GCM. Your encryption key 
                 is stored in your operating system's secure keychain, never in the app.
@@ -628,7 +628,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px' }}>
-              <div style={styles.featureTitle}>📴 Works Offline</div>
+              <div style={styles.featureTitle}> Works Offline</div>
               <div style={styles.featureDescription}>
                 Disconnect from the internet and the app works identically. That's 
                 the proof that PHI never leaves your device.
@@ -636,7 +636,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px' }}>
-              <div style={styles.featureTitle}>🔗 Hash-Chained Audit Log</div>
+              <div style={styles.featureTitle}> Hash-Chained Audit Log</div>
               <div style={styles.featureDescription}>
                 Every action is logged in a cryptographically-linked chain. This 
                 proves when you documented and that records haven't been altered.
@@ -700,7 +700,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </p>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px', padding: '24px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>🎤</div>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}></div>
               <div style={{ ...styles.featureTitle, fontSize: '18px' }}>Voice Scribe</div>
               <div style={styles.featureDescription}>
                 The hero feature. Speak for 90 seconds about your session—what happened, 
@@ -711,7 +711,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px', padding: '24px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>🛡️</div>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}></div>
               <div style={{ ...styles.featureTitle, fontSize: '18px' }}>Ethics Detection</div>
               <div style={styles.featureDescription}>
                 As you document, Evidify flags potential safety concerns, mandatory 
@@ -721,7 +721,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px', padding: '24px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏱️</div>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}>Time</div>
               <div style={{ ...styles.featureTitle, fontSize: '18px' }}>Time Metrics</div>
               <div style={styles.featureDescription}>
                 Track exactly how much time you're saving. Compare your documentation 
@@ -731,7 +731,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={styles.tipBox}>
-              <div style={styles.tipTitle}>💡 Getting Started</div>
+              <div style={styles.tipTitle}> Getting Started</div>
               <div style={styles.tipText}>
                 Start with Voice Scribe on your next session. Create a client, 
                 click "New Note," then hit the microphone. Speak naturally about 
@@ -751,7 +751,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
 
             <div style={{ ...styles.featureCard, marginBottom: '16px', backgroundColor: '#f0fff4', borderColor: '#9ae6b4' }}>
               <div style={{ ...styles.featureTitle, color: '#22543d' }}>
-                ✓ First Step: Create Your Vault
+                 First Step: Create Your Vault
               </div>
               <div style={{ ...styles.featureDescription, color: '#276749' }}>
                 You'll be prompted to create a secure vault with a passphrase. 
@@ -760,7 +760,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px' }}>
-              <div style={styles.featureTitle}>📚 Resources</div>
+              <div style={styles.featureTitle}> Resources</div>
               <div style={styles.featureDescription}>
                 <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
                   <li>QUICKSTART.md — Get started in 5 minutes</li>
@@ -771,7 +771,7 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={styles.trustBadge}>
-              🚀 Welcome to the future of clinical documentation
+               Welcome to the future of clinical documentation
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '32px' }}>

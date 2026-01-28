@@ -174,30 +174,30 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           <StatCard 
             label="Supervisees" 
             value={stats.totalSupervisees} 
-            icon="👥" 
+            icon="" 
           />
           <StatCard 
             label="Pending Review" 
             value={stats.pendingReview} 
-            icon="📋"
+            icon=""
             highlight={stats.pendingReview > 0}
           />
           <StatCard 
             label="Overdue" 
             value={stats.overdueReview} 
-            icon="⚠️"
+            icon=""
             highlight={stats.overdueReview > 0}
             highlightColor="red"
           />
           <StatCard 
             label="Avg Review Time" 
             value={`${stats.avgReviewTimeHours.toFixed(1)}h`} 
-            icon="⏱️"
+            icon="Time"
           />
           <StatCard 
             label="Notes This Month" 
             value={stats.notesThisMonth} 
-            icon="📝"
+            icon=""
           />
         </div>
       )}
@@ -457,7 +457,7 @@ const ReviewQueuePanel: React.FC<ReviewQueuePanelProps> = ({ items, onSelectNote
   if (items.length === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-state__icon">✓</div>
+        <div className="empty-state__icon"></div>
         <h3>All caught up!</h3>
         <p>No notes pending review</p>
       </div>
@@ -989,7 +989,7 @@ const NoteReviewModal: React.FC<NoteReviewModalProps> = ({ item, supervisorId, o
           
           {item.hasRiskFlags && (
             <div className="risk-alert">
-              ⚠️ This note contains {item.detectionCount} safety detection(s) that require review
+               This note contains {item.detectionCount} safety detection(s) that require review
             </div>
           )}
           
@@ -1004,19 +1004,19 @@ const NoteReviewModal: React.FC<NoteReviewModalProps> = ({ item, supervisorId, o
                 className={feedbackType === 'strength' ? 'active' : ''}
                 onClick={() => setFeedbackType('strength')}
               >
-                💪 Strength
+                 Strength
               </button>
               <button 
                 className={feedbackType === 'growth' ? 'active' : ''}
                 onClick={() => setFeedbackType('growth')}
               >
-                📈 Growth Area
+                 Growth Area
               </button>
               <button 
                 className={feedbackType === 'question' ? 'active' : ''}
                 onClick={() => setFeedbackType('question')}
               >
-                ❓ Question
+                 Question
               </button>
             </div>
             <textarea
