@@ -3087,6 +3087,9 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
   
+  const isClinician = viewMode === 'CLINICIAN';
+  const isResearcher = viewMode === 'RESEARCHER';
+
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
