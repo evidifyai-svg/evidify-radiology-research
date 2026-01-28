@@ -3191,7 +3191,7 @@ const handleROIEnter = useCallback(async (roiId: string) => {
     
     const firstCase = getCurrentCase(queue);
     
-exportPackRef.current = new ExportPackZip({
+const exportPack = new ExportPackZip({
   sessionId: state.sessionId,
   participantId: 'DEMO-PARTICIPANT',
   studyId: 'BRPLL-DEMO',
@@ -3210,8 +3210,14 @@ exportPackRef.current = new ExportPackZip({
     caseIds: queue.cases.map(c => c.caseId),
   },
 });
+
+const eventLogger = new EventLogger(exportPack);
+
+// assign refs AFTER objects exist
+exportPackRef.current = exportPack;
+eventLoggerRef.current = eventLogger;
     
-await eventLoggerRef.current!.logSessionStarted({
+await eventLogger.logSessionStarted({
   participantId: 'DEMO-PARTICIPANT',
   siteId: 'DEMO',
   studyId: 'BRPLL-DEMO',
