@@ -3126,15 +3126,25 @@ export const ResearchDemoFlow: React.FC = () => {
     if (!state.caseQueue) return null;
     return getCurrentCase(state.caseQueue);
   }, [state.caseQueue]);
+// --- AI helper (compat: old aiResult vs newer case fields) ---
+const aiSuggestedBirads =
+  (currentCase as any)?.aiResult?.birads ??
+  (currentCase as any)?.aiBirads ??
+  4;
 
-  // ROI tracking (eye-tracking proxy)
-  const handleROIEnter = useCallback(async (roiId: string) => {
-    roiEnterTimeRef.current = Date.now();
-    if (eventLoggerRef.current && state.currentCase) {
-      await eventLoggerRef.current!.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: state.currentCase.caseId });
-      setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
-    }
-  }, [state.currentCase]);
+const aiSuggestedConfidence =
+  (currentCase as any)?.aiResult?.confidence ??
+  (currentCase as any)?.aiConfidence ??
+  0.87;
+
+// ROI tracking (eye-tracking proxy)
+const handleROIEnter = useCallback(async (roiId: string) => {
+  roiEnterTimeRef.current = Date.now();
+  if (eventLoggerRef.current && currentCase) {
+    await eventLoggerRef.current.addEvent('GAZE_ENTERED_ROI', { roiId, caseId: currentCase.caseId });
+    setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+  }
+}, [currentCase]);
 
   const handleROILeave = useCallback(async (roiId: string) => {
     if (roiEnterTimeRef.current > 0) {
@@ -3201,7 +3211,7 @@ exportPackRef.current = new ExportPackZip({
   },
 });
     
-await eventLoggerRef.current.logSessionStarted({
+await eventLoggerRef.current!.logSessionStarted({
   participantId: 'DEMO-PARTICIPANT',
   siteId: 'DEMO',
   studyId: 'BRPLL-DEMO',
@@ -3334,11 +3344,25 @@ await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
   preTrust: state.preTrust,
   lockTimestamp: lockTime.toISOString(),
 });
-    
+
     const aiRevealTime = new Date();
-    await eventLoggerRef.current!.logAIRevealed({
-      aiBirads: state.currentCase.aiResult?.birads ?? 4, aiConfidence: state.currentCase.aiResult?.confidence ?? 0.87,
-    });
+
+    const aiSuggestedBirads =
+      (state.currentCase as any)?.aiResult?.birads ??
+      (state.currentCase as any)?.aiBirads ??
+      4;
+
+    const aiConfidence =
+      (state.currentCase as any)?.aiResult?.confidence ??
+      (state.currentCase as any)?.aiConfidence ??
+      0.87;
+    
+await eventLoggerRef.current!.logAIRevealed({
+  suggestedBirads: aiSuggestedBirads,
+  aiConfidence,
+  finding: (state.currentCase as any).finding ?? 'N/A',
+  displayMode: 'PANEL',
+});
     
     // Log disclosure with adaptive policy info
     const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
@@ -3422,7 +3446,7 @@ await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
     }
     
     // Track AI agreement streak
-    const agreedWithAI = (state.finalBirads ?? state.initialBirads) === state.currentCase.aiResult?.birads;
+const agreedWithAI = (state.finalBirads ?? state.initialBirads) === aiSuggestedBirads;
     if (agreedWithAI) {
 setAiAgreementStreak(prev => prev + 1);
     } else {
@@ -3434,7 +3458,7 @@ setAiAgreementStreak(prev => prev + 1);
       state.finalBirads ?? state.initialBirads ?? 0,
       state.finalConfidence,
       state.initialBirads ?? 0,
-      state.currentCase.aiResult?.birads ?? 4
+      aiSuggestedBirads
     );
     await eventLoggerRef.current!.addEvent('ATTENTION_COVERAGE_PROXY', {
       roiDwellTimes: Object.fromEntries(state.roiDwellTimes), totalDwellMs: Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0),
@@ -3463,22 +3487,59 @@ setAiAgreementStreak(prev => prev + 1);
     
     // Compute metrics
     const metrics: DerivedMetrics = {
-      caseId: state.currentCase.caseId, sessionId: state.sessionId, condition: state.condition?.condition || 'UNKNOWN',
-      initialBirads: state.initialBirads ?? 0, finalBirads: state.finalBirads ?? state.initialBirads ?? 0,
-      aiBirads: state.currentCase.aiResult?.birads ?? 4, aiConfidence: state.currentCase.aiResult?.confidence ?? 0.87,
-      changeOccurred: state.finalBirads !== state.initialBirads, aiConsistentChange: state.finalBirads === state.currentCase.aiResult?.birads && state.finalBirads !== state.initialBirads,
-      aiInconsistentChange: state.finalBirads !== state.currentCase.aiResult?.birads && state.finalBirads !== state.initialBirads,
-      addaDenominator: state.initialBirads !== state.currentCase.aiResult?.birads, adda: state.initialBirads !== state.currentCase.aiResult?.birads && state.finalBirads === state.currentCase.aiResult?.birads,
-      deviationRequired: state.finalBirads !== state.initialBirads, deviationDocumented: state.deviationRationale.length > 0,
-      deviationSkipped: state.finalBirads !== state.initialBirads && state.deviationRationale.length === 0,
-      comprehensionCorrect: state.comprehensionCorrect,
-      totalTimeMs: timeOnCase * 1000,
-      lockToRevealMs: state.lockTime && state.aiRevealTime ? state.aiRevealTime.getTime() - state.lockTime.getTime() : 0,
+      sessionId: state.sessionId,
+      timestamp: new Date().toISOString(),
+      condition: state.condition?.condition ?? 'UNKNOWN',
+
+      initialBirads: state.initialBirads ?? 0,
+      finalBirads: state.finalBirads ?? state.initialBirads ?? 0,
+
+      aiBirads: aiSuggestedBirads,
+      aiConfidence: aiSuggestedConfidence,
+
+      changeOccurred: (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
+      aiConsistentChange:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.finalBirads ?? state.initialBirads) === aiSuggestedBirads,
+      aiInconsistentChange:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.finalBirads ?? state.initialBirads) !== aiSuggestedBirads,
+
+      addaDenominator:
+        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads,
+      adda:
+        aiSuggestedBirads != null && (state.initialBirads ?? 0) !== aiSuggestedBirads
+          ? (state.finalBirads ?? state.initialBirads ?? 0) === aiSuggestedBirads
+          : null,
+
+      deviationRequired:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads,
+      deviationDocumented: (state.deviationRationale ?? '').trim().length > 0,
+      deviationSkipped:
+        (state.finalBirads ?? state.initialBirads) !== state.initialBirads &&
+        (state.deviationRationale ?? '').trim().length === 0,
+      deviationText: (state.deviationRationale ?? '').trim() || undefined,
+
+      comprehensionCorrect: state.comprehensionCorrect ?? null,
+
+      totalTimeMs: Math.round(timeOnCase * 1000),
+      lockToRevealMs:
+        state.lockTime && state.aiRevealTime
+          ? state.aiRevealTime.getTime() - state.lockTime.getTime()
+          : 0,
       revealToFinalMs: state.aiRevealTime ? Date.now() - state.aiRevealTime.getTime() : 0,
+
+      revealTiming: state.condition?.condition ?? 'UNKNOWN',
+      disclosureFormat: state.condition?.disclosureFormat ?? 'UNKNOWN',
     };
-    
+
+const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
+
     setState(s => ({
-      ...s, step: 'COMPLETE', caseResults: [...s.caseResults, metrics], eventCount: exportPackRef.current?.getEvents().length || 0,
+      ...s,
+      step: 'COMPLETE',
+      caseResults: [...s.caseResults, { caseId: completedCaseId, ...metrics }],
+      eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
   }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
 
@@ -3554,7 +3615,7 @@ setAiAgreementStreak(prev => prev + 1);
   // ADDA calculation helper
   const computeADDA = useCallback(() => {
     if (!state.currentCase || state.initialBirads === null) return null;
-    const aiBirads = state.currentCase.aiResult?.birads ?? 4;
+    const aiBirads = aiSuggestedBirads;
     const finalBirads = state.finalBirads ?? state.initialBirads;
     const addaDenominator = state.initialBirads !== aiBirads;
     const changeOccurred = finalBirads !== state.initialBirads;
@@ -4209,8 +4270,8 @@ setAiAgreementStreak(prev => prev + 1);
                     style={{ backgroundColor: '#7c3aed', padding: '20px', borderRadius: '12px', marginBottom: '16px', border: '2px solid #a855f7' }}
                   >
                     <div style={{ fontSize: '12px', color: '#c4b5fd', marginBottom: '8px' }}>AI ASSESSMENT</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {currentCase.aiResult?.birads ?? 4}</div>
-                    <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {((currentCase.aiResult?.confidence ?? 0.87) * 100).toFixed(0)}%</div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {aiSuggestedBirads}</div>
+                    <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {(aiSuggestedConfidence * 100).toFixed(0)}%</div>
                   </div>
                   
                   {/* FDR/FOR Disclosure - Adaptive based on policy + difficulty */}
@@ -4910,7 +4971,7 @@ setAiAgreementStreak(prev => prev + 1);
                 eventCount={state.eventCount}
                 sessionId={state.sessionId}
                 isVerified={state.verifierResult === 'PASS' ? true : state.verifierResult === 'FAIL' ? false : null}
-                lastHash={exportPackRef.current.getLedger()?.slice(-1)[0]?.hash}
+                lastHash={exportPackRef.current.getLedger()?.slice(-1)[0]?.chainHash}
               />
               {/* QC Monitoring Dashboard */}
               <QCMonitoringDashboard
