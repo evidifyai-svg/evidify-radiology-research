@@ -12,6 +12,7 @@
     "preflight": "bash scripts/preflight.sh",
     "support:pack": "bash scripts/support-pack.sh",
     "setup:inbreast": "bash scripts/setup-inbreast.sh",
-    "link:inbreast": "bash scripts/link-inbreast.sh"
+    "link:inbreast": "bash scripts/link-inbreast.sh",
+    "verify:research": "node tools/radiology-verifier/verify-radiology.cjs artifacts/export_unpack"
   }
 }
