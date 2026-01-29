@@ -3,18 +3,18 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-"scripts": {
-  "build:fingerprint": "node scripts/build-fingerprint.mjs",
-  "dev": "npm --prefix frontend run dev",
-  "build": "npm --prefix frontend run build",
-  "preview": "npm --prefix frontend run preview",
-  "verify:index": "bash scripts/preflight.sh",
-  "preflight": "bash scripts/preflight.sh",
-  "support:pack": "bash scripts/support-pack.sh",
-  "setup:inbreast": "bash scripts/setup-inbreast.sh",
-  "link:inbreast": "bash scripts/link-inbreast.sh",
-  "verify:read-episodes": "node src/verify/read_episode_check.mjs",
-  "verify:radiology": "node tools/radiology-verifier/verify-radiology.cjs tools/radiology-verifier/fixtures/pack-valid-mini",
-  "verify:research": "npm run verify:radiology"
- }
+  "scripts": {
+    "build:fingerprint": "node scripts/build-fingerprint.mjs",
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "verify:index": "bash scripts/preflight.sh",
+    "preflight": "bash scripts/preflight.sh",
+    "support:pack": "bash scripts/support-pack.sh",
+    "setup:inbreast": "bash scripts/setup-inbreast.sh",
+    "link:inbreast": "bash scripts/link-inbreast.sh",
+    "verify:read-episodes": "node src/verify/read_episode_check.mjs",
+    "verify:radiology": "node tools/radiology-verifier/verify-radiology.cjs tools/radiology-verifier/fixtures/pack-valid-mini",
+    "verify:research": "npm run verify:radiology"
+  }
 }

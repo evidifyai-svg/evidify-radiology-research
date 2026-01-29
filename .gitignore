@@ -58,3 +58,8 @@ artifacts/
 
 # build outputs
 frontend/dist/
+
+# accidental junk files
+bash
+node
+evidify-radiology-research@*
