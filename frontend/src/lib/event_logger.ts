@@ -20,7 +20,7 @@
  * - GAZE_ENTERED_ROI, DWELL_TIME_ROI, ATTENTION_COVERAGE_PROXY (P1-3)
  */
 
-import { ExportPackZip, LedgerEntry } from './ExportPackZip';
+import type { LedgerEntry } from './ExportPackZip';
 
 // ============================================================================
 // EVENT TYPE DEFINITIONS
@@ -151,6 +151,7 @@ export interface ViewportChangedPayload {
 }
 
 export interface FirstImpressionLockedPayload {
+  caseId: string;
   birads: number;
   confidence: number;
   timeToLockMs: number;
@@ -171,6 +172,7 @@ export interface ReadEpisodePayload {
 }
 
 export interface AIRevealedPayload {
+  caseId?: string;
   suggestedBirads: number;
   aiConfidence: number;
   finding: string;
@@ -178,6 +180,7 @@ export interface AIRevealedPayload {
 }
 
 export interface DisclosurePresentedPayload {
+  caseId?: string;
   format: string;
   fdrValue?: number;  // False Discovery Rate
   forValue?: number;  // False Omission Rate
@@ -265,13 +268,14 @@ export class EventLogger {
   };
   private caseStartTime: number = 0;
   private aiRevealTime: number = 0;
+  private currentCaseId: string | null = null;
   
   // P1-3: ROI tracking
   private roiDwellTimes: Map<string, number> = new Map();
   private currentROI: string | null = null;
   private roiEnterTime: number = 0;
 
-  constructor(exportPack: ExportPackZip) {
+  constructor(exportPack: ExportPackLike) {
     this.exportPack = exportPack;
     this.interactionCounts = {
       zoom: 0,
@@ -284,7 +288,7 @@ export class EventLogger {
   /**
    * Reset interaction counts for new case
    */
-  resetForNewCase(): void {
+  resetForNewCase(caseId?: string): void {
     this.interactionCounts = {
       zoom: 0,
       pan: 0,
@@ -295,6 +299,7 @@ export class EventLogger {
     this.currentROI = null;
     this.caseStartTime = Date.now();
     this.aiRevealTime = 0;
+    this.currentCaseId = caseId ?? null;
   }
 
   /**
@@ -322,7 +327,7 @@ export class EventLogger {
    * Log case loaded
    */
   async logCaseLoaded(payload: CaseLoadedPayload): Promise<LedgerEntry> {
-    this.resetForNewCase();
+    this.resetForNewCase(payload.caseId);
     return this.exportPack.addEvent('CASE_LOADED', payload);
   }
 
@@ -349,7 +354,9 @@ export class EventLogger {
    * Log first impression lock
    */
   async logFirstImpressionLocked(birads: number, confidence: number): Promise<LedgerEntry> {
+    const caseId = this.currentCaseId ?? 'UNKNOWN_CASE';
     const payload: FirstImpressionLockedPayload = {
+      caseId,
       birads,
       confidence,
       timeToLockMs: Date.now() - this.caseStartTime,
@@ -397,14 +404,20 @@ export class EventLogger {
    */
   async logAIRevealed(payload: AIRevealedPayload): Promise<LedgerEntry> {
     this.aiRevealTime = Date.now();
-    return this.exportPack.addEvent('AI_REVEALED', payload);
+    return this.exportPack.addEvent('AI_REVEALED', {
+      ...payload,
+      caseId: this.currentCaseId ?? payload.caseId ?? 'UNKNOWN_CASE',
+    });
   }
 
   /**
    * Log disclosure presented
    */
   async logDisclosurePresented(payload: DisclosurePresentedPayload): Promise<LedgerEntry> {
-    return this.exportPack.addEvent('DISCLOSURE_PRESENTED', payload);
+    return this.exportPack.addEvent('DISCLOSURE_PRESENTED', {
+      ...payload,
+      caseId: this.currentCaseId ?? payload.caseId ?? 'UNKNOWN_CASE',
+    });
   }
 
   /**
@@ -476,11 +489,15 @@ const payload: FinalAssessmentPayload = {
    * Log case completed
    */
   async logCaseCompleted(caseId: string, summary: Record<string, unknown>): Promise<LedgerEntry> {
-    return this.exportPack.addEvent('CASE_COMPLETED', {
+    const entry = await this.exportPack.addEvent('CASE_COMPLETED', {
       caseId,
       totalTimeMs: Date.now() - this.caseStartTime,
       ...summary,
     });
+    if (this.currentCaseId === caseId) {
+      this.currentCaseId = null;
+    }
+    return entry;
   }
 
   /**
