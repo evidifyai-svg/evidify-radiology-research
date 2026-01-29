@@ -557,7 +557,7 @@ const generateExport = useCallback(async () => {
                 cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed',
               }}
             >
-              🔒 Lock First Impression
+              Lock First Impression
             </button>
           </div>
         </div>
@@ -595,7 +595,7 @@ const generateExport = useCallback(async () => {
             border: '2px solid #3182ce',
             marginBottom: '16px',
           }}>
-            <strong>🤖 AI Suggestion:</strong>
+            <strong>AI Suggestion:</strong>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2b6cb0' }}>
               BI-RADS {state.aiBirads} ({state.aiConfidence}% confidence)
             </div>
@@ -612,7 +612,7 @@ const generateExport = useCallback(async () => {
             border: '2px solid #ed8936',
             marginBottom: '16px',
           }}>
-            <strong>📊 AI Performance Disclosure</strong>
+            <strong>AI Performance Disclosure</strong>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr', 
@@ -663,7 +663,7 @@ const generateExport = useCallback(async () => {
               border: '2px solid #48bb78',
               marginBottom: '16px',
             }}>
-              <strong>📝 Comprehension Check</strong>
+              <strong>Comprehension Check</strong>
               <p>Based on this AI's performance, which is more likely?</p>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
@@ -705,8 +705,8 @@ const generateExport = useCallback(async () => {
               textAlign: 'center',
             }}>
               {state.comprehensionResponse 
-                ? '✓ Correct understanding of AI error rates'
-                : '✗ Incorrect - review the FDR/FOR values above'}
+                ? 'Correct understanding of AI error rates'
+                : 'Incorrect - review the FDR/FOR values above'}
             </div>
           )}
           
@@ -781,7 +781,7 @@ const generateExport = useCallback(async () => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}>
           <h2 style={{ marginTop: 0, color: '#c53030' }}>
-            ⚠️ Assessment Change Detected
+            Assessment Change Detected
           </h2>
           
           <div style={{
@@ -841,7 +841,7 @@ const generateExport = useCallback(async () => {
                 cursor: state.deviationText.trim().length >= 10 ? 'pointer' : 'not-allowed',
               }}
             >
-              ✓ Submit Documentation
+              Submit Documentation
             </button>
             
             {/* P0: Skip requires explicit attestation */}
@@ -893,7 +893,7 @@ const generateExport = useCallback(async () => {
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}>
-          <h2 style={{ marginTop: 0, color: '#38a169' }}>✓ Case Complete</h2>
+          <h2 style={{ marginTop: 0, color: '#38a169' }}>Case Complete</h2>
           
           {/* Summary */}
           <div style={{ 
@@ -1001,7 +1001,7 @@ const generateExport = useCallback(async () => {
               marginBottom: '24px',
             }}>
               <div style={{ color: '#c05621', fontWeight: 'bold' }}>
-                ⚠️ DEVIATION_SKIPPED = true
+                DEVIATION_SKIPPED = true
               </div>
               <div style={{ fontSize: '12px', color: '#744210', marginTop: '4px' }}>
                 Documentation was skipped with attestation
@@ -1076,7 +1076,7 @@ const generateExport = useCallback(async () => {
               marginBottom: '12px',
             }}
           >
-            📦 Generate Expert Witness Packet
+            Generate Expert Witness Packet
           </button>
  {exportUrl && (
             <button
@@ -1093,7 +1093,7 @@ const generateExport = useCallback(async () => {
                 marginBottom: '12px',
               }}
             >
-              👁️ View Export Package (PacketViewer)
+              View Export Package (PacketViewer)
             </button>
           )}         
           {exportUrl && (
@@ -1125,7 +1125,7 @@ const generateExport = useCallback(async () => {
                   fontWeight: 'bold',
                 }}
               >
-                ⬇️ Download Export Pack (ZIP)
+                Download Export Pack (ZIP)
               </a>
               
               <div style={{ fontSize: '12px', color: '#718096', marginTop: '12px' }}>
@@ -1174,7 +1174,7 @@ const generateExport = useCallback(async () => {
                 zIndex: 10,
               }}
             >
-              ✕ Close
+              Close
             </button>
             <PacketViewer
               events={state.events as any}

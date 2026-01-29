@@ -130,7 +130,7 @@ export const TimeMetrics: React.FC<TimeMetricsProps> = ({
   if (!metrics || metrics.totalNotes === 0) {
     return (
       <div className="time-metrics time-metrics--empty">
-        <div className="time-metrics__empty-icon">📊</div>
+        <div className="time-metrics__empty-icon">Metrics</div>
         <p>Complete your first note to start tracking time savings</p>
       </div>
     );
@@ -140,7 +140,7 @@ export const TimeMetrics: React.FC<TimeMetricsProps> = ({
   if (variant === 'banner') {
     return (
       <div className="time-metrics-banner">
-        <span className="time-metrics-banner__icon">⚡</span>
+        <span className="time-metrics-banner__icon">Alert</span>
         <span className="time-metrics-banner__text">
           You've saved <strong>{formatTime(derived?.monthlyTimeSaved || 0)}</strong> this month
         </span>
@@ -217,7 +217,7 @@ export const TimeMetrics: React.FC<TimeMetricsProps> = ({
       {/* Hero Stats */}
       <div className="time-metrics-dashboard__hero">
         <div className="time-metrics-dashboard__hero-card time-metrics-dashboard__hero-card--primary">
-          <div className="time-metrics-dashboard__hero-icon">⏱️</div>
+          <div className="time-metrics-dashboard__hero-icon">Time</div>
           <div className="time-metrics-dashboard__hero-value">
             {derived?.hoursRecovered.toFixed(1)}
           </div>
@@ -246,14 +246,14 @@ export const TimeMetrics: React.FC<TimeMetricsProps> = ({
         <h3>By Documentation Method</h3>
         <div className="time-metrics-dashboard__methods">
           <MethodCard
-            icon="🎤"
+            icon="Voice"
             name="Voice Scribe"
             count={metrics.voiceScribeCount}
             avgSeconds={metrics.voiceScribeAvgSeconds}
             benchmark={INDUSTRY_BENCHMARK_SECONDS}
           />
           <MethodCard
-            icon="⌨️"
+            icon="Keyboard"
             name="Typed Notes"
             count={metrics.typedCount}
             avgSeconds={metrics.typedAvgSeconds}
@@ -292,7 +292,7 @@ export const TimeMetrics: React.FC<TimeMetricsProps> = ({
 
       {/* Motivation */}
       <div className="time-metrics-dashboard__motivation">
-        <div className="time-metrics-dashboard__motivation-icon">🎯</div>
+        <div className="time-metrics-dashboard__motivation-icon">Focus</div>
         <div className="time-metrics-dashboard__motivation-text">
           <strong>Keep it up!</strong> You've saved the equivalent of{' '}
           <strong>{Math.round((derived?.monthlyTimeSaved || 0) / 50)} extra sessions</strong> worth of time.
@@ -456,7 +456,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({ elapsed, isRunning, 
       <span>{formatElapsed(elapsed)}</span>
       {isRunning && method && (
         <span style={{ fontSize: '12px', fontWeight: 400, color: '#64748b' }}>
-          {method === 'voice' ? '🎤' : '⌨️'}
+          {method === 'voice' ? 'Voice' : 'Keyboard'}
         </span>
       )}
       <style>{`

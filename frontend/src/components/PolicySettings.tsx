@@ -471,7 +471,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       <div style={styles.header}>
         <h1 style={styles.title}>Policy Settings</h1>
         <div style={styles.versionBadge}>
-          <span>🏢 {policy.organization}</span>
+          <span>Organization: {policy.organization}</span>
           <span>•</span>
           <span>v{policy.version}</span>
         </div>
@@ -489,7 +489,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
             onClick={() => setMessage(null)}
             style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            ✕
+            Close
           </button>
         </div>
       )}
@@ -497,7 +497,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       {/* Export Policy Section */}
       <div style={styles.section}>
         <div style={styles.sectionHeader} onClick={() => toggleSection('export')}>
-          <h2 style={styles.sectionTitle}>📤 Export Controls</h2>
+          <h2 style={styles.sectionTitle}>Export Controls</h2>
           <span style={styles.sectionIcon}>{expandedSections.has('export') ? '▼' : '▶'}</span>
         </div>
         {expandedSections.has('export') && (
@@ -610,7 +610,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       {/* Attestation Policy Section */}
       <div style={styles.section}>
         <div style={styles.sectionHeader} onClick={() => toggleSection('attestation')}>
-          <h2 style={styles.sectionTitle}>✋ Attestation Requirements</h2>
+          <h2 style={styles.sectionTitle}>Attestation Requirements</h2>
           <span style={styles.sectionIcon}>{expandedSections.has('attestation') ? '▼' : '▶'}</span>
         </div>
         {expandedSections.has('attestation') && (
@@ -682,7 +682,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       {/* Recording Policy Section */}
       <div style={styles.section}>
         <div style={styles.sectionHeader} onClick={() => toggleSection('recording')}>
-          <h2 style={styles.sectionTitle}>🎤 Recording & Consent</h2>
+          <h2 style={styles.sectionTitle}>Recording & Consent</h2>
           <span style={styles.sectionIcon}>{expandedSections.has('recording') ? '▼' : '▶'}</span>
         </div>
         {expandedSections.has('recording') && (
@@ -748,7 +748,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       {/* Supervision Policy Section */}
       <div style={styles.section}>
         <div style={styles.sectionHeader} onClick={() => toggleSection('supervision')}>
-          <h2 style={styles.sectionTitle}>👥 Supervision Requirements</h2>
+          <h2 style={styles.sectionTitle}>Supervision Requirements</h2>
           <span style={styles.sectionIcon}>{expandedSections.has('supervision') ? '▼' : '▶'}</span>
         </div>
         {expandedSections.has('supervision') && (
@@ -820,7 +820,7 @@ export const PolicySettings: React.FC<PolicySettingsProps> = ({
       {/* Retention Policy Section */}
       <div style={styles.section}>
         <div style={styles.sectionHeader} onClick={() => toggleSection('retention')}>
-          <h2 style={styles.sectionTitle}>🗄️ Data Retention</h2>
+          <h2 style={styles.sectionTitle}>Data Retention</h2>
           <span style={styles.sectionIcon}>{expandedSections.has('retention') ? '▼' : '▶'}</span>
         </div>
         {expandedSections.has('retention') && (

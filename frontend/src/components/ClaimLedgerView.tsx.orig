@@ -62,47 +62,47 @@ interface ClaimLedgerViewProps {
 const CLAIM_TYPE_STYLES: Record<string, { label: string; icon: string; color: string }> = {
   record_fact: { 
     label: 'Record Fact', 
-    icon: '📄', 
+    icon: 'Doc', 
     color: 'bg-blue-100 text-blue-700 border-blue-200' 
   },
   self_report: { 
     label: 'Self-Report', 
-    icon: '💬', 
+    icon: 'Quote', 
     color: 'bg-amber-100 text-amber-700 border-amber-200' 
   },
   collateral: { 
     label: 'Collateral', 
-    icon: '👥', 
+    icon: 'Group', 
     color: 'bg-purple-100 text-purple-700 border-purple-200' 
   },
   observation: { 
     label: 'Observation', 
-    icon: '👁️', 
+    icon: 'Obs', 
     color: 'bg-teal-100 text-teal-700 border-teal-200' 
   },
   test_result: { 
     label: 'Test Result', 
-    icon: '📊', 
+    icon: 'Test', 
     color: 'bg-indigo-100 text-indigo-700 border-indigo-200' 
   },
   inference: { 
     label: 'Inference', 
-    icon: '🔍', 
+    icon: 'Inference', 
     color: 'bg-orange-100 text-orange-700 border-orange-200' 
   },
   forensic_opinion: { 
     label: 'Opinion', 
-    icon: '⚖️', 
+    icon: 'Opinion', 
     color: 'bg-red-100 text-red-700 border-red-200' 
   },
   limitation: { 
     label: 'Limitation', 
-    icon: '⚠️', 
+    icon: 'Warning', 
     color: 'bg-gray-100 text-gray-700 border-gray-200' 
   },
   method: { 
     label: 'Method', 
-    icon: '🔬', 
+    icon: 'Method', 
     color: 'bg-cyan-100 text-cyan-700 border-cyan-200' 
   },
 };
@@ -238,7 +238,7 @@ export function ClaimLedgerView({
       <div className="p-4 border-b bg-gradient-to-r from-slate-50 to-white">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-            📋 Claim Ledger
+            Claim Ledger
             <span className="text-sm font-normal text-slate-500">
               ({stats.total} claims)
             </span>
@@ -265,7 +265,7 @@ export function ClaimLedgerView({
                 : 'bg-green-100 text-green-700 hover:bg-green-200'
             }`}
           >
-            ✓ Cited ({stats.cited})
+            Cited ({stats.cited})
           </button>
           <button
             onClick={() => setFilter('uncited')}
@@ -275,7 +275,7 @@ export function ClaimLedgerView({
                 : 'bg-red-100 text-red-700 hover:bg-red-200'
             }`}
           >
-            ⚠ Uncited ({stats.uncited})
+            Uncited ({stats.uncited})
           </button>
           <button
             onClick={() => setFilter('contradicted')}
@@ -285,7 +285,7 @@ export function ClaimLedgerView({
                 : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
             }`}
           >
-            ⚡ Contradicted ({stats.contradicted})
+            Contradicted ({stats.contradicted})
           </button>
         </div>
         
@@ -345,7 +345,7 @@ export function ClaimLedgerView({
                 const claimContradictions = getClaimContradictions(claim.id);
                 const style = CLAIM_TYPE_STYLES[claim.claim_type] || {
                   label: claim.claim_type,
-                  icon: '📝',
+                  icon: 'Note',
                   color: 'bg-gray-100 text-gray-700 border-gray-200'
                 };
                 const isExpanded = expandedClaims.has(claim.id);
@@ -381,7 +381,7 @@ export function ClaimLedgerView({
                           {getCitationsCount(claim) > 0 && (
                             <div className="bg-green-50 rounded p-2">
                               <p className="text-xs font-medium text-green-700 mb-1">
-                                📎 Citations ({getCitationsCount(claim)})
+                                Citations ({getCitationsCount(claim)})
                               </p>
                               {getCitationsAsObjects(claim).map((cit, i) => (
                                 <div key={i} className="text-xs text-green-600 ml-2">
@@ -401,7 +401,7 @@ export function ClaimLedgerView({
                           {claimContradictions.length > 0 && (
                             <div className="bg-amber-50 rounded p-2">
                               <p className="text-xs font-medium text-amber-700 mb-1">
-                                ⚡ Contradictions ({claimContradictions.length})
+                                Contradictions ({claimContradictions.length})
                               </p>
                               {claimContradictions.map((cont) => (
                                 <div key={cont.id} className="text-xs text-amber-600 ml-2">
@@ -452,17 +452,17 @@ export function ClaimLedgerView({
                       <div className="flex items-center justify-center gap-1">
                         {getCitationsCount(claim) === 0 && (
                           <span className="text-red-500" title="Uncited - needs citation">
-                            ⚠️
+                            Warning
                           </span>
                         )}
                         {claimContradictions.length > 0 && (
                           <span className="text-amber-500" title="Has contradictions">
-                            ⚡
+                            Conflict
                           </span>
                         )}
                         {getCitationsCount(claim) > 0 && claimContradictions.length === 0 && (
                           <span className="text-green-500" title="Cited and clear">
-                            ✓
+                            OK
                           </span>
                         )}
                       </div>
@@ -505,7 +505,7 @@ export function ClaimLedgerView({
       {stats.uncited > 0 && (
         <div className="p-3 bg-red-50 border-t">
           <p className="text-xs text-red-700">
-            ⚠️ <strong>{stats.uncited} claim{stats.uncited > 1 ? 's' : ''}</strong> without citations. 
+            Warning: <strong>{stats.uncited} claim{stats.uncited > 1 ? 's' : ''}</strong> without citations. 
             Factual claims require citation anchors for court defensibility.
           </p>
         </div>

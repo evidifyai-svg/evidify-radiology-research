@@ -227,7 +227,7 @@ export function LanguageDiscipline({
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <p className="text-green-700 font-medium flex items-center gap-2">
-          <span>✓</span> No language discipline issues detected
+          <span>OK</span> No language discipline issues detected
         </p>
         <p className="text-green-600 text-sm mt-1">
           Content follows forensic writing best practices
@@ -242,7 +242,7 @@ export function LanguageDiscipline({
       <div className={`p-4 border-b ${totalHigh > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            ✍️ Language Discipline
+            Language Discipline
           </h2>
           <span className={`px-2 py-1 rounded text-sm ${
             totalHigh > 0 ? 'bg-amber-200 text-amber-800' : 'bg-slate-200 text-slate-700'
@@ -330,8 +330,8 @@ export function LanguageDiscipline({
                   'bg-purple-100 text-purple-600'
                 }`}>
                   {issue.type === 'absolute_statement' ? '!' :
-                   issue.type === 'ultimate_issue' ? '⚖' :
-                   issue.type === 'clinical_jargon' ? '📋' : '💪'}
+                   issue.type === 'ultimate_issue' ? 'Legal' :
+                   issue.type === 'clinical_jargon' ? 'Jargon' : 'Tone'}
                 </div>
                 
                 {/* Content */}
@@ -408,7 +408,7 @@ export function LanguageDiscipline({
       {/* Footer */}
       <div className="p-3 border-t bg-slate-50">
         <p className="text-xs text-slate-500">
-          💡 Forensic writing should be defensible under cross-examination. 
+          Note: Forensic writing should be defensible under cross-examination. 
           When in doubt, choose conservative language.
         </p>
       </div>
@@ -434,7 +434,7 @@ export function InlineLanguageChecker({ content, onIssueClick }: InlineLanguageC
   return (
     <div className="flex items-center gap-2 px-2 py-1 bg-amber-50 border-t border-amber-200">
       <span className="text-amber-600 text-xs font-medium">
-        ⚠️ {highPriority.length} language issue{highPriority.length > 1 ? 's' : ''}
+        Warning: {highPriority.length} language issue{highPriority.length > 1 ? 's' : ''}
       </span>
       <div className="flex gap-1">
         {highPriority.slice(0, 3).map(issue => (

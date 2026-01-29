@@ -162,7 +162,7 @@ export function OpinionChainExplainer({
     lines.push(`Chain Strength: ${chain.chainStrength.toUpperCase()}\n`);
     
     if (chain.gaps.length > 0) {
-      lines.push('### ⚠️ Identified Gaps');
+      lines.push('### Identified Gaps');
       chain.gaps.forEach(gap => lines.push(`- ${gap}`));
       lines.push('');
     }
@@ -234,7 +234,7 @@ export function OpinionChainExplainer({
       {/* Header */}
       <div className="p-4 border-b bg-gradient-to-r from-orange-50 to-white">
         <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-          🔗 Opinion Chain Explainer
+          Opinion Chain Explainer
         </h2>
         <p className="text-sm text-slate-500">
           Trace the reasoning from evidence to opinion
@@ -383,7 +383,7 @@ export function OpinionChainExplainer({
               <div className="grid gap-2">
                 {currentChain.evidenceAnchors.slice(0, 5).map((anchor, i) => (
                   <div key={i} className="p-3 bg-slate-100 border border-slate-300 rounded-lg">
-                    <div className="text-xs text-slate-600 font-medium mb-1">📄 EVIDENCE</div>
+                    <div className="text-xs text-slate-600 font-medium mb-1">EVIDENCE</div>
                     <p className="text-sm font-medium text-slate-700">
                       {anchor.evidence.filename}
                       {anchor.page && <span className="text-slate-500"> (p. {anchor.page})</span>}
@@ -418,7 +418,7 @@ export function OpinionChainExplainer({
                   }}
                   className="text-xs text-orange-600 hover:text-orange-800"
                 >
-                  📋 Copy
+                  Copy
                 </button>
               </div>
               <pre className="text-sm text-slate-600 whitespace-pre-wrap font-sans">
@@ -435,7 +435,7 @@ export function OpinionChainExplainer({
       {/* Footer */}
       <div className="p-3 border-t bg-orange-50">
         <p className="text-xs text-orange-700">
-          💡 A strong opinion chain has multiple evidence anchors and more facts than inferences.
+          A strong opinion chain has multiple evidence anchors and more facts than inferences.
         </p>
       </div>
     </div>

@@ -71,5 +71,11 @@ if [ ! -f "scripts/no-forensic-imports.sh" ]; then
     exit 1
 fi
 bash scripts/no-forensic-imports.sh
+# Guardrail: ensure emoji glyphs don't leak into runtime
+if [ ! -f "scripts/no-emoji-runtime.sh" ]; then
+    echo "✗ scripts/no-emoji-runtime.sh missing"
+    exit 1
+fi
+bash scripts/no-emoji-runtime.sh
 
 echo "✓ Preflight passed"

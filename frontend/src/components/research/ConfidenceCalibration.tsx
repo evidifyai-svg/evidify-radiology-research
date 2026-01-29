@@ -236,7 +236,7 @@ export const ConfidenceComparison: React.FC<ConfidenceComparisonProps> = ({
           alignItems: 'center',
           gap: '8px',
         }}>
-          <span>💡</span>
+          <span>Tip</span>
           {interpretation.text}
         </div>
       </div>
