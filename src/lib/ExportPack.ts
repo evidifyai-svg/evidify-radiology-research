@@ -374,6 +374,7 @@ export class ExportPackBuilder {
   computeDerivedMetrics(): DerivedMetrics {
     // Find key events
     const sessionStarted = this.events.find(e => e.type === 'SESSION_STARTED');
+    const caseLoaded = this.events.find(e => e.type === 'CASE_LOADED');
     const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
     const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
@@ -447,6 +448,7 @@ export class ExportPackBuilder {
       sessionId: this.config.sessionId,
       timestamp: new Date().toISOString(),
       condition: this.config.condition || '',
+      caseId: (caseLoaded?.payload as any)?.caseId,
       initialBirads,
       finalBirads,
       aiBirads,
