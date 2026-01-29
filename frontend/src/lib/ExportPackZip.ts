@@ -9,6 +9,7 @@ import JSZip from 'jszip';
 
 // Canonical types live in ExportPack.ts — import into local scope and re-export to avoid drift
 import type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
+import { computeDerivedMetrics } from './derivedMetrics';
 export type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
 
 // Re-export types from original
@@ -94,68 +95,6 @@ function canonicalJSON(obj: unknown): string {
     return '{' + pairs.join(',') + '}';
   }
   return 'null';
-}
-
-type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
-
-function computeReadEpisodeMetricsFromEvents(
-  caseEvents: TrialEvent[],
-  caseId: string,
-  isCalibration: boolean,
-  warnLabel: string
-): { preAiReadMs: number | null; postAiReadMs: number | null; totalReadMs: number | null } {
-  if (isCalibration) {
-    return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
-  }
-
-  const warn = (message: string) => {
-    console.warn(`[ReadEpisodes:${warnLabel}] ${message}`);
-  };
-
-  const getTimestampMs = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
-    const payloadValue = (event.payload as Record<string, unknown>)?.[key];
-    return new Date((payloadValue as string | undefined) ?? event.timestamp).getTime();
-  };
-
-  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | null => {
-    const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
-    );
-    const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
-    );
-
-    if (starts.length > 1) {
-      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
-    }
-    if (ends.length > 1) {
-      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
-    }
-
-    if (starts.length === 0 && ends.length > 0) {
-      warn(`Missing ${episodeType} start for case ${caseId}.`);
-      return null;
-    }
-    if (starts.length > 0 && ends.length === 0) {
-      warn(`Missing ${episodeType} end for case ${caseId}.`);
-      return null;
-    }
-    if (starts.length === 0 && ends.length === 0) {
-      return null;
-    }
-
-    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
-    return Number.isFinite(duration) && duration >= 0 ? duration : null;
-  };
-
-  const preAiReadMs = computeEpisodeMs('PRE_AI');
-  const postAiReadMs = computeEpisodeMs('POST_AI');
-  const totalReadMs =
-    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
-      ? preAiReadMs + postAiReadMs
-      : null;
-
-  return { preAiReadMs, postAiReadMs, totalReadMs };
 }
 
 // ============================================================================
@@ -559,80 +498,24 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
    */
   private generateMetricsFromEvents(): string {
     this.runMetricsSelfCheckOnce();
-    const groupedEvents = this.groupEventsByCase(this.events);
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
+    const metricsPerCase = caseIds.map(caseId =>
+      computeDerivedMetrics(this.events, caseId, {
+        sessionId: this.sessionId,
+        condition: this.condition.revealTiming,
+        revealTiming: this.condition.revealTiming,
+        disclosureFormat: this.condition.disclosureFormat,
+      })
+    );
 
-    const headers =
-      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
-    const rows = caseIds.map(caseId => {
-      const caseEvents = groupedEvents.get(caseId) ?? [];
-      const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
-      const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
-      const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
-      const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
-      const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
-      const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
+    if (metricsPerCase.length === 0) {
+      return '';
+    }
 
-      const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
-      const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
-      const finalBirads = (finalAssessment?.payload as any)?.birads ?? initialBirads ?? null;
-
-      const changeOccurred =
-        initialBirads == null || finalBirads == null ? null : initialBirads !== finalBirads;
-      const aiConsistentChange =
-        changeOccurred === null || aiBirads == null || finalBirads == null
-          ? null
-          : changeOccurred && finalBirads === aiBirads;
-      const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
-      const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
-      const comprehensionPayload = (comprehensionEvent?.payload as any) ?? {};
-      const comprehensionAnswer =
-        comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
-      const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
-      const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
-      const comprehensionCorrect =
-        comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
-      const comprehensionResponseMs = comprehensionEvent && disclosurePresented
-        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
-        : null;
-      const normalizedComprehensionResponseMs =
-        typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
-          ? comprehensionResponseMs
-          : null;
-
-      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
-      const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
-        caseEvents,
-        caseId,
-        isCalibration,
-        'ExportPackZip'
-      );
-
-      const values = [
-        this.sessionId,
-        caseId,
-        this.condition.revealTiming,
-        initialBirads,
-        finalBirads,
-        aiBirads,
-        changeOccurred,
-        aiConsistentChange,
-        addaDenominator,
-        adda,
-        preAiReadMs,
-        postAiReadMs,
-        totalReadMs,
-        comprehensionItemId,
-        comprehensionAnswer,
-        comprehensionCorrect,
-        comprehensionQuestionId,
-        comprehensionAnswer,
-        comprehensionCorrect,
-        normalizedComprehensionResponseMs,
-      ];
-
-      return values.map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',');
-    });
+    const headers = Object.keys(metricsPerCase[0]).join(',');
+    const rows = metricsPerCase.map(metrics =>
+      Object.values(metrics).map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',')
+    );
 
     return [headers, ...rows].join('\n');
   }
@@ -769,10 +652,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ai_consistent_change**: TRUE if change moved toward AI suggestion
 
 ### Timing Metrics
-- **preAiReadMs**: PRE_AI read episode duration
-- **postAiReadMs**: POST_AI read episode duration
-- **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
-- **totalTimeMs**: Total time on case
+- **timeToLockMs**: Duration from CASE_LOADED to FIRST_IMPRESSION_LOCKED
+- **preAiReadMs**: Duration from CASE_LOADED to AI_REVEALED
+- **postAiReadMs**: Duration from AI_REVEALED to FINAL_ASSESSMENT
+- **aiExposureMs**: AI-visible duration (currently equal to postAiReadMs)
+- **totalReadMs**: Sum of preAiReadMs + postAiReadMs (when both exist)
+- **totalTimeMs**: Duration from CASE_LOADED to CASE_COMPLETED (or last case event)
+- **lockToRevealMs**: Duration from FIRST_IMPRESSION_LOCKED to AI_REVEALED
+- **revealToFinalMs**: Duration from AI_REVEALED to FINAL_ASSESSMENT
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
 - **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness

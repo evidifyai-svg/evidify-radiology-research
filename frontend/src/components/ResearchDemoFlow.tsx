@@ -47,6 +47,7 @@ import {
 import { MammogramDualViewSimple } from './research/MammogramDualViewSimple';
 // import { PacketViewer } from './PacketViewer'; // Replaced by ExpertWitnessPacketViewer
 import { ExportPackZip, DerivedMetrics, ExportManifest, VerifierOutput } from '../lib/ExportPackZip';
+import { computeDerivedMetrics, DEFAULT_TIMING_THRESHOLDS } from '../lib/derivedMetrics';
 import { EventLogger } from '../lib/event_logger';
 import { generateSeed, assignCondition, manualCondition, ConditionAssignment, RevealCondition } from '../lib/condition_matrix';
 import { CaseDefinition, CaseQueueState, generateCaseQueue, getCurrentCase, advanceQueue, isQueueComplete, getQueueProgress } from '../lib/case_queue';
@@ -87,211 +88,8 @@ interface DemoState {
   eventCount: number;
 }
 
-const TOO_FAST_PRE_AI_MS = 5000;
-const TOO_FAST_AI_EXPOSURE_MS = 3000;
-
-type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
-
-const groupEventsByCase = (events: any[]): Map<string, any[]> => {
-  const grouped = new Map<string, any[]>();
-  let activeCaseId: string | null = null;
-
-  events.forEach(event => {
-    if (event.type === 'CASE_LOADED' && event.payload?.caseId) {
-      activeCaseId = event.payload.caseId as string;
-      if (!grouped.has(activeCaseId)) {
-        grouped.set(activeCaseId, []);
-      }
-    }
-
-    if (activeCaseId) {
-      grouped.get(activeCaseId)?.push(event);
-    }
-
-    if (event.type === 'CASE_COMPLETED' && event.payload?.caseId === activeCaseId) {
-      activeCaseId = null;
-    }
-  });
-
-  return grouped;
-};
-
-const computeReadEpisodeMetrics = (
-  caseEvents: any[],
-  caseId: string,
-  isCalibration: boolean
-): { preAiReadMs?: number; postAiReadMs?: number; totalReadMs?: number } => {
-  if (isCalibration) {
-    return { preAiReadMs: undefined, postAiReadMs: undefined, totalReadMs: undefined };
-  }
-
-  const warn = (message: string) => {
-    console.warn(`[ReadEpisodes] ${message}`);
-  };
-
-  const getTimestampMs = (event: any, payloadKey: 'tStartIso' | 'tEndIso'): number => {
-    const payloadValue = event?.payload?.[payloadKey];
-    return new Date(payloadValue ?? event.timestamp).getTime();
-  };
-
-  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | undefined => {
-    const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
-    );
-    const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
-    );
-
-    if (starts.length > 1) {
-      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
-    }
-    if (ends.length > 1) {
-      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
-    }
-
-    if (starts.length === 0 && ends.length > 0) {
-      warn(`Missing ${episodeType} start for case ${caseId}.`);
-      return undefined;
-    }
-    if (starts.length > 0 && ends.length === 0) {
-      warn(`Missing ${episodeType} end for case ${caseId}.`);
-      return undefined;
-    }
-    if (starts.length === 0 && ends.length === 0) {
-      return undefined;
-    }
-
-    const startMs = getTimestampMs(starts[0], 'tStartIso');
-    const endMs = getTimestampMs(ends[0], 'tEndIso');
-    const duration = endMs - startMs;
-
-    if (!Number.isFinite(duration) || duration < 0) {
-      warn(`Invalid ${episodeType} duration for case ${caseId}.`);
-      return undefined;
-    }
-
-    return duration;
-  };
-
-  const preAiReadMs = computeEpisodeMs('PRE_AI');
-  const postAiReadMs = computeEpisodeMs('POST_AI');
-  const totalReadMs =
-    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
-      ? preAiReadMs + postAiReadMs
-      : undefined;
-
-  return { preAiReadMs, postAiReadMs, totalReadMs };
-};
-
-const computeDerivedMetricsFromEvents = (
-  events: any[],
-  caseId: string,
-  sessionId: string,
-  condition: ConditionAssignment | null
-): DerivedMetrics => {
-  const groupedEvents = groupEventsByCase(events);
-  const caseEvents = groupedEvents.get(caseId) ?? [];
-  const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
-  const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
-  const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
-  const deviationSubmitted = caseEvents.filter(event => event.type === 'DEVIATION_SUBMITTED');
-  const deviationStarted = caseEvents.filter(event => event.type === 'DEVIATION_STARTED');
-  const deviationSkipped = caseEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
-  const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
-  const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
-  const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
-  const caseLoaded = caseEvents.find(event => event.type === 'CASE_LOADED');
-  const isCalibration = Boolean(caseLoaded?.payload?.isCalibration);
-
-  const initialBirads = firstImpression?.payload?.birads ?? 0;
-  const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
-  const aiBirads = aiRevealed?.payload?.suggestedBirads ?? null;
-  const aiConfidence = aiRevealed?.payload?.aiConfidence ?? null;
-
-  const changeOccurred = finalBirads !== initialBirads;
-  const aiConsistentChange = changeOccurred && aiBirads != null && finalBirads === aiBirads;
-  const aiInconsistentChange = changeOccurred && aiBirads != null && finalBirads !== aiBirads;
-  const addaDenominator = aiBirads != null && initialBirads !== aiBirads;
-  const adda = addaDenominator ? finalBirads === aiBirads : null;
-
-  const decisionChangeCount = deviationStarted.length > 0 ? deviationStarted.length : changeOccurred ? 1 : 0;
-  const overrideCount = aiBirads != null && finalBirads !== aiBirads ? 1 : 0;
-  const rationaleProvided = deviationSubmitted.some(event => (event.payload?.rationale ?? '').trim().length > 0);
-
-  const timeToLockMs = firstImpression?.payload?.timeToLockMs ?? null;
-  const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetrics(
-    caseEvents,
-    caseId,
-    isCalibration
-  );
-
-  const aiExposureMs = postAiReadMs ?? undefined;
-
-  const totalTimeMs = caseCompleted?.payload?.totalTimeMs ?? 0;
-  const lockToRevealMs =
-    firstImpression && aiRevealed
-      ? new Date(aiRevealed.timestamp).getTime() - new Date(firstImpression.timestamp).getTime()
-      : 0;
-  const comprehensionResponseMs = comprehensionEvent && disclosurePresented
-    ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
-    : null;
-  const normalizedComprehensionResponseMs =
-    typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
-      ? comprehensionResponseMs
-      : null;
-  const comprehensionPayload = comprehensionEvent?.payload ?? {};
-  const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionPayload.questionId ?? null;
-  const comprehensionAnswer =
-    comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
-  const comprehensionCorrect =
-    comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
-
-  return {
-    sessionId,
-    timestamp: new Date().toISOString(),
-    condition: condition?.condition ?? 'UNKNOWN',
-    caseId,
-    initialBirads,
-    finalBirads,
-    aiBirads,
-    aiConfidence,
-    changeOccurred,
-    aiConsistentChange,
-    aiInconsistentChange,
-    addaDenominator,
-    adda,
-    deviationRequired: changeOccurred,
-    deviationDocumented: rationaleProvided,
-    deviationSkipped: changeOccurred && !rationaleProvided && deviationSkipped.length > 0,
-    deviationText: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
-    deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
-    comprehensionCorrect,
-    comprehensionAnswer,
-    comprehensionItemId,
-    comprehensionQuestionId: comprehensionPayload.questionId ?? null,
-    comprehensionResponseMs: normalizedComprehensionResponseMs,
-    comprehension_answer: comprehensionAnswer,
-    comprehension_correct: comprehensionCorrect,
-    comprehension_question_id: comprehensionPayload.questionId ?? null,
-    comprehension_response_ms: normalizedComprehensionResponseMs,
-    preAiReadMs,
-    postAiReadMs,
-    totalReadMs,
-    aiExposureMs,
-    decisionChangeCount,
-    overrideCount,
-    rationaleProvided,
-    timingFlagPreAiTooFast: typeof preAiReadMs === 'number' && preAiReadMs < TOO_FAST_PRE_AI_MS,
-    timingFlagAiExposureTooFast:
-      typeof aiExposureMs === 'number' && aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS,
-    totalTimeMs,
-    timeToLockMs,
-    lockToRevealMs,
-    revealToFinalMs: aiExposureMs ?? 0,
-    revealTiming: condition?.condition ?? 'UNKNOWN',
-    disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
-  };
-};
+const TOO_FAST_PRE_AI_MS = DEFAULT_TIMING_THRESHOLDS.preAiTooFastMs;
+const TOO_FAST_AI_EXPOSURE_MS = DEFAULT_TIMING_THRESHOLDS.aiExposureTooFastMs;
 
 const buildMethodsSnapshot = (
   events: any[],
@@ -3896,11 +3694,15 @@ setAiAgreementStreak(prev => prev + 1);
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
     const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
-    const metrics = computeDerivedMetricsFromEvents(
+    const metrics = computeDerivedMetrics(
       exportPackRef.current?.getEvents() ?? [],
       completedCaseId,
-      state.sessionId,
-      state.condition
+      {
+        sessionId: state.sessionId,
+        condition: state.condition?.condition ?? 'UNKNOWN',
+        revealTiming: state.condition?.condition ?? 'UNKNOWN',
+        disclosureFormat: state.condition?.disclosureFormat ?? 'UNKNOWN',
+      }
     );
 
     setState(s => ({
