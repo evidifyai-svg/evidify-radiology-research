@@ -186,6 +186,7 @@ export interface DisclosurePresentedPayload {
 
 export interface ComprehensionResponsePayload {
   caseId: string;
+  itemId: string;
   questionId: string;
   selectedAnswer: string;
   correctAnswer: string;
