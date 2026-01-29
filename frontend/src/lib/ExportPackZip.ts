@@ -403,9 +403,26 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       });
     }
 
+    const disclosurePolicy =
+      typeof (this.methodsSnapshot as any)?.errorRateDisclosure?.policy === 'string'
+        ? (this.methodsSnapshot as any).errorRateDisclosure.policy
+        : null;
+    const methodsSnapshotForManifest = {
+      condition: {
+        revealTiming: this.condition.revealTiming,
+        disclosureFormat: this.condition.disclosureFormat,
+      },
+      disclosurePolicy,
+      protocolVersion: this.protocolVersion,
+      studyId: this.studyId,
+      siteId: this.siteId,
+      eventSchemaVersion: 'EVENT_SCHEMA_V1_DRAFT',
+    };
+
     const exportManifestObj = {
       schema: 'evidify.export_manifest.v1',
       created_utc: new Date().toISOString(),
+      methodsSnapshot: methodsSnapshotForManifest,
       entries: exportManifestEntries,
     };
 
@@ -464,12 +481,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const groupedEvents = this.groupEventsByCase(this.events);
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
-    const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda';
+    const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
       const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
       const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+      const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+      const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
 
       const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
       const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
@@ -483,6 +502,16 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           : changeOccurred && finalBirads === aiBirads;
       const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
       const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
+      const comprehensionAnswer = (comprehensionEvent?.payload as any)?.selectedAnswer ?? null;
+      const comprehensionQuestionId = (comprehensionEvent?.payload as any)?.questionId ?? null;
+      const comprehensionCorrect = (comprehensionEvent?.payload as any)?.isCorrect ?? null;
+      const comprehensionResponseMs = comprehensionEvent && disclosurePresented
+        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+        : null;
+      const normalizedComprehensionResponseMs =
+        typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
+          ? comprehensionResponseMs
+          : null;
 
       const values = [
         this.sessionId,
@@ -495,6 +524,10 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         aiConsistentChange,
         addaDenominator,
         adda,
+        comprehensionAnswer,
+        comprehensionCorrect,
+        comprehensionQuestionId,
+        normalizedComprehensionResponseMs,
       ];
 
       return values.map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',');
