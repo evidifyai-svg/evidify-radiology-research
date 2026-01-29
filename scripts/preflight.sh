@@ -34,8 +34,7 @@ echo "✓ frontend/node_modules exists"
 ALLOWED_HTML=(
     "frontend/index.html"
     "frontend/research-demo.html"
-    "frontend/index-demo.html"
-    "frontend/demo.html"
+    "frontend/vault.html"
 )
 
 HTML_FILES=$(find frontend -name "*.html" \
