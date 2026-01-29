@@ -314,12 +314,64 @@ const buildMethodsSnapshot = (
     )
   );
 
-  const avgPreAiReadMs = caseResults.length > 0
-    ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.preAiReadMs ?? 0), 0) / caseResults.length)
+  const calibrationCaseIds = caseQueue?.cases.filter(c => c.isCalibration).map(c => c.caseId) ?? [];
+  const calibrationCaseIdSet = new Set(calibrationCaseIds);
+  const analysisCaseResults = caseResults.filter(metric => {
+    if (!metric.caseId) return true;
+    return !calibrationCaseIdSet.has(metric.caseId);
+  });
+
+  const avgPreAiReadMs = analysisCaseResults.length > 0
+    ? Math.round(analysisCaseResults.reduce((sum, metric) => sum + (metric.preAiReadMs ?? 0), 0) / analysisCaseResults.length)
     : 0;
-  const avgAiExposureMs = caseResults.length > 0
-    ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.aiExposureMs ?? 0), 0) / caseResults.length)
+  const avgAiExposureMs = analysisCaseResults.length > 0
+    ? Math.round(analysisCaseResults.reduce((sum, metric) => sum + (metric.aiExposureMs ?? 0), 0) / analysisCaseResults.length)
     : 0;
+
+  const derivedMetricsDefinitions = [
+    { column: 'sessionId', definition: 'Session identifier for the export', formula: 'export/session config.sessionId' },
+    { column: 'timestamp', definition: 'Metric generation timestamp (ISO-8601)', formula: 'new Date().toISOString() at export' },
+    { column: 'condition', definition: 'Condition assignment label', formula: 'condition.condition' },
+    { column: 'caseId', definition: 'Case identifier for the trial', formula: 'CASE_LOADED.payload.caseId' },
+    { column: 'initialBirads', definition: 'Initial BI-RADS assessment', formula: 'FIRST_IMPRESSION_LOCKED.payload.birads (default 0)' },
+    { column: 'finalBirads', definition: 'Final BI-RADS assessment', formula: 'FINAL_ASSESSMENT.payload.birads (fallback initialBirads)' },
+    { column: 'aiBirads', definition: 'AI-suggested BI-RADS', formula: 'AI_REVEALED.payload.suggestedBirads (null if absent)' },
+    { column: 'aiConfidence', definition: 'AI confidence score', formula: 'AI_REVEALED.payload.aiConfidence (null if absent)' },
+    { column: 'changeOccurred', definition: 'Whether assessment changed', formula: 'finalBirads !== initialBirads' },
+    { column: 'aiConsistentChange', definition: 'Change aligned with AI', formula: 'changeOccurred && aiBirads != null && finalBirads === aiBirads' },
+    { column: 'aiInconsistentChange', definition: 'Change diverged from AI', formula: 'changeOccurred && aiBirads != null && finalBirads !== aiBirads' },
+    { column: 'addaDenominator', definition: 'Eligible for ADDA', formula: 'aiBirads != null && initialBirads !== aiBirads' },
+    { column: 'adda', definition: 'Appropriate deference (ADDA)', formula: 'addaDenominator ? finalBirads === aiBirads : null' },
+    { column: 'deviationRequired', definition: 'Deviation documentation required', formula: 'changeOccurred' },
+    { column: 'deviationDocumented', definition: 'Deviation rationale provided', formula: 'DEVIATION_SUBMITTED.payload.rationale non-empty' },
+    { column: 'deviationSkipped', definition: 'Deviation skipped with attestation', formula: 'changeOccurred && !rationaleProvided && DEVIATION_SKIPPED present' },
+    { column: 'deviationText', definition: 'Deviation rationale text (legacy)', formula: 'DEVIATION_SUBMITTED.payload.rationale (first)' },
+    { column: 'deviationRationale', definition: 'Deviation rationale text', formula: 'DEVIATION_SUBMITTED.payload.rationale (first)' },
+    { column: 'comprehensionCorrect', definition: 'Comprehension correctness', formula: 'DISCLOSURE_COMPREHENSION_RESPONSE.payload.isCorrect || correct' },
+    { column: 'comprehensionAnswer', definition: 'Comprehension response', formula: 'payload.selectedAnswer || payload.response' },
+    { column: 'comprehensionItemId', definition: 'Comprehension item identifier', formula: 'payload.itemId || payload.questionId' },
+    { column: 'comprehensionQuestionId', definition: 'Comprehension question identifier', formula: 'payload.questionId' },
+    { column: 'comprehensionResponseMs', definition: 'Response latency', formula: 'DISCLOSURE_COMPREHENSION_RESPONSE.timestamp - DISCLOSURE_PRESENTED.timestamp (>=0) else null' },
+    { column: 'comprehension_answer', definition: 'Legacy alias of comprehensionAnswer', formula: 'comprehensionAnswer' },
+    { column: 'comprehension_correct', definition: 'Legacy alias of comprehensionCorrect', formula: 'comprehensionCorrect' },
+    { column: 'comprehension_question_id', definition: 'Legacy alias of comprehensionQuestionId', formula: 'comprehensionQuestionId' },
+    { column: 'comprehension_response_ms', definition: 'Legacy alias of comprehensionResponseMs', formula: 'comprehensionResponseMs' },
+    { column: 'preAiReadMs', definition: 'PRE_AI read episode duration (ms)', formula: 'READ_EPISODE_ENDED - READ_EPISODE_STARTED (episodeType=PRE_AI)' },
+    { column: 'postAiReadMs', definition: 'POST_AI read episode duration (ms)', formula: 'READ_EPISODE_ENDED - READ_EPISODE_STARTED (episodeType=POST_AI)' },
+    { column: 'totalReadMs', definition: 'Total read time (ms)', formula: 'preAiReadMs + postAiReadMs when both numeric' },
+    { column: 'aiExposureMs', definition: 'AI exposure time (ms)', formula: 'postAiReadMs' },
+    { column: 'decisionChangeCount', definition: 'Count of decision changes', formula: 'DEVIATION_STARTED count (>0) else changeOccurred ? 1 : 0' },
+    { column: 'overrideCount', definition: 'Override count', formula: 'aiBirads != null && finalBirads !== aiBirads ? 1 : 0' },
+    { column: 'rationaleProvided', definition: 'Whether rationale text was provided', formula: 'DEVIATION_SUBMITTED.payload.rationale non-empty' },
+    { column: 'timingFlagPreAiTooFast', definition: 'Flag for too-fast PRE_AI read', formula: 'preAiReadMs < 5000' },
+    { column: 'timingFlagAiExposureTooFast', definition: 'Flag for too-fast AI exposure', formula: 'aiExposureMs > 0 && aiExposureMs < 3000' },
+    { column: 'totalTimeMs', definition: 'Total case duration (ms)', formula: 'CASE_COMPLETED.payload.totalTimeMs (default 0)' },
+    { column: 'timeToLockMs', definition: 'Time to lock initial impression (ms)', formula: 'FIRST_IMPRESSION_LOCKED.payload.timeToLockMs' },
+    { column: 'lockToRevealMs', definition: 'Time from lock to AI reveal (ms)', formula: 'AI_REVEALED.timestamp - FIRST_IMPRESSION_LOCKED.timestamp' },
+    { column: 'revealToFinalMs', definition: 'Time from AI reveal to final (ms)', formula: 'aiExposureMs ?? 0' },
+    { column: 'revealTiming', definition: 'Reveal timing condition', formula: 'condition.condition' },
+    { column: 'disclosureFormat', definition: 'Disclosure format condition', formula: 'condition.disclosureFormat' },
+  ];
 
   const snapshot = {
     ...(studyMetadata?.studyId ? { studyId: studyMetadata.studyId } : {}),
@@ -337,6 +389,7 @@ const buildMethodsSnapshot = (
     timingSummary: {
       averagePreAiReadMs: avgPreAiReadMs,
       averageAiExposureMs: avgAiExposureMs,
+      calibrationExcludedCases: calibrationCaseIds,
       sessionStartTime: sessionStart?.timestamp ?? null,
       sessionEndTime: sessionEnd?.timestamp ?? null,
       totalDurationMs: sessionStart && sessionEnd ? new Date(sessionEnd.timestamp).getTime() - new Date(sessionStart.timestamp).getTime() : null,
@@ -351,6 +404,21 @@ const buildMethodsSnapshot = (
     lockPoints: {
       initialLockedTimestamp: firstLock?.timestamp ?? null,
       finalLockedTimestamp: finalLock?.timestamp ?? null,
+    },
+    calibrationTrials: {
+      caseIds: calibrationCaseIds,
+      exclusionRule: 'CASE_LOADED.payload.isCalibration === true',
+      excludedFromAggregates: ['timingSummary.averagePreAiReadMs', 'timingSummary.averageAiExposureMs'],
+      nullMetrics: ['preAiReadMs', 'postAiReadMs', 'totalReadMs', 'aiExposureMs'],
+    },
+    derivedMetrics: {
+      sourceFile: 'derived_metrics.csv',
+      calibrationHandling: {
+        flag: 'CASE_LOADED.payload.isCalibration === true',
+        nullMetrics: ['preAiReadMs', 'postAiReadMs', 'totalReadMs', 'aiExposureMs'],
+        excludedFromAggregates: ['timingSummary.averagePreAiReadMs', 'timingSummary.averageAiExposureMs'],
+      },
+      columns: derivedMetricsDefinitions,
     },
   };
 

@@ -760,22 +760,56 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ATTENTION_CHECK_PRESENTED**: Catch trial presented
 - **ATTENTION_CHECK_RESPONSE**: Reader response to catch trial
 
-## Derived Metrics
+## Derived Metrics (derived_metrics.csv)
 
-### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
-- **adda**: TRUE if reader changed toward AI when initial ≠ AI suggestion
-- **adda_denominator**: TRUE if initial assessment differed from AI (eligible for ADDA)
-- **change_occurred**: TRUE if final ≠ initial assessment
-- **ai_consistent_change**: TRUE if change moved toward AI suggestion
+**Calibration handling**
+- Calibration trial = \`CASE_LOADED.payload.isCalibration === true\`
+- For calibration trials, \`preAiReadMs\`, \`postAiReadMs\`, \`totalReadMs\`, and \`aiExposureMs\` are **NULL** and excluded from aggregate timing statistics.
 
-### Timing Metrics
-- **preAiReadMs**: PRE_AI read episode duration
-- **postAiReadMs**: POST_AI read episode duration
-- **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
-- **totalTimeMs**: Total time on case
-- **comprehensionItemId**: Disclosure comprehension item identifier
-- **comprehensionAnswer**: Reader answer to comprehension probe
-- **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+| Column | Definition | Formula / Event Source |
+|--------|------------|------------------------|
+| sessionId | Session identifier | \`config.sessionId\` |
+| timestamp | Metric export timestamp (ISO 8601) | \`new Date().toISOString()\` |
+| condition | Condition assignment label | \`condition.condition\` |
+| caseId | Case identifier | \`CASE_LOADED.payload.caseId\` |
+| initialBirads | Initial BI-RADS assessment | \`FIRST_IMPRESSION_LOCKED.payload.birads\` (default 0) |
+| finalBirads | Final BI-RADS assessment | \`FINAL_ASSESSMENT.payload.birads\` (fallback initialBirads) |
+| aiBirads | AI-suggested BI-RADS | \`AI_REVEALED.payload.suggestedBirads\` else NULL |
+| aiConfidence | AI confidence score | \`AI_REVEALED.payload.aiConfidence\` else NULL |
+| changeOccurred | Assessment changed | \`finalBirads !== initialBirads\` |
+| aiConsistentChange | Change aligned with AI | \`changeOccurred && aiBirads != null && finalBirads === aiBirads\` |
+| aiInconsistentChange | Change diverged from AI | \`changeOccurred && aiBirads != null && finalBirads !== aiBirads\` |
+| addaDenominator | Eligible for ADDA | \`aiBirads != null && initialBirads !== aiBirads\` |
+| adda | Appropriate deference (ADDA) | \`addaDenominator ? finalBirads === aiBirads : null\` |
+| deviationRequired | Deviation documentation required | \`changeOccurred\` |
+| deviationDocumented | Deviation rationale provided | \`DEVIATION_SUBMITTED.payload.rationale\` non-empty |
+| deviationSkipped | Deviation skipped with attestation | \`changeOccurred && !rationaleProvided && DEVIATION_SKIPPED present\` |
+| deviationText | Deviation rationale text (legacy) | \`DEVIATION_SUBMITTED.payload.rationale\` (first) |
+| deviationRationale | Deviation rationale text | \`DEVIATION_SUBMITTED.payload.rationale\` (first) |
+| comprehensionCorrect | Comprehension correctness | \`payload.isCorrect ?? payload.correct\` |
+| comprehensionAnswer | Comprehension response | \`payload.selectedAnswer ?? payload.response\` |
+| comprehensionItemId | Comprehension item identifier | \`payload.itemId ?? payload.questionId\` |
+| comprehensionQuestionId | Comprehension question identifier | \`payload.questionId\` |
+| comprehensionResponseMs | Response latency (ms) | \`DISCLOSURE_COMPREHENSION_RESPONSE.timestamp - DISCLOSURE_PRESENTED.timestamp\` (>=0) |
+| comprehension_answer | Legacy alias of comprehensionAnswer | \`comprehensionAnswer\` |
+| comprehension_correct | Legacy alias of comprehensionCorrect | \`comprehensionCorrect\` |
+| comprehension_question_id | Legacy alias of comprehensionQuestionId | \`comprehensionQuestionId\` |
+| comprehension_response_ms | Legacy alias of comprehensionResponseMs | \`comprehensionResponseMs\` |
+| preAiReadMs | PRE_AI read duration (ms) | \`READ_EPISODE_ENDED - READ_EPISODE_STARTED\` (PRE_AI); NULL if calibration or missing |
+| postAiReadMs | POST_AI read duration (ms) | \`READ_EPISODE_ENDED - READ_EPISODE_STARTED\` (POST_AI); NULL if calibration or missing |
+| totalReadMs | Total read duration (ms) | \`preAiReadMs + postAiReadMs\` when both numeric |
+| aiExposureMs | AI exposure time (ms) | \`postAiReadMs\` |
+| decisionChangeCount | Decision change count | \`DEVIATION_STARTED\` count (>0) else \`changeOccurred ? 1 : 0\` |
+| overrideCount | Override count | \`aiBirads != null && finalBirads !== aiBirads ? 1 : 0\` |
+| rationaleProvided | Rationale provided flag | \`DEVIATION_SUBMITTED.payload.rationale\` non-empty |
+| timingFlagPreAiTooFast | PRE_AI too fast flag | \`preAiReadMs < 5000\` |
+| timingFlagAiExposureTooFast | AI exposure too fast flag | \`aiExposureMs > 0 && aiExposureMs < 3000\` |
+| totalTimeMs | Total case duration (ms) | \`CASE_COMPLETED.payload.totalTimeMs\` (default 0) |
+| timeToLockMs | Time to lock initial impression (ms) | \`FIRST_IMPRESSION_LOCKED.payload.timeToLockMs\` |
+| lockToRevealMs | Lock → AI reveal (ms) | \`AI_REVEALED.timestamp - FIRST_IMPRESSION_LOCKED.timestamp\` |
+| revealToFinalMs | AI reveal → final (ms) | \`aiExposureMs ?? 0\` |
+| revealTiming | Reveal timing condition | \`condition.condition\` |
+| disclosureFormat | Disclosure format condition | \`condition.disclosureFormat\` |
 
 ## Hash Chain Verification
 

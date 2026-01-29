@@ -751,33 +751,42 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | FINAL_ASSESSMENT | Final assessment submitted | birads, confidence, timeOnCaseMs |
 | EXPORT_GENERATED | Export package created | exportVersion, eventCount, finalHash |
 
-## Derived Metrics Fields
+## Derived Metrics (Operational Definitions)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| sessionId | string | Unique session identifier |
-| timestamp | string | Export timestamp (ISO 8601) |
-| condition | string | Experimental condition code |
-| initialBirads | int | BI-RADS at first impression lock |
-| finalBirads | int | BI-RADS at final submission |
-| aiBirads | int/null | AI-recommended BI-RADS |
-| aiConfidence | float/null | AI confidence (0-1) |
-| changeOccurred | bool | initial ≠ final |
-| aiConsistentChange | bool | changed AND final = AI |
-| aiInconsistentChange | bool | changed AND final ≠ AI |
-| adda | bool/null | ADDA=TRUE if changed toward AI (null if not in denominator) |
-| addaDenominator | bool | TRUE if initial ≠ AI (eligible for ADDA calculation) |
-| deviationDocumented | bool | Deviation text provided |
-| deviationSkipped | bool | User attested to skip documentation |
-| deviationRequired | bool | TRUE if assessment changed |
-| comprehensionCorrect | bool/null | FDR/FOR comprehension check result |
-| comprehensionAnswer | string/null | Reader answer to comprehension probe |
-| comprehensionItemId | string/null | Comprehension item identifier |
-| totalTimeMs | int | Session duration in milliseconds |
-| lockToRevealMs | int | Time from lock to AI reveal |
-| revealToFinalMs | int | Time from AI reveal to final |
-| revealTiming | string | human_first / concurrent / ai_first |
-| disclosureFormat | string | fdr_for / natural_frequency / none |
+**Calibration handling**
+- Calibration trial = \`CASE_LOADED.payload.isCalibration === true\`
+- For calibration trials, read-episode metrics (\`preAiReadMs\`, \`postAiReadMs\`, \`totalReadMs\`) are **NULL** and excluded from aggregate timing statistics.
+
+| Column | Definition | Formula / Event Source |
+|--------|------------|------------------------|
+| sessionId | Session identifier | \`config.sessionId\` |
+| timestamp | Metric export timestamp (ISO 8601) | \`new Date().toISOString()\` |
+| condition | Experimental condition code | \`config.condition\` |
+| initialBirads | BI-RADS at first impression lock | \`FIRST_IMPRESSION_LOCKED.payload.birads\` (default 0) |
+| finalBirads | BI-RADS at final submission | \`FINAL_ASSESSMENT.payload.birads\` (default 0) |
+| aiBirads | AI-recommended BI-RADS | \`AI_REVEALED.payload.aiBirads\` else NULL |
+| aiConfidence | AI confidence (0-1) | \`AI_REVEALED.payload.aiConfidence\` else NULL |
+| changeOccurred | Assessment changed | \`initialBirads !== finalBirads\` |
+| aiConsistentChange | Change toward AI | \`changeOccurred && finalBirads === aiBirads\` |
+| aiInconsistentChange | Change away from AI | \`changeOccurred && aiBirads !== null && finalBirads !== aiBirads\` |
+| addaDenominator | Eligible for ADDA | \`aiBirads !== null && initialBirads !== aiBirads\` |
+| adda | ADDA indicator | \`addaDenominator ? (changeOccurred && finalBirads === aiBirads) : null\` |
+| deviationDocumented | Deviation rationale provided | \`DEVIATION_SUBMITTED\` present |
+| deviationSkipped | Deviation skipped with attestation | \`DEVIATION_SKIPPED\` present |
+| deviationRequired | Deviation required | \`changeOccurred\` |
+| deviationText | Deviation rationale text | \`DEVIATION_SUBMITTED.payload.deviationText\` |
+| comprehensionAnswer | Comprehension response | \`DISCLOSURE_COMPREHENSION_RESPONSE.payload.selectedAnswer ?? payload.response\` |
+| comprehensionItemId | Comprehension item identifier | \`payload.itemId ?? payload.questionId\` |
+| comprehensionQuestionId | Comprehension question identifier | \`payload.questionId\` |
+| comprehensionCorrect | Comprehension correctness | \`payload.isCorrect ?? payload.correct\` |
+| preAiReadMs | PRE_AI read duration (ms) | \`READ_EPISODE_ENDED - READ_EPISODE_STARTED\` (PRE_AI); NULL if calibration or missing |
+| postAiReadMs | POST_AI read duration (ms) | \`READ_EPISODE_ENDED - READ_EPISODE_STARTED\` (POST_AI); NULL if calibration or missing |
+| totalReadMs | Total read duration (ms) | \`preAiReadMs + postAiReadMs\` when both numeric |
+| totalTimeMs | Session duration (ms) | \`FINAL_ASSESSMENT.timestamp - SESSION_STARTED.timestamp\` |
+| lockToRevealMs | Lock → AI reveal (ms) | \`AI_REVEALED.timestamp - FIRST_IMPRESSION_LOCKED.timestamp\` |
+| revealToFinalMs | AI reveal → final (ms) | \`FINAL_ASSESSMENT.timestamp - AI_REVEALED.timestamp\` |
+| revealTiming | Reveal timing | \`config.protocol.revealTiming\` |
+| disclosureFormat | Disclosure format | \`config.protocol.disclosureFormat\` |
 
 ## ADDA Operational Definition
 
