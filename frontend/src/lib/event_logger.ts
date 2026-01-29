@@ -247,6 +247,13 @@ export interface AttentionCoverageProxyPayload {
   };
 }
 
+export interface CaseContextPayload {
+  caseId?: string;
+  sessionId?: string;
+  condition?: unknown;
+  viewMode?: string;
+}
+
 // ============================================================================
 // EVENT LOGGER CLASS
 // ============================================================================
@@ -348,8 +355,13 @@ export class EventLogger {
   /**
    * Log first impression lock
    */
-  async logFirstImpressionLocked(birads: number, confidence: number): Promise<LedgerEntry> {
-    const payload: FirstImpressionLockedPayload = {
+  async logFirstImpressionLocked(
+    birads: number,
+    confidence: number,
+    context?: CaseContextPayload
+  ): Promise<LedgerEntry> {
+    const payload: FirstImpressionLockedPayload & CaseContextPayload = {
+      ...context,
       birads,
       confidence,
       timeToLockMs: Date.now() - this.caseStartTime,
@@ -395,16 +407,28 @@ export class EventLogger {
   /**
    * Log AI reveal
    */
-  async logAIRevealed(payload: AIRevealedPayload): Promise<LedgerEntry> {
+  async logAIRevealed(
+    payload: AIRevealedPayload,
+    context?: CaseContextPayload
+  ): Promise<LedgerEntry> {
     this.aiRevealTime = Date.now();
-    return this.exportPack.addEvent('AI_REVEALED', payload);
+    return this.exportPack.addEvent('AI_REVEALED', {
+      ...context,
+      ...payload,
+    });
   }
 
   /**
    * Log disclosure presented
    */
-  async logDisclosurePresented(payload: DisclosurePresentedPayload): Promise<LedgerEntry> {
-    return this.exportPack.addEvent('DISCLOSURE_PRESENTED', payload);
+  async logDisclosurePresented(
+    payload: DisclosurePresentedPayload,
+    context?: CaseContextPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('DISCLOSURE_PRESENTED', {
+      ...context,
+      ...payload,
+    });
   }
 
   /**
@@ -444,12 +468,13 @@ export class EventLogger {
   /**
    * Log final assessment
    */
-async logFinalAssessment(
+  async logFinalAssessment(
     caseId: string,
     birads: number, 
     confidence: number, 
     initialBirads: number,
-    aiBirads: number
+    aiBirads: number,
+    context?: CaseContextPayload
   ): Promise<LedgerEntry> {
     const changeFromInitial = birads !== initialBirads;
     let changeDirection: 'TOWARD_AI' | 'AWAY_FROM_AI' | 'NO_CHANGE' = 'NO_CHANGE';
@@ -460,7 +485,8 @@ async logFinalAssessment(
       changeDirection = finalDiff < initialDiff ? 'TOWARD_AI' : 'AWAY_FROM_AI';
     }
     
-const payload: FinalAssessmentPayload = {
+    const payload: FinalAssessmentPayload & CaseContextPayload = {
+      ...context,
       caseId,
       birads,
       confidence,

@@ -3266,6 +3266,34 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
+  const buildCaseContext = useCallback(
+    (payload: Record<string, unknown> = {}) => {
+      const context: Record<string, unknown> = {};
+      if (state.currentCase?.caseId) {
+        context.caseId = state.currentCase.caseId;
+      }
+      if (state.sessionId) {
+        context.sessionId = state.sessionId;
+      }
+      if (state.condition) {
+        context.condition = state.condition;
+      }
+      if (viewMode) {
+        context.viewMode = viewMode;
+      }
+      return { ...context, ...payload };
+    },
+    [state.currentCase?.caseId, state.sessionId, state.condition, viewMode]
+  );
+
+  const addCaseEvent = useCallback(
+    async (type: string, payload: Record<string, unknown> = {}) => {
+      if (!eventLoggerRef.current) return;
+      await eventLoggerRef.current.addEvent(type, buildCaseContext(payload));
+    },
+    [buildCaseContext]
+  );
+
   // Session persistence key
   const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
@@ -3673,7 +3701,8 @@ const counterbalanceArm = (() => {
     });
     
     if (firstCase) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
+      await addCaseEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration, condition });
+      await addCaseEvent('CASE_STARTED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration, condition });
       if (!firstCase.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(firstCase.caseId, 'PRE_AI');
       }
@@ -3689,13 +3718,13 @@ const counterbalanceArm = (() => {
     }));
     setTimeOnCase(0);
     setShowControlSurface(true); // Auto-expand control surface when study starts
-  }, [state.sessionId]);
+  }, [addCaseEvent, state.sessionId]);
 
   // Calibration submission
   const submitCalibration = useCallback(async () => {
     if (!eventLoggerRef.current || state.calibrationBirads === null || !state.currentCase) return;
     
-    await eventLoggerRef.current!.addEvent('CALIBRATION_RESPONSE', {
+    await addCaseEvent('CALIBRATION_RESPONSE', {
       caseId: state.currentCase.caseId,
       selectedBirads: state.calibrationBirads,
       confidence: state.calibrationConfidence,
@@ -3703,18 +3732,18 @@ const counterbalanceArm = (() => {
     });
     
     setState(s => ({ ...s, step: 'CALIBRATION_FEEDBACK', eventCount: exportPackRef.current?.getEvents().length || 0 }));
-  }, [state.calibrationBirads, state.calibrationConfidence, state.currentCase]);
+  }, [addCaseEvent, state.calibrationBirads, state.calibrationConfidence, state.currentCase]);
 
   // Continue from calibration feedback
   const continueFromCalibration = useCallback(async () => {
     if (!state.caseQueue || !eventLoggerRef.current) return;
     
-    await eventLoggerRef.current!.addEvent('CALIBRATION_FEEDBACK_SHOWN', {
+    await addCaseEvent('CALIBRATION_FEEDBACK_SHOWN', {
       caseId: state.currentCase?.caseId,
       userBirads: state.calibrationBirads,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
     });
-    await eventLoggerRef.current!.addEvent('GROUND_TRUTH_REVEALED', {
+    await addCaseEvent('GROUND_TRUTH_REVEALED', {
       caseId: state.currentCase?.caseId,
       groundTruthBirads: state.currentCase?.groundTruth?.birads ?? null,
       context: 'CALIBRATION_MODE_ONLY',
@@ -3725,7 +3754,8 @@ const counterbalanceArm = (() => {
     const nextCase = getCurrentCase(newQueue);
     
     if (nextCase) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      await addCaseEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      await addCaseEvent('CASE_STARTED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
       if (!nextCase.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(nextCase.caseId, 'PRE_AI');
       }
@@ -3744,7 +3774,7 @@ const counterbalanceArm = (() => {
       interactionCounts: { zooms: 0, pans: 0 },
     }));
     setTimeOnCase(0);
-  }, [state.caseQueue, state.currentCase, state.calibrationBirads]);
+  }, [addCaseEvent, state.caseQueue, state.currentCase, state.calibrationBirads]);
 
   // Lock first impression
   const lockImpression = useCallback(async () => {
@@ -3754,7 +3784,8 @@ const lockTime = new Date();
 
 await eventLoggerRef.current!.logFirstImpressionLocked(
   state.initialBirads ?? 0,
-  state.initialConfidence ?? 0
+  state.initialConfidence ?? 0,
+  buildCaseContext()
 );
 
 await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
@@ -3785,7 +3816,7 @@ await eventLoggerRef.current!.logAIRevealed({
   aiConfidence,
   finding: (state.currentCase as any).finding ?? 'N/A',
   displayMode: 'PANEL',
-});
+}, buildCaseContext());
 
     if (!state.currentCase.isCalibration) {
       await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'PRE_AI', 'AI_REVEALED');
@@ -3797,7 +3828,7 @@ await eventLoggerRef.current!.logAIRevealed({
     const disclosureIntensity = disclosurePolicy === 'STATIC' ? 'STANDARD' : 
       caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL_DEBIAS';
     
-    await eventLoggerRef.current!.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
+    await eventLoggerRef.current!.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 }, buildCaseContext());
     await eventLoggerRef.current!.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
       policy: disclosurePolicy,
       caseDifficulty,
@@ -3810,7 +3841,7 @@ await eventLoggerRef.current!.logAIRevealed({
       ...s, step: 'AI_REVEALED', lockTime, aiRevealTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy]);
+  }, [buildCaseContext, state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy]);
 
   // Handle comprehension answer
   const handleComprehension = useCallback(async (answer: string) => {
@@ -3864,7 +3895,8 @@ setAiAgreementStreak(prev => prev + 1);
       state.finalBirads ?? state.initialBirads ?? 0,
       state.finalConfidence,
       state.initialBirads ?? 0,
-      aiSuggestedBirads
+      aiSuggestedBirads,
+      buildCaseContext()
     );
 
     if (!state.currentCase.isCalibration) {
@@ -3893,7 +3925,7 @@ setAiAgreementStreak(prev => prev + 1);
       agreedWithAI,
     });
     
-    await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
+    await addCaseEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
     const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
     const metrics = computeDerivedMetricsFromEvents(
@@ -3909,7 +3941,7 @@ setAiAgreementStreak(prev => prev + 1);
       caseResults: [...s.caseResults, metrics],
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
+  }, [addCaseEvent, buildCaseContext, state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
 
   // Proceed to deviation or probes
   const proceedToDeviation = useCallback(async () => {
@@ -3964,7 +3996,8 @@ setAiAgreementStreak(prev => prev + 1);
     const nextCaseDef = getCurrentCase(newQueue);
     
     if (nextCaseDef) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      await addCaseEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      await addCaseEvent('CASE_STARTED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
       if (!nextCaseDef.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(nextCaseDef.caseId, 'PRE_AI');
       }
@@ -3980,7 +4013,7 @@ setAiAgreementStreak(prev => prev + 1);
       interactionCounts: { zooms: 0, pans: 0 },
     }));
     setTimeOnCase(0);
-  }, [state.caseQueue, state.caseResults.length]);
+  }, [addCaseEvent, state.caseQueue, state.caseResults.length]);
 
   // Generate export
   const generateExport = useCallback(async () => {
