@@ -130,6 +130,7 @@ const computeDerivedMetricsFromEvents = (
   const deviationSkipped = caseEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
   const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
   const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+  const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
 
   const initialBirads = firstImpression?.payload?.birads ?? 0;
   const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
@@ -165,6 +166,13 @@ const computeDerivedMetricsFromEvents = (
     firstImpression && aiRevealed
       ? new Date(aiRevealed.timestamp).getTime() - new Date(firstImpression.timestamp).getTime()
       : 0;
+  const comprehensionResponseMs = comprehensionEvent && disclosurePresented
+    ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+    : null;
+  const normalizedComprehensionResponseMs =
+    typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
+      ? comprehensionResponseMs
+      : null;
 
   return {
     sessionId,
@@ -186,6 +194,13 @@ const computeDerivedMetricsFromEvents = (
     deviationText: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
     deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
     comprehensionCorrect: comprehensionEvent?.payload?.isCorrect ?? null,
+    comprehensionAnswer: comprehensionEvent?.payload?.selectedAnswer ?? null,
+    comprehensionQuestionId: comprehensionEvent?.payload?.questionId ?? null,
+    comprehensionResponseMs: normalizedComprehensionResponseMs,
+    comprehension_answer: comprehensionEvent?.payload?.selectedAnswer ?? null,
+    comprehension_correct: comprehensionEvent?.payload?.isCorrect ?? null,
+    comprehension_question_id: comprehensionEvent?.payload?.questionId ?? null,
+    comprehension_response_ms: normalizedComprehensionResponseMs,
     preAiReadMs,
     aiExposureMs,
     decisionChangeCount,
@@ -3690,13 +3705,22 @@ await eventLoggerRef.current!.logAIRevealed({
   // Handle comprehension answer
   const handleComprehension = useCallback(async (answer: string) => {
     const correct = answer === 'missed_cancer';
-    if (eventLoggerRef.current) {
-      await eventLoggerRef.current!.addEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
-        questionId: 'FDR_FOR_COMPREHENSION', selectedAnswer: answer, correctAnswer: 'missed_cancer', isCorrect: correct,
+    if (eventLoggerRef.current && state.currentCase) {
+      const responseTimeMs = state.aiRevealTime
+        ? Date.now() - state.aiRevealTime.getTime()
+        : null;
+      await eventLoggerRef.current!.logComprehensionResponse({
+        caseId: state.currentCase.caseId,
+        questionId: 'FDR_FOR_COMPREHENSION',
+        selectedAnswer: answer,
+        correctAnswer: 'missed_cancer',
+        isCorrect: correct,
+        responseTimeMs,
+        phase: 'POST_AI',
       });
     }
     setState(s => ({ ...s, comprehensionAnswer: answer, comprehensionCorrect: correct, eventCount: exportPackRef.current?.getEvents().length || 0 }));
-  }, []);
+  }, [state.aiRevealTime, state.currentCase]);
   // Submit final assessment
   const submitFinalAssessment = useCallback(async (skipDeviation = false) => {
     if (!eventLoggerRef.current || !state.currentCase) return;

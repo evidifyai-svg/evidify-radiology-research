@@ -174,11 +174,13 @@ export interface DisclosurePresentedPayload {
 }
 
 export interface ComprehensionResponsePayload {
+  caseId: string;
   questionId: string;
   selectedAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
-  responseTimeMs: number;
+  responseTimeMs?: number | null;
+  phase?: string;
 }
 
 export interface DeviationPayload {

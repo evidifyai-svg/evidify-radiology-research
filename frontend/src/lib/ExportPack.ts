@@ -240,6 +240,13 @@ export interface DerivedMetrics {
 
   // Comprehension
   comprehensionCorrect: boolean | null;
+  comprehensionAnswer?: string | null;
+  comprehensionQuestionId?: string | null;
+  comprehensionResponseMs?: number | null;
+  comprehension_answer?: string | null;
+  comprehension_correct?: boolean | null;
+  comprehension_question_id?: string | null;
+  comprehension_response_ms?: number | null;
 
   // Defensibility metrics
   preAiReadMs?: number;
