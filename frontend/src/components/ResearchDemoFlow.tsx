@@ -3067,6 +3067,8 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showModelCard, setShowModelCard] = useState(false);
   const [showStudyDesign, setShowStudyDesign] = useState(false);
   const [viewMode, setViewMode] = useState<'CLINICIAN' | 'RESEARCHER'>('RESEARCHER');
+  const isClinician = viewMode === 'CLINICIAN';
+  const isResearcher = viewMode === 'RESEARCHER';
   const [showStudyPack, setShowStudyPack] = useState(false);
   const [showAdvancedResearcher, setShowAdvancedResearcher] = useState(false);
   const [demoPathStep, setDemoPathStep] = useState(0);
@@ -3087,8 +3089,6 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
   
-  const isClinician = viewMode === 'CLINICIAN';
-  const isResearcher = viewMode === 'RESEARCHER';
 
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
@@ -3639,44 +3639,6 @@ await eventLoggerRef.current!.logAIRevealed({
     }
     setState(s => ({ ...s, comprehensionAnswer: answer, comprehensionCorrect: correct, eventCount: exportPackRef.current?.getEvents().length || 0 }));
   }, []);
-
-  // Proceed to deviation or probes
-  const proceedToDeviation = useCallback(async () => {
-    const needsDeviation = state.finalBirads !== state.initialBirads;
-    if (needsDeviation) {
-      if (eventLoggerRef.current) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
-      }
-      setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
-    } else if (isClinician) {
-      await submitFinalAssessment();
-    } else {
-      // No deviation needed - show probes modal
-      setShowProbesModal(true);
-    }
-  }, [state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
-  
-  // Called after deviation step to show probes
-  const proceedToProbes = useCallback(async (skipDeviation = false) => {
-    if (eventLoggerRef.current) {
-      if (skipDeviation) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
-        setDeviationsSkipped(prev => prev + 1);
-      } else if (state.deviationRationale) {
-        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
-          rationale: state.deviationRationale, 
-          initialBirads: state.initialBirads, 
-          finalBirads: state.finalBirads 
-        });
-      }
-    }
-    if (isClinician) {
-      await submitFinalAssessment(skipDeviation);
-      return;
-    }
-    setShowProbesModal(true);
-  }, [state.deviationRationale, state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
-
   // Submit final assessment
   const submitFinalAssessment = useCallback(async (skipDeviation = false) => {
     if (!eventLoggerRef.current || !state.currentCase) return;
@@ -3751,6 +3713,43 @@ setAiAgreementStreak(prev => prev + 1);
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
   }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
+
+  // Proceed to deviation or probes
+  const proceedToDeviation = useCallback(async () => {
+    const needsDeviation = state.finalBirads !== state.initialBirads;
+    if (needsDeviation) {
+      if (eventLoggerRef.current) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_STARTED', { initialBirads: state.initialBirads, tentativeFinalBirads: state.finalBirads });
+      }
+      setState(s => ({ ...s, step: 'DEVIATION', eventCount: exportPackRef.current?.getEvents().length || 0 }));
+    } else if (isClinician) {
+      await submitFinalAssessment();
+    } else {
+      // No deviation needed - show probes modal
+      setShowProbesModal(true);
+    }
+  }, [state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
+  
+  // Called after deviation step to show probes
+  const proceedToProbes = useCallback(async (skipDeviation = false) => {
+    if (eventLoggerRef.current) {
+      if (skipDeviation) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_SKIPPED', { reason: 'user_skipped' });
+        setDeviationsSkipped(prev => prev + 1);
+      } else if (state.deviationRationale) {
+        await eventLoggerRef.current!.addEvent('DEVIATION_SUBMITTED', { 
+          rationale: state.deviationRationale, 
+          initialBirads: state.initialBirads, 
+          finalBirads: state.finalBirads 
+        });
+      }
+    }
+    if (isClinician) {
+      await submitFinalAssessment(skipDeviation);
+      return;
+    }
+    setShowProbesModal(true);
+  }, [state.deviationRationale, state.initialBirads, state.finalBirads, isClinician, submitFinalAssessment]);
 
   // Next case
   const nextCase = useCallback(async () => {
@@ -3842,8 +3841,6 @@ setAiAgreementStreak(prev => prev + 1);
   }, [state.currentCase, state.initialBirads, state.finalBirads]);
 
   const isSetupScreen = state.step === 'SETUP';
-  const isClinician = viewMode === 'CLINICIAN';
-  const isResearcher = viewMode === 'RESEARCHER';
 
   // ============== RENDER ==============
   return (
