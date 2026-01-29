@@ -112,17 +112,21 @@ function computeReadEpisodeMetricsFromEvents(
     console.warn(`[ReadEpisodes:${warnLabel}] ${message}`);
   };
 
-  const getTimestampMs = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
-    const payloadValue = (event.payload as Record<string, unknown>)?.[key];
+  const getEpisodeType = (event: TrialEvent): ReadEpisodeType | undefined =>
+    ((event.payload as Record<string, unknown>)?.episode ??
+      (event.payload as Record<string, unknown>)?.episodeType) as ReadEpisodeType | undefined;
+
+  const getWallTimeMs = (event: TrialEvent): number => {
+    const payloadValue = (event.payload as Record<string, unknown>)?.t_wall;
     return new Date((payloadValue as string | undefined) ?? event.timestamp).getTime();
   };
 
   const computeEpisodeMs = (episodeType: ReadEpisodeType): number | null => {
     const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+      event => event.type === 'READ_EPISODE_STARTED' && getEpisodeType(event) === episodeType
     );
     const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+      event => event.type === 'READ_EPISODE_ENDED' && getEpisodeType(event) === episodeType
     );
 
     if (starts.length > 1) {
@@ -144,7 +148,12 @@ function computeReadEpisodeMetricsFromEvents(
       return null;
     }
 
-    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
+    const startMono = (starts[0].payload as Record<string, unknown>)?.t_mono;
+    const endMono = (ends[0].payload as Record<string, unknown>)?.t_mono;
+    const duration =
+      typeof startMono === 'number' && typeof endMono === 'number'
+        ? endMono - startMono
+        : getWallTimeMs(ends[0]) - getWallTimeMs(starts[0]);
     return Number.isFinite(duration) && duration >= 0 ? duration : null;
   };
 

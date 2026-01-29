@@ -13,20 +13,23 @@ const buildEvent = (type, payload, timestamp) => ({
 
 const computeReadEpisodeMetrics = (events, caseId) => {
   const caseEvents = events.filter(event => event.payload?.caseId === caseId);
-  const getTimestampMs = (event, key) => {
-    const payloadValue = event.payload?.[key];
-    return new Date(payloadValue ?? event.timestamp).getTime();
-  };
+  const getEpisodeType = event => event.payload?.episode ?? event.payload?.episodeType;
+  const getWallTimeMs = event => new Date(event.payload?.t_wall ?? event.timestamp).getTime();
 
   const computeEpisodeMs = episodeType => {
     const start = caseEvents.find(
-      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
+      event => event.type === 'READ_EPISODE_STARTED' && getEpisodeType(event) === episodeType
     );
     const end = caseEvents.find(
-      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
+      event => event.type === 'READ_EPISODE_ENDED' && getEpisodeType(event) === episodeType
     );
     if (!start || !end) return null;
-    const duration = getTimestampMs(end, 'tEndIso') - getTimestampMs(start, 'tStartIso');
+    const startMono = start.payload?.t_mono;
+    const endMono = end.payload?.t_mono;
+    const duration =
+      typeof startMono === 'number' && typeof endMono === 'number'
+        ? endMono - startMono
+        : getWallTimeMs(end) - getWallTimeMs(start);
     return Number.isFinite(duration) && duration >= 0 ? duration : null;
   };
 
@@ -52,24 +55,24 @@ const events = [
   buildEvent('CASE_LOADED', { caseId: realCaseId, isCalibration: false }, baseTime + 3000),
   buildEvent(
     'READ_EPISODE_STARTED',
-    { caseId: realCaseId, episodeType: 'PRE_AI', tStartIso: new Date(baseTime + 3000).toISOString() },
+    { caseId: realCaseId, episode: 'PRE_AI', t_wall: new Date(baseTime + 3000).toISOString(), t_mono: 3000 },
     baseTime + 3000
   ),
   buildEvent('AI_REVEALED', { caseId: realCaseId }, baseTime + 4000),
   buildEvent(
     'READ_EPISODE_ENDED',
-    { caseId: realCaseId, episodeType: 'PRE_AI', tEndIso: new Date(baseTime + 4000).toISOString() },
+    { caseId: realCaseId, episode: 'PRE_AI', t_wall: new Date(baseTime + 4000).toISOString(), t_mono: 4000 },
     baseTime + 4000
   ),
   buildEvent(
     'READ_EPISODE_STARTED',
-    { caseId: realCaseId, episodeType: 'POST_AI', tStartIso: new Date(baseTime + 4000).toISOString() },
+    { caseId: realCaseId, episode: 'POST_AI', t_wall: new Date(baseTime + 4000).toISOString(), t_mono: 4000 },
     baseTime + 4000
   ),
   buildEvent('FINAL_ASSESSMENT', { caseId: realCaseId }, baseTime + 6000),
   buildEvent(
     'READ_EPISODE_ENDED',
-    { caseId: realCaseId, episodeType: 'POST_AI', tEndIso: new Date(baseTime + 6000).toISOString() },
+    { caseId: realCaseId, episode: 'POST_AI', t_wall: new Date(baseTime + 6000).toISOString(), t_mono: 6000 },
     baseTime + 6000
   ),
 ];

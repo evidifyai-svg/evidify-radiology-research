@@ -407,20 +407,27 @@ export class ExportPackBuilder {
       : null;
 
     const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
-    const getReadEpisodeTimestamp = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
-      const payloadValue = (event.payload as any)?.[key];
+    const getEpisodeType = (event: TrialEvent): 'PRE_AI' | 'POST_AI' | undefined =>
+      ((event.payload as any)?.episode ?? (event.payload as any)?.episodeType) as 'PRE_AI' | 'POST_AI' | undefined;
+    const getWallTimeMs = (event: TrialEvent): number => {
+      const payloadValue = (event.payload as any)?.t_wall;
       return new Date(payloadValue ?? event.timestamp).getTime();
     };
     const computeReadEpisodeMs = (episodeType: 'PRE_AI' | 'POST_AI'): number | null => {
       if (isCalibration) return null;
       const starts = this.events.filter(
-        event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+        event => event.type === 'READ_EPISODE_STARTED' && getEpisodeType(event) === episodeType
       );
       const ends = this.events.filter(
-        event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+        event => event.type === 'READ_EPISODE_ENDED' && getEpisodeType(event) === episodeType
       );
       if (starts.length === 0 || ends.length === 0) return null;
-      const duration = getReadEpisodeTimestamp(ends[0], 'tEndIso') - getReadEpisodeTimestamp(starts[0], 'tStartIso');
+      const startMono = (starts[0].payload as any)?.t_mono;
+      const endMono = (ends[0].payload as any)?.t_mono;
+      const duration =
+        typeof startMono === 'number' && typeof endMono === 'number'
+          ? endMono - startMono
+          : getWallTimeMs(ends[0]) - getWallTimeMs(starts[0]);
       return Number.isFinite(duration) && duration >= 0 ? duration : null;
     };
     const preAiReadMs = computeReadEpisodeMs('PRE_AI');

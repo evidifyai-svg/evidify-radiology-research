@@ -164,9 +164,9 @@ export interface FirstImpressionLockedPayload {
 
 export interface ReadEpisodePayload {
   caseId: string;
-  episodeType: 'PRE_AI' | 'POST_AI';
-  tStartIso?: string;
-  tEndIso?: string;
+  episode: 'PRE_AI' | 'POST_AI';
+  t_wall?: string;
+  t_mono?: number;
   reason?: string;
 }
 
@@ -365,11 +365,12 @@ export class EventLogger {
   /**
    * Log read episode start
    */
-  async logReadEpisodeStarted(caseId: string, episodeType: ReadEpisodePayload['episodeType']): Promise<LedgerEntry> {
+  async logReadEpisodeStarted(caseId: string, episode: ReadEpisodePayload['episode']): Promise<LedgerEntry> {
     const payload: ReadEpisodePayload = {
       caseId,
-      episodeType,
-      tStartIso: new Date().toISOString(),
+      episode,
+      t_wall: new Date().toISOString(),
+      t_mono: typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(),
     };
     return this.exportPack.addEvent('READ_EPISODE_STARTED', payload);
   }
@@ -379,13 +380,14 @@ export class EventLogger {
    */
   async logReadEpisodeEnded(
     caseId: string,
-    episodeType: ReadEpisodePayload['episodeType'],
+    episode: ReadEpisodePayload['episode'],
     reason?: string
   ): Promise<LedgerEntry> {
     const payload: ReadEpisodePayload = {
       caseId,
-      episodeType,
-      tEndIso: new Date().toISOString(),
+      episode,
+      t_wall: new Date().toISOString(),
+      t_mono: typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(),
       reason,
     };
     return this.exportPack.addEvent('READ_EPISODE_ENDED', payload);
