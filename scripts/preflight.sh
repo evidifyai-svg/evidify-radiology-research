@@ -33,9 +33,8 @@ echo "✓ frontend/node_modules exists"
 # Validate allowed HTML entrypoints
 ALLOWED_HTML=(
     "frontend/index.html"
+    "frontend/vault.html"
     "frontend/research-demo.html"
-    "frontend/index-demo.html"
-    "frontend/demo.html"
 )
 
 HTML_FILES=$(find frontend -name "*.html" \
