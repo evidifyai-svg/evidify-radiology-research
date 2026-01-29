@@ -224,6 +224,9 @@ export interface DerivedMetrics {
   deviationRequired: boolean;
   deviationText?: string;
   comprehensionCorrect: boolean | null;
+  preAiReadMs?: number | null;
+  postAiReadMs?: number | null;
+  totalReadMs?: number | null;
   totalTimeMs: number;
   lockToRevealMs: number;
   revealToFinalMs: number;
@@ -367,6 +370,7 @@ export class ExportPackBuilder {
   computeDerivedMetrics(): DerivedMetrics {
     // Find key events
     const sessionStarted = this.events.find(e => e.type === 'SESSION_STARTED');
+    const caseLoaded = this.events.find(e => e.type === 'CASE_LOADED');
     const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
     const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
@@ -402,6 +406,30 @@ export class ExportPackBuilder {
       ? (comprehensionResponse.payload as any).correct
       : null;
 
+    const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+    const getReadEpisodeTimestamp = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
+      const payloadValue = (event.payload as any)?.[key];
+      return new Date(payloadValue ?? event.timestamp).getTime();
+    };
+    const computeReadEpisodeMs = (episodeType: 'PRE_AI' | 'POST_AI'): number | null => {
+      if (isCalibration) return null;
+      const starts = this.events.filter(
+        event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+      );
+      const ends = this.events.filter(
+        event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+      );
+      if (starts.length === 0 || ends.length === 0) return null;
+      const duration = getReadEpisodeTimestamp(ends[0], 'tEndIso') - getReadEpisodeTimestamp(starts[0], 'tStartIso');
+      return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    };
+    const preAiReadMs = computeReadEpisodeMs('PRE_AI');
+    const postAiReadMs = computeReadEpisodeMs('POST_AI');
+    const totalReadMs =
+      typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+        ? preAiReadMs + postAiReadMs
+        : null;
+
     // Timing
     const sessionStart = sessionStarted ? new Date(sessionStarted.timestamp).getTime() : 0;
     const lockTime = firstImpression ? new Date(firstImpression.timestamp).getTime() : sessionStart;
@@ -430,6 +458,9 @@ export class ExportPackBuilder {
       deviationRequired,
       deviationText,
       comprehensionCorrect,
+      preAiReadMs,
+      postAiReadMs,
+      totalReadMs,
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,

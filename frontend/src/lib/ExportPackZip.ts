@@ -96,6 +96,68 @@ function canonicalJSON(obj: unknown): string {
   return 'null';
 }
 
+type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
+
+function computeReadEpisodeMetricsFromEvents(
+  caseEvents: TrialEvent[],
+  caseId: string,
+  isCalibration: boolean,
+  warnLabel: string
+): { preAiReadMs: number | null; postAiReadMs: number | null; totalReadMs: number | null } {
+  if (isCalibration) {
+    return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
+  }
+
+  const warn = (message: string) => {
+    console.warn(`[ReadEpisodes:${warnLabel}] ${message}`);
+  };
+
+  const getTimestampMs = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
+    const payloadValue = (event.payload as Record<string, unknown>)?.[key];
+    return new Date((payloadValue as string | undefined) ?? event.timestamp).getTime();
+  };
+
+  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | null => {
+    const starts = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+    );
+    const ends = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+    );
+
+    if (starts.length > 1) {
+      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
+    }
+    if (ends.length > 1) {
+      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
+    }
+
+    if (starts.length === 0 && ends.length > 0) {
+      warn(`Missing ${episodeType} start for case ${caseId}.`);
+      return null;
+    }
+    if (starts.length > 0 && ends.length === 0) {
+      warn(`Missing ${episodeType} end for case ${caseId}.`);
+      return null;
+    }
+    if (starts.length === 0 && ends.length === 0) {
+      return null;
+    }
+
+    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
+    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+  };
+
+  const preAiReadMs = computeEpisodeMs('PRE_AI');
+  const postAiReadMs = computeEpisodeMs('POST_AI');
+  const totalReadMs =
+    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+      ? preAiReadMs + postAiReadMs
+      : null;
+
+  return { preAiReadMs, postAiReadMs, totalReadMs };
+}
+
 // ============================================================================
 // EXPORT PACK BUILDER
 // ============================================================================
@@ -481,12 +543,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const groupedEvents = this.groupEventsByCase(this.events);
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
-    const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
+    const headers =
+      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
       const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
       const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+      const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
       const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
       const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
 
@@ -513,6 +577,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           ? comprehensionResponseMs
           : null;
 
+      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+      const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
+        caseEvents,
+        caseId,
+        isCalibration,
+        'ExportPackZip'
+      );
+
       const values = [
         this.sessionId,
         caseId,
@@ -524,6 +596,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         aiConsistentChange,
         addaDenominator,
         adda,
+        preAiReadMs,
+        postAiReadMs,
+        totalReadMs,
         comprehensionAnswer,
         comprehensionCorrect,
         comprehensionQuestionId,
@@ -642,6 +717,8 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **CASE_LOADED**: Mammogram case presented to reader
 - **IMAGE_VIEWED**: Reader viewed/interacted with image
 - **FIRST_IMPRESSION_LOCKED**: Initial BI-RADS assessment locked
+- **READ_EPISODE_STARTED**: Reader starts PRE_AI/POST_AI read episode
+- **READ_EPISODE_ENDED**: Reader ends PRE_AI/POST_AI read episode
 - **AI_REVEALED**: AI suggestion shown to reader
 - **DISCLOSURE_PRESENTED**: Error rate information shown
 - **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check
@@ -666,8 +743,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ai_consistent_change**: TRUE if change moved toward AI suggestion
 
 ### Timing Metrics
-- **preAiTimeMs**: Time from case load to first impression lock
-- **postAiTimeMs**: Time from AI reveal to final assessment
+- **preAiReadMs**: PRE_AI read episode duration
+- **postAiReadMs**: POST_AI read episode duration
+- **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
 - **totalTimeMs**: Total time on case
 
 ## Hash Chain Verification

@@ -10,6 +10,7 @@
  * - CASE_LOADED, CASE_COMPLETED
  * - IMAGE_VIEWED (periodic)
  * - FIRST_IMPRESSION_LOCKED
+ * - READ_EPISODE_STARTED, READ_EPISODE_ENDED
  * - AI_REVEALED
  * - DISCLOSURE_PRESENTED
  * - DISCLOSURE_COMPREHENSION_RESPONSE
@@ -37,6 +38,8 @@ export type CaseEventType =
   | 'IMAGE_VIEWED'
   | 'VIEWPORT_CHANGED'
   | 'FIRST_IMPRESSION_LOCKED'
+  | 'READ_EPISODE_STARTED'
+  | 'READ_EPISODE_ENDED'
   | 'AI_REVEALED'
   | 'DISCLOSURE_PRESENTED'
   | 'DISCLOSURE_COMPREHENSION_RESPONSE'
@@ -157,6 +160,14 @@ export interface FirstImpressionLockedPayload {
     windowLevelCount: number;
     viewsFocused: string[];
   };
+}
+
+export interface ReadEpisodePayload {
+  caseId: string;
+  episodeType: 'PRE_AI' | 'POST_AI';
+  tStartIso?: string;
+  tEndIso?: string;
+  reason?: string;
 }
 
 export interface AIRevealedPayload {
@@ -349,6 +360,35 @@ export class EventLogger {
       },
     };
     return this.exportPack.addEvent('FIRST_IMPRESSION_LOCKED', payload);
+  }
+
+  /**
+   * Log read episode start
+   */
+  async logReadEpisodeStarted(caseId: string, episodeType: ReadEpisodePayload['episodeType']): Promise<LedgerEntry> {
+    const payload: ReadEpisodePayload = {
+      caseId,
+      episodeType,
+      tStartIso: new Date().toISOString(),
+    };
+    return this.exportPack.addEvent('READ_EPISODE_STARTED', payload);
+  }
+
+  /**
+   * Log read episode end
+   */
+  async logReadEpisodeEnded(
+    caseId: string,
+    episodeType: ReadEpisodePayload['episodeType'],
+    reason?: string
+  ): Promise<LedgerEntry> {
+    const payload: ReadEpisodePayload = {
+      caseId,
+      episodeType,
+      tEndIso: new Date().toISOString(),
+      reason,
+    };
+    return this.exportPack.addEvent('READ_EPISODE_ENDED', payload);
   }
 
   /**
