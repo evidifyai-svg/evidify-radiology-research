@@ -4342,7 +4342,7 @@ setAiAgreementStreak(prev => prev + 1);
                           onClick={() => setViewMode('CLINICIAN')}
                           style={{
                             padding: '8px 14px',
-                            backgroundColor: viewMode === 'CLINICIAN' ? '#3b82f6' : '#1f2937',
+                            backgroundColor: isClinician ? '#3b82f6' : '#1f2937',
                             border: '1px solid #334155',
                             borderRadius: '8px',
                             color: 'white',
