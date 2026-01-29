@@ -10,9 +10,10 @@
     "preview": "npm --prefix frontend run preview",
     "verify:index": "bash scripts/preflight.sh",
     "preflight": "bash scripts/preflight.sh",
+    "verify:radiology": "node tools/radiology-verifier/verify-v1.0.cjs tools/radiology-verifier/fixtures/pack-valid-mini",
     "support:pack": "bash scripts/support-pack.sh",
     "setup:inbreast": "bash scripts/setup-inbreast.sh",
     "link:inbreast": "bash scripts/link-inbreast.sh",
-    "verify:research": "node tools/radiology-verifier/verify-radiology.cjs artifacts/export_unpack"
+    "verify:research": "npm run verify:radiology"
   }
 }

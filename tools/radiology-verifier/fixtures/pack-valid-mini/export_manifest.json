@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2024-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "path": "events.jsonl",
+      "sha256": "561fb6db29617e977f88e563e760153b03eb52711326921240a1298b9bb0002f",
+      "bytes": 161
+    },
+    {
+      "path": "ledger.json",
+      "sha256": "460b47c7682ccc10deadcddbf00c5a89758daf2d766725d91e227f2b821d6866",
+      "bytes": 419
+    }
+  ]
+}

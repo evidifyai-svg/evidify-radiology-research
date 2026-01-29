@@ -1,0 +1,11 @@
+[
+  {
+    "seq": 0,
+    "eventId": "11111111-1111-1111-1111-111111111111",
+    "eventType": "session_start",
+    "timestamp": "2024-01-01T00:00:00.000Z",
+    "contentHash": "48232bc203f360464300c0da8777935a5b9623fc2ef7f654e9eeddf9a2a470a7",
+    "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "chainHash": "aa4931ccc962bf3d59fda736cfff10e8e374f1f29486d9bc884148e4bbcc6989"
+  }
+]
