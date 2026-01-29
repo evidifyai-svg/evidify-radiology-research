@@ -92,6 +92,12 @@ export interface DerivedMetrics {
   deviationSkipped: boolean;
   deviationRequired: boolean;
   comprehensionCorrect: boolean | null;
+  preAiReadMs?: number | null;
+  postAiReadMs?: number | null;
+  totalReadMs?: number | null;
+  aiExposureMs?: number | null;
+  hasPreAiEpisode?: boolean;
+  hasPostAiEpisode?: boolean;
   totalTimeMs: number;
   lockToRevealMs: number;
   revealToFinalMs: number;

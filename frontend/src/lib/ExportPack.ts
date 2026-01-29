@@ -242,13 +242,17 @@ export interface DerivedMetrics {
   comprehensionCorrect: boolean | null;
 
   // Defensibility metrics
-  preAiReadMs?: number;
-  aiExposureMs?: number;
+  preAiReadMs?: number | null;
+  postAiReadMs?: number | null;
+  totalReadMs?: number | null;
+  aiExposureMs?: number | null;
+  hasPreAiEpisode?: boolean;
+  hasPostAiEpisode?: boolean;
   decisionChangeCount?: number;
   overrideCount?: number;
   rationaleProvided?: boolean;
-  timingFlagPreAiTooFast?: boolean;
-  timingFlagAiExposureTooFast?: boolean;
+  timingFlagPreAiTooFast?: boolean | null;
+  timingFlagAiExposureTooFast?: boolean | null;
 
   // Timing (ms)
   totalTimeMs: number;
@@ -405,6 +409,18 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
     const deviationSubmitted = this.events.find(e => e.type === 'DEVIATION_SUBMITTED');
     const deviationSkipped = this.events.find(e => e.type === 'DEVIATION_SKIPPED');
     const comprehensionResponse = this.events.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+    const preEpisodeStart = this.events.find(
+      e => e.type === 'READ_EPISODE_STARTED' && (e.payload as any)?.phase === 'PRE_AI'
+    );
+    const preEpisodeEnd = this.events.find(
+      e => e.type === 'READ_EPISODE_ENDED' && (e.payload as any)?.phase === 'PRE_AI'
+    );
+    const postEpisodeStart = this.events.find(
+      e => e.type === 'READ_EPISODE_STARTED' && (e.payload as any)?.phase === 'POST_AI'
+    );
+    const postEpisodeEnd = this.events.find(
+      e => e.type === 'READ_EPISODE_ENDED' && (e.payload as any)?.phase === 'POST_AI'
+    );
 
     const initialBirads = (firstImpression?.payload as any)?.birads ?? 0;
     const finalBirads = (finalAssessment?.payload as any)?.birads ?? 0;
@@ -449,6 +465,18 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
     const totalTimeMs = finalTime - sessionStart;
     const lockToRevealMs = revealTime - lockTime;
     const revealToFinalMs = finalTime - revealTime;
+    const preAiReadMs =
+      preEpisodeStart && preEpisodeEnd
+        ? new Date(preEpisodeEnd.timestamp).getTime() - new Date(preEpisodeStart.timestamp).getTime()
+        : null;
+    const postAiReadMs =
+      postEpisodeStart && postEpisodeEnd
+        ? new Date(postEpisodeEnd.timestamp).getTime() - new Date(postEpisodeStart.timestamp).getTime()
+        : null;
+    const totalReadMs =
+      typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+        ? preAiReadMs + postAiReadMs
+        : null;
 
     return {
       sessionId: this.config.sessionId,
@@ -469,6 +497,12 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
       deviationText,
       deviationRationale: deviationText,
       comprehensionCorrect,
+      preAiReadMs,
+      postAiReadMs,
+      totalReadMs,
+      aiExposureMs: postAiReadMs,
+      hasPreAiEpisode: Boolean(preEpisodeStart),
+      hasPostAiEpisode: Boolean(postEpisodeStart),
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,

@@ -130,6 +130,18 @@ const computeDerivedMetricsFromEvents = (
   const deviationSkipped = caseEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
   const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
   const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+  const preEpisodeStart = caseEvents.find(
+    event => event.type === 'READ_EPISODE_STARTED' && event.payload?.phase === 'PRE_AI'
+  );
+  const preEpisodeEnd = caseEvents.find(
+    event => event.type === 'READ_EPISODE_ENDED' && event.payload?.phase === 'PRE_AI'
+  );
+  const postEpisodeStart = caseEvents.find(
+    event => event.type === 'READ_EPISODE_STARTED' && event.payload?.phase === 'POST_AI'
+  );
+  const postEpisodeEnd = caseEvents.find(
+    event => event.type === 'READ_EPISODE_ENDED' && event.payload?.phase === 'POST_AI'
+  );
 
   const initialBirads = firstImpression?.payload?.birads ?? 0;
   const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
@@ -148,17 +160,19 @@ const computeDerivedMetricsFromEvents = (
 
   const timeToLockMs = firstImpression?.payload?.timeToLockMs ?? null;
   const preAiReadMs =
-    typeof timeToLockMs === 'number'
-      ? timeToLockMs
-      : firstImpression
-        ? new Date(firstImpression.timestamp).getTime() - new Date(caseEvents[0]?.timestamp ?? firstImpression.timestamp).getTime()
-        : 0;
+    preEpisodeStart && preEpisodeEnd
+      ? new Date(preEpisodeEnd.timestamp).getTime() - new Date(preEpisodeStart.timestamp).getTime()
+      : null;
+  const postAiReadMs =
+    postEpisodeStart && postEpisodeEnd
+      ? new Date(postEpisodeEnd.timestamp).getTime() - new Date(postEpisodeStart.timestamp).getTime()
+      : null;
+  const totalReadMs =
+    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+      ? preAiReadMs + postAiReadMs
+      : null;
 
-  const aiExposureMs =
-    finalAssessment?.payload?.postAiTimeMs ??
-    (aiRevealed && finalAssessment
-      ? new Date(finalAssessment.timestamp).getTime() - new Date(aiRevealed.timestamp).getTime()
-      : 0);
+  const aiExposureMs = postAiReadMs;
 
   const totalTimeMs = caseCompleted?.payload?.totalTimeMs ?? 0;
   const lockToRevealMs =
@@ -187,16 +201,21 @@ const computeDerivedMetricsFromEvents = (
     deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
     comprehensionCorrect: comprehensionEvent?.payload?.isCorrect ?? null,
     preAiReadMs,
+    postAiReadMs,
+    totalReadMs,
     aiExposureMs,
+    hasPreAiEpisode: Boolean(preEpisodeStart),
+    hasPostAiEpisode: Boolean(postEpisodeStart),
     decisionChangeCount,
     overrideCount,
     rationaleProvided,
-    timingFlagPreAiTooFast: preAiReadMs < TOO_FAST_PRE_AI_MS,
-    timingFlagAiExposureTooFast: aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS,
+    timingFlagPreAiTooFast: preAiReadMs !== null ? preAiReadMs < TOO_FAST_PRE_AI_MS : null,
+    timingFlagAiExposureTooFast:
+      aiExposureMs !== null ? aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS : null,
     totalTimeMs,
     timeToLockMs,
     lockToRevealMs,
-    revealToFinalMs: aiExposureMs,
+    revealToFinalMs: aiExposureMs ?? 0,
     revealTiming: condition?.condition ?? 'UNKNOWN',
     disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
   };
@@ -3150,6 +3169,91 @@ export const ResearchDemoFlow: React.FC = () => {
 
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
+  const readEpisodeTrackerRef = useRef(
+    new Map<
+      string,
+      {
+        preStarted: boolean;
+        preEnded: boolean;
+        preStartTime?: number;
+        postStarted: boolean;
+        postEnded: boolean;
+        postStartTime?: number;
+      }
+    >()
+  );
+
+  const getReadEpisodeId = useCallback((caseId: string, phase: 'PRE_AI' | 'POST_AI') => {
+    return `${caseId}-${phase}`;
+  }, []);
+
+  const logReadEpisodeStart = useCallback(
+    async (caseId: string, phase: 'PRE_AI' | 'POST_AI', surface: 'IMAGE' | 'AI_PANEL' | 'DISCLOSURE') => {
+      if (!eventLoggerRef.current) return;
+      const tracker = readEpisodeTrackerRef.current;
+      const entry = tracker.get(caseId) ?? {
+        preStarted: false,
+        preEnded: false,
+        postStarted: false,
+        postEnded: false,
+      };
+
+      if (phase === 'PRE_AI' && entry.preStarted) return;
+      if (phase === 'POST_AI' && entry.postStarted) return;
+
+      const now = Date.now();
+      if (phase === 'PRE_AI') {
+        entry.preStarted = true;
+        entry.preStartTime = now;
+      } else {
+        entry.postStarted = true;
+        entry.postStartTime = now;
+      }
+
+      tracker.set(caseId, entry);
+
+      await eventLoggerRef.current.logReadEpisodeStarted({
+        caseId,
+        phase,
+        surface,
+        episodeId: getReadEpisodeId(caseId, phase),
+      });
+    },
+    [getReadEpisodeId]
+  );
+
+  const logReadEpisodeEnd = useCallback(
+    async (caseId: string, phase: 'PRE_AI' | 'POST_AI', surface: 'IMAGE' | 'AI_PANEL' | 'DISCLOSURE') => {
+      if (!eventLoggerRef.current) return;
+      const tracker = readEpisodeTrackerRef.current;
+      const entry = tracker.get(caseId);
+      if (!entry) return;
+
+      if (phase === 'PRE_AI' && entry.preEnded) return;
+      if (phase === 'POST_AI' && entry.postEnded) return;
+
+      const now = Date.now();
+      let durationMs: number | undefined;
+      if (phase === 'PRE_AI' && entry.preStartTime) {
+        durationMs = now - entry.preStartTime;
+        entry.preEnded = true;
+      } else if (phase === 'POST_AI' && entry.postStartTime) {
+        durationMs = now - entry.postStartTime;
+        entry.postEnded = true;
+      }
+
+      tracker.set(caseId, entry);
+
+      await eventLoggerRef.current.logReadEpisodeEnded({
+        caseId,
+        phase,
+        surface,
+        episodeId: getReadEpisodeId(caseId, phase),
+        durationMs,
+      });
+    },
+    [getReadEpisodeId]
+  );
   const roiEnterTimeRef = useRef<number>(0);
 
   // Session persistence key
@@ -3560,6 +3664,7 @@ const counterbalanceArm = (() => {
     
     if (firstCase) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
+      await logReadEpisodeStart(firstCase.caseId, 'PRE_AI', 'IMAGE');
     }
     
     setState(s => ({
@@ -3572,7 +3677,7 @@ const counterbalanceArm = (() => {
     }));
     setTimeOnCase(0);
     setShowControlSurface(true); // Auto-expand control surface when study starts
-  }, [state.sessionId]);
+  }, [state.sessionId, logReadEpisodeStart]);
 
   // Calibration submission
   const submitCalibration = useCallback(async () => {
@@ -3609,6 +3714,7 @@ const counterbalanceArm = (() => {
     
     if (nextCase) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      await logReadEpisodeStart(nextCase.caseId, 'PRE_AI', 'IMAGE');
     }
     
     setState(s => ({
@@ -3624,7 +3730,7 @@ const counterbalanceArm = (() => {
       interactionCounts: { zooms: 0, pans: 0 },
     }));
     setTimeOnCase(0);
-  }, [state.caseQueue, state.currentCase, state.calibrationBirads]);
+  }, [state.caseQueue, state.currentCase, state.calibrationBirads, logReadEpisodeStart]);
 
   // Lock first impression
   const lockImpression = useCallback(async () => {
@@ -3636,6 +3742,8 @@ await eventLoggerRef.current!.logFirstImpressionLocked(
   state.initialBirads ?? 0,
   state.initialConfidence ?? 0
 );
+
+await logReadEpisodeEnd(state.currentCase.caseId, 'PRE_AI', 'IMAGE');
 
 await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
   sessionId: state.sessionId,
@@ -3666,6 +3774,8 @@ await eventLoggerRef.current!.logAIRevealed({
   finding: (state.currentCase as any).finding ?? 'N/A',
   displayMode: 'PANEL',
 });
+
+await logReadEpisodeStart(state.currentCase.caseId, 'POST_AI', 'AI_PANEL');
     
     // Log disclosure with adaptive policy info
     const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
@@ -3685,7 +3795,20 @@ await eventLoggerRef.current!.logAIRevealed({
       ...s, step: 'AI_REVEALED', lockTime, aiRevealTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy]);
+  }, [
+    state.sessionId,
+    state.currentCase,
+    state.initialBirads,
+    state.initialConfidence,
+    state.preTrust,
+    state.condition,
+    state.caseStartTime,
+    state.interactionCounts,
+    state.caseQueue,
+    disclosurePolicy,
+    logReadEpisodeEnd,
+    logReadEpisodeStart,
+  ]);
 
   // Handle comprehension answer
   const handleComprehension = useCallback(async (answer: string) => {
@@ -3723,7 +3846,9 @@ setAiAgreementStreak(prev => prev + 1);
     } else {
       setAiAgreementStreak(0);
     }
-    
+
+    await logReadEpisodeEnd(state.currentCase.caseId, 'POST_AI', 'AI_PANEL');
+
     await eventLoggerRef.current!.logFinalAssessment(
       state.currentCase.caseId,
       state.finalBirads ?? state.initialBirads ?? 0,
@@ -3770,7 +3895,7 @@ setAiAgreementStreak(prev => prev + 1);
       caseResults: [...s.caseResults, metrics],
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
+  }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired, logReadEpisodeEnd]);
 
   // Proceed to deviation or probes
   const proceedToDeviation = useCallback(async () => {
@@ -3826,6 +3951,7 @@ setAiAgreementStreak(prev => prev + 1);
     
     if (nextCaseDef) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      await logReadEpisodeStart(nextCaseDef.caseId, 'PRE_AI', 'IMAGE');
     }
     
     setState(s => ({
@@ -3838,7 +3964,7 @@ setAiAgreementStreak(prev => prev + 1);
       interactionCounts: { zooms: 0, pans: 0 },
     }));
     setTimeOnCase(0);
-  }, [state.caseQueue, state.caseResults.length]);
+  }, [state.caseQueue, state.caseResults.length, logReadEpisodeStart]);
 
   // Generate export
   const generateExport = useCallback(async () => {

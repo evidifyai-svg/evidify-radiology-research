@@ -36,6 +36,8 @@ export type CaseEventType =
   | 'CASE_COMPLETED'
   | 'IMAGE_VIEWED'
   | 'VIEWPORT_CHANGED'
+  | 'READ_EPISODE_STARTED'
+  | 'READ_EPISODE_ENDED'
   | 'FIRST_IMPRESSION_LOCKED'
   | 'AI_REVEALED'
   | 'DISCLOSURE_PRESENTED'
@@ -114,6 +116,14 @@ export interface CaseLoadedPayload {
     breastDensity?: string;
     indication?: string;
   };
+}
+
+export interface ReadEpisodePayload {
+  caseId: string;
+  phase: 'PRE_AI' | 'POST_AI';
+  surface?: 'IMAGE' | 'AI_PANEL' | 'DISCLOSURE';
+  episodeId: string;
+  durationMs?: number;
 }
 
 export interface ImageViewedPayload {
@@ -310,6 +320,20 @@ export class EventLogger {
   async logCaseLoaded(payload: CaseLoadedPayload): Promise<LedgerEntry> {
     this.resetForNewCase();
     return this.exportPack.addEvent('CASE_LOADED', payload);
+  }
+
+  /**
+   * Log read episode started
+   */
+  async logReadEpisodeStarted(payload: ReadEpisodePayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('READ_EPISODE_STARTED', payload);
+  }
+
+  /**
+   * Log read episode ended
+   */
+  async logReadEpisodeEnded(payload: ReadEpisodePayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('READ_EPISODE_ENDED', payload);
   }
 
   /**

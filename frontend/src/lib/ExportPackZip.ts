@@ -236,6 +236,30 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         ? 'All required events present'
         : `Missing: ${missingEvents.join(', ')}`,
     });
+
+    const groupedEvents = this.groupEventsByCase(this.events);
+    const episodeIssues: string[] = [];
+    for (const [caseId, caseEvents] of groupedEvents) {
+      const phases: Array<'PRE_AI' | 'POST_AI'> = ['PRE_AI', 'POST_AI'];
+      phases.forEach(phase => {
+        const started = caseEvents.find(
+          event => event.type === 'READ_EPISODE_STARTED' && (event as any)?.payload?.phase === phase
+        );
+        const ended = caseEvents.find(
+          event => event.type === 'READ_EPISODE_ENDED' && (event as any)?.payload?.phase === phase
+        );
+        if (started && !ended) {
+          episodeIssues.push(`${caseId}:${phase}`);
+        }
+      });
+    }
+    if (episodeIssues.length > 0) {
+      checks.push({
+        name: 'READ_EPISODE_COMPLETENESS',
+        status: 'WARN',
+        message: `Missing READ_EPISODE_ENDED for ${episodeIssues.join(', ')}`,
+      });
+    }
     
     // Check 3: Chain integrity
     let validLinks = 0;
@@ -464,12 +488,41 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const groupedEvents = this.groupEventsByCase(this.events);
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
-    const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda';
+    const headers = [
+      'sessionId',
+      'caseId',
+      'condition',
+      'initialBirads',
+      'finalBirads',
+      'aiBirads',
+      'changeOccurred',
+      'aiConsistentChange',
+      'addaDenominator',
+      'adda',
+      'preAiReadMs',
+      'postAiReadMs',
+      'totalReadMs',
+      'aiExposureMs',
+      'hasPreAiEpisode',
+      'hasPostAiEpisode',
+    ].join(',');
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
       const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
       const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+      const preEpisodeStart = caseEvents.find(
+        e => e.type === 'READ_EPISODE_STARTED' && (e as any)?.payload?.phase === 'PRE_AI'
+      );
+      const preEpisodeEnd = caseEvents.find(
+        e => e.type === 'READ_EPISODE_ENDED' && (e as any)?.payload?.phase === 'PRE_AI'
+      );
+      const postEpisodeStart = caseEvents.find(
+        e => e.type === 'READ_EPISODE_STARTED' && (e as any)?.payload?.phase === 'POST_AI'
+      );
+      const postEpisodeEnd = caseEvents.find(
+        e => e.type === 'READ_EPISODE_ENDED' && (e as any)?.payload?.phase === 'POST_AI'
+      );
 
       const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
       const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
@@ -483,6 +536,21 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           : changeOccurred && finalBirads === aiBirads;
       const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
       const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
+      const preAiReadMs =
+        preEpisodeStart && preEpisodeEnd
+          ? new Date(preEpisodeEnd.timestamp).getTime() - new Date(preEpisodeStart.timestamp).getTime()
+          : null;
+      const postAiReadMs =
+        postEpisodeStart && postEpisodeEnd
+          ? new Date(postEpisodeEnd.timestamp).getTime() - new Date(postEpisodeStart.timestamp).getTime()
+          : null;
+      const totalReadMs =
+        typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+          ? preAiReadMs + postAiReadMs
+          : null;
+      const aiExposureMs = postAiReadMs;
+      const hasPreAiEpisode = Boolean(preEpisodeStart);
+      const hasPostAiEpisode = Boolean(postEpisodeStart);
 
       const values = [
         this.sessionId,
@@ -495,6 +563,12 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         aiConsistentChange,
         addaDenominator,
         adda,
+        preAiReadMs,
+        postAiReadMs,
+        totalReadMs,
+        aiExposureMs,
+        hasPreAiEpisode,
+        hasPostAiEpisode,
       ];
 
       return values.map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',');
@@ -608,6 +682,8 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 ### Case Events
 - **CASE_LOADED**: Mammogram case presented to reader
 - **IMAGE_VIEWED**: Reader viewed/interacted with image
+- **READ_EPISODE_STARTED**: Read episode begins (PRE_AI or POST_AI)
+- **READ_EPISODE_ENDED**: Read episode ends with elapsed duration
 - **FIRST_IMPRESSION_LOCKED**: Initial BI-RADS assessment locked
 - **AI_REVEALED**: AI suggestion shown to reader
 - **DISCLOSURE_PRESENTED**: Error rate information shown
@@ -633,9 +709,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ai_consistent_change**: TRUE if change moved toward AI suggestion
 
 ### Timing Metrics
-- **preAiTimeMs**: Time from case load to first impression lock
-- **postAiTimeMs**: Time from AI reveal to final assessment
-- **totalTimeMs**: Total time on case
+- **preAiReadMs**: Time from PRE_AI episode start to end
+- **postAiReadMs**: Time from POST_AI episode start to end
+- **totalReadMs**: preAiReadMs + postAiReadMs when both available
+- **aiExposureMs**: Same as postAiReadMs (AI exposure interval)
+- **hasPreAiEpisode**: TRUE if PRE_AI episode started
+- **hasPostAiEpisode**: TRUE if POST_AI episode started
+- **totalTimeMs**: Total time on case (session start to final assessment)
 
 ## Hash Chain Verification
 
