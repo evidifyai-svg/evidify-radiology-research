@@ -345,7 +345,7 @@ export function MethodologyAppendixGenerator({
       {/* Header */}
       <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-white">
         <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-          📋 Methodology Appendix Generator
+          Methodology Appendix Generator
         </h2>
         <p className="text-sm text-slate-500">
           Auto-generates Daubert/Frye ready methodology section
@@ -551,7 +551,7 @@ export function MethodologyAppendixGenerator({
             onClick={() => onGenerate(generatedContent)}
             className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
           >
-            ✓ Use This Content
+            Use This Content
           </button>
         </div>
         <div className="bg-white border rounded-lg p-4 max-h-64 overflow-y-auto">

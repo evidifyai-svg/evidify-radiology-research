@@ -96,6 +96,68 @@ function canonicalJSON(obj: unknown): string {
   return 'null';
 }
 
+type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
+
+function computeReadEpisodeMetricsFromEvents(
+  caseEvents: TrialEvent[],
+  caseId: string,
+  isCalibration: boolean,
+  warnLabel: string
+): { preAiReadMs: number | null; postAiReadMs: number | null; totalReadMs: number | null } {
+  if (isCalibration) {
+    return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
+  }
+
+  const warn = (message: string) => {
+    console.warn(`[ReadEpisodes:${warnLabel}] ${message}`);
+  };
+
+  const getTimestampMs = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
+    const payloadValue = (event.payload as Record<string, unknown>)?.[key];
+    return new Date((payloadValue as string | undefined) ?? event.timestamp).getTime();
+  };
+
+  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | null => {
+    const starts = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+    );
+    const ends = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+    );
+
+    if (starts.length > 1) {
+      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
+    }
+    if (ends.length > 1) {
+      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
+    }
+
+    if (starts.length === 0 && ends.length > 0) {
+      warn(`Missing ${episodeType} start for case ${caseId}.`);
+      return null;
+    }
+    if (starts.length > 0 && ends.length === 0) {
+      warn(`Missing ${episodeType} end for case ${caseId}.`);
+      return null;
+    }
+    if (starts.length === 0 && ends.length === 0) {
+      return null;
+    }
+
+    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
+    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+  };
+
+  const preAiReadMs = computeEpisodeMs('PRE_AI');
+  const postAiReadMs = computeEpisodeMs('POST_AI');
+  const totalReadMs =
+    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+      ? preAiReadMs + postAiReadMs
+      : null;
+
+  return { preAiReadMs, postAiReadMs, totalReadMs };
+}
+
 // ============================================================================
 // EXPORT PACK BUILDER
 // ============================================================================
@@ -115,6 +177,7 @@ export class ExportPackZip {
   private sessionStartTime: Date;
   private metricsPerCase: DerivedMetrics[] = [];
   private methodsSnapshot: Record<string, unknown> | null = null;
+  private static metricsSelfCheckRan = false;
 
   constructor(config: {
     sessionId: string;
@@ -133,6 +196,14 @@ export class ExportPackZip {
     this.condition = config.condition;
     this.caseQueue = config.caseQueue;
     this.sessionStartTime = new Date();
+  }
+
+  getStudyMetadata(): { studyId: string; protocolVersion: string; siteId: string } {
+    return {
+      studyId: this.studyId,
+      protocolVersion: this.protocolVersion,
+      siteId: this.siteId,
+    };
   }
 
   /**
@@ -315,6 +386,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     blob: Blob;
     filename: string;
     manifest: ExportManifest;
+    exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }>;
     verifierOutput: VerifierOutput;
   }> {
     const zip = new JSZip();
@@ -401,9 +473,37 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       });
     }
 
+    const disclosurePolicy =
+      typeof (this.methodsSnapshot as any)?.errorRateDisclosure?.policy === 'string'
+        ? (this.methodsSnapshot as any).errorRateDisclosure.policy
+        : null;
+    const methodsSnapshotForManifest = {
+      condition: {
+        revealTiming: this.condition.revealTiming,
+        disclosureFormat: this.condition.disclosureFormat,
+      },
+      disclosurePolicy,
+      protocolVersion: this.protocolVersion,
+      studyId: this.studyId,
+      siteId: this.siteId,
+      eventSchemaVersion: 'EVENT_SCHEMA_V1_DRAFT',
+    };
+    const researchMethods: Record<string, unknown> = {
+      disclosure: {
+        revealTiming: this.condition.revealTiming,
+        disclosureFormat: this.condition.disclosureFormat,
+        policy: disclosurePolicy,
+      },
+      ...(this.protocolVersion ? { protocolVersion: this.protocolVersion } : {}),
+      ...(this.studyId ? { studyId: this.studyId } : {}),
+      ...(this.siteId ? { siteId: this.siteId } : {}),
+    };
+
     const exportManifestObj = {
       schema: 'evidify.export_manifest.v1',
       created_utc: new Date().toISOString(),
+      methodsSnapshot: methodsSnapshotForManifest,
+      researchMethods,
       entries: exportManifestEntries,
     };
 
@@ -434,7 +534,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const blob = await zip.generateAsync({ type: 'blob' });
     const filename = `evidify_export_${this.sessionId}_${new Date().toISOString().slice(0, 10)}.zip`;
     
-    return { blob, filename, manifest, verifierOutput };
+    return { blob, filename, manifest, exportManifestEntries, verifierOutput };
   }
 
   /**
@@ -447,10 +547,8 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     }
     
     const headers = Object.keys(this.metricsPerCase[0]).join(',');
-    const rows = this.metricsPerCase.map(m => 
-      Object.values(m).map(v => 
-        typeof v === 'string' ? `"${v}"` : v
-      ).join(',')
+    const rows = this.metricsPerCase.map(m =>
+      Object.values(m).map(v => this.formatCsvValue(this.normalizeMetricValue(v))).join(',')
     );
     
     return [headers, ...rows].join('\n');
@@ -460,34 +558,157 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
    * Generate metrics from events (fallback)
    */
   private generateMetricsFromEvents(): string {
-    const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
-    const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
-    const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
-    
-    const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
-    const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
-    const finalBirads = (finalAssessment?.payload as any)?.birads ?? null;
-    
-    const changeOccurred = initialBirads !== finalBirads;
-    const aiConsistentChange = changeOccurred && finalBirads === aiBirads;
-    const addaDenominator = initialBirads !== aiBirads;
-    const adda = addaDenominator ? aiConsistentChange : null;
-    
-    const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda';
-    const values = [
-      `"${this.sessionId}"`,
-      `"${this.caseQueue.caseIds[0] || 'unknown'}"`,
-      `"${this.condition.revealTiming}"`,
-      initialBirads,
-      finalBirads,
-      aiBirads,
-      changeOccurred,
-      aiConsistentChange,
-      addaDenominator,
-      adda,
-    ].join(',');
-    
-    return `${headers}\n${values}`;
+    this.runMetricsSelfCheckOnce();
+    const groupedEvents = this.groupEventsByCase(this.events);
+    const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
+
+    const headers =
+      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
+    const rows = caseIds.map(caseId => {
+      const caseEvents = groupedEvents.get(caseId) ?? [];
+      const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
+      const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
+      const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+      const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
+      const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+      const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
+
+      const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
+      const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
+      const finalBirads = (finalAssessment?.payload as any)?.birads ?? initialBirads ?? null;
+
+      const changeOccurred =
+        initialBirads == null || finalBirads == null ? null : initialBirads !== finalBirads;
+      const aiConsistentChange =
+        changeOccurred === null || aiBirads == null || finalBirads == null
+          ? null
+          : changeOccurred && finalBirads === aiBirads;
+      const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
+      const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
+      const comprehensionPayload = (comprehensionEvent?.payload as any) ?? {};
+      const comprehensionAnswer =
+        comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+      const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
+      const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
+      const comprehensionCorrect =
+        comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
+      const comprehensionResponseMs = comprehensionEvent && disclosurePresented
+        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+        : null;
+      const normalizedComprehensionResponseMs =
+        typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
+          ? comprehensionResponseMs
+          : null;
+
+      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+      const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
+        caseEvents,
+        caseId,
+        isCalibration,
+        'ExportPackZip'
+      );
+
+      const values = [
+        this.sessionId,
+        caseId,
+        this.condition.revealTiming,
+        initialBirads,
+        finalBirads,
+        aiBirads,
+        changeOccurred,
+        aiConsistentChange,
+        addaDenominator,
+        adda,
+        preAiReadMs,
+        postAiReadMs,
+        totalReadMs,
+        comprehensionItemId,
+        comprehensionAnswer,
+        comprehensionCorrect,
+        comprehensionQuestionId,
+        comprehensionAnswer,
+        comprehensionCorrect,
+        normalizedComprehensionResponseMs,
+      ];
+
+      return values.map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',');
+    });
+
+    return [headers, ...rows].join('\n');
+  }
+
+  private normalizeMetricValue(value: unknown): string | number | boolean {
+    if (value === null || value === undefined) return 'NA';
+    if (typeof value === 'string' && value.trim() === '') return 'NA';
+    return value as string | number | boolean;
+  }
+
+  private formatCsvValue(value: string | number | boolean): string {
+    const raw = String(value);
+    if (/[",\n]/.test(raw)) {
+      return `"${raw.replace(/"/g, '""')}"`;
+    }
+    return raw;
+  }
+
+  private dedupeCaseIds(caseIds: string[]): string[] {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const caseId of caseIds) {
+      if (!seen.has(caseId)) {
+        seen.add(caseId);
+        ordered.push(caseId);
+      }
+    }
+    return ordered;
+  }
+
+  private groupEventsByCase(events: TrialEvent[]): Map<string, TrialEvent[]> {
+    const grouped = new Map<string, TrialEvent[]>();
+    let activeCaseId: string | null = null;
+
+    for (const event of events) {
+      if (event.type === 'CASE_LOADED' && (event as any).payload?.caseId) {
+        activeCaseId = (event as any).payload.caseId as string;
+        if (!grouped.has(activeCaseId)) {
+          grouped.set(activeCaseId, []);
+        }
+      }
+
+      if (activeCaseId) {
+        grouped.get(activeCaseId)?.push(event);
+      }
+
+      if (
+        event.type === 'CASE_COMPLETED' &&
+        (event as any).payload?.caseId &&
+        (event as any).payload.caseId === activeCaseId
+      ) {
+        activeCaseId = null;
+      }
+    }
+
+    return grouped;
+  }
+
+  private runMetricsSelfCheckOnce(): void {
+    if (ExportPackZip.metricsSelfCheckRan) return;
+    ExportPackZip.metricsSelfCheckRan = true;
+
+    const issueMessages: string[] = [];
+    const sampleValues = [null, undefined, '', 0, false, 'ok'];
+    const formatted = sampleValues.map(value => this.formatCsvValue(this.normalizeMetricValue(value)));
+    const expected = ['NA', 'NA', 'NA', '0', 'false', 'ok'];
+
+    expected.forEach((value, index) => {
+      if (formatted[index] !== value) {
+        issueMessages.push(`Value at ${index} expected ${value} but got ${formatted[index]}`);
+      }
+    });
+
+    if (issueMessages.length > 0) {
+      console.warn(`ExportPackZip metrics self-check failed: ${issueMessages.join('; ')}`);
+    }
   }
 
   /**
@@ -522,9 +743,11 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **CASE_LOADED**: Mammogram case presented to reader
 - **IMAGE_VIEWED**: Reader viewed/interacted with image
 - **FIRST_IMPRESSION_LOCKED**: Initial BI-RADS assessment locked
+- **READ_EPISODE_STARTED**: Reader starts PRE_AI/POST_AI read episode
+- **READ_EPISODE_ENDED**: Reader ends PRE_AI/POST_AI read episode
 - **AI_REVEALED**: AI suggestion shown to reader
 - **DISCLOSURE_PRESENTED**: Error rate information shown
-- **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check
+- **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check (includes itemId)
 - **DEVIATION_STARTED**: Reader began changing assessment
 - **DEVIATION_SUBMITTED**: Reader documented rationale for change
 - **DEVIATION_SKIPPED**: Reader skipped documentation (with attestation)
@@ -546,9 +769,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ai_consistent_change**: TRUE if change moved toward AI suggestion
 
 ### Timing Metrics
-- **preAiTimeMs**: Time from case load to first impression lock
-- **postAiTimeMs**: Time from AI reveal to final assessment
+- **preAiReadMs**: PRE_AI read episode duration
+- **postAiReadMs**: POST_AI read episode duration
+- **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
 - **totalTimeMs**: Total time on case
+- **comprehensionItemId**: Disclosure comprehension item identifier
+- **comprehensionAnswer**: Reader answer to comprehension probe
+- **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
 
 ## Hash Chain Verification
 

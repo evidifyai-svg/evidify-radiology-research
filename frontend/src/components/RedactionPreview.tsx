@@ -324,7 +324,7 @@ export const RedactionPreview: React.FC<RedactionPreviewProps> = ({
       {redactionResult && (
         <div className="border rounded-lg p-4 bg-green-50">
           <h4 className="font-medium text-green-800 mb-2">
-            ✓ {redactionResult.redaction_count} Redactions Applied
+            {redactionResult.redaction_count} Redactions Applied
           </h4>
           
           <div className="bg-white border rounded p-3 font-mono text-sm whitespace-pre-wrap max-h-48 overflow-auto">

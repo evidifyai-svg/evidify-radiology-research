@@ -347,7 +347,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                     {['Appearance', 'Behavior', 'Speech', 'Mood', 'Affect', 'Cognition'].map(d => (
                       <div key={d} className="p-2 bg-slate-800 rounded text-center">
                         <div className="text-slate-500">{d}</div>
-                        <div className="text-green-400 text-xs">✓ WNL</div>
+                        <div className="text-green-400 text-xs">WNL</div>
                       </div>
                     ))}
                   </div>
@@ -361,8 +361,8 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                 description="Visual risk capture with SI/HI/Self-Harm severity buttons, Safety Plan status, Protective Factors, and Overall Risk Level. One-click attestation."
                 demo={
                   <div className="flex gap-2 flex-wrap">
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">✓ SI Denied</span>
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">✓ HI Denied</span>
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">SI Denied</span>
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">HI Denied</span>
                     <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Safety Plan Active</span>
                     <span className="px-2 py-1 bg-slate-600 text-slate-300 rounded text-xs">Low Risk</span>
                   </div>
@@ -923,7 +923,7 @@ function CreateVaultScreen({ onCreated }: { onCreated: () => void }) {
           </button>
 
           <p className="text-xs text-slate-500 text-center">
-            ⚠️ There is no password recovery. If you forget your passphrase, your data cannot be recovered.
+            There is no password recovery. If you forget your passphrase, your data cannot be recovered.
           </p>
         </div>
       </div>
@@ -1265,7 +1265,7 @@ function SettingsPanel({
                       : 'bg-emerald-600 hover:bg-emerald-700'
                   }`}
                 >
-                  {profileSaved ? '✓ Saved' : 'Save Profile'}
+                  {profileSaved ? 'Saved' : 'Save Profile'}
                 </button>
               </div>
             </div>
@@ -1608,7 +1608,7 @@ function DashboardScreen({
                 onClick={() => { setShowNewClient(false); setNewClientName(''); }}
                 className="text-slate-400 hover:text-white px-2"
               >
-                ✕
+                Close
               </button>
             </div>
           )}
@@ -2982,7 +2982,7 @@ function DetectionGroupCard({
             <div className="font-medium">{group.category}</div>
             <div className="text-sm text-slate-400">
               {group.detections.length} item{group.detections.length > 1 ? 's' : ''}
-              {allAttested && <span className="text-green-400 ml-2">✓ All attested</span>}
+              {allAttested && <span className="text-green-400 ml-2">All attested</span>}
             </div>
           </div>
         </div>
@@ -3825,7 +3825,7 @@ export function MSEInput({
             </div>
           ))}
           <div className="pt-2 text-xs text-slate-500">
-            💡 Select "Not assessed" for domains not evaluated this session
+            Select "Not assessed" for domains not evaluated this session
           </div>
         </div>
       )}
@@ -4255,8 +4255,8 @@ export function TreatmentProgressPanel({
     improving: '↑',
     stable: '→',
     declining: '↓',
-    new: '★',
-    resolved: '✓',
+    new: 'New',
+    resolved: 'Resolved',
   };
 
   return (
@@ -4923,13 +4923,13 @@ export function DocumentsPanel({
   }
 
   const fileTypeIcons: Record<string, string> = {
-    pdf: '📄',
-    docx: '📝',
-    doc: '📝',
-    jpg: '🖼️',
-    jpeg: '🖼️',
-    png: '🖼️',
-    gif: '🖼️',
+    pdf: 'Document',
+    docx: 'Document',
+    doc: 'Document',
+    jpg: 'Image',
+    jpeg: 'Image',
+    png: 'Image',
+    gif: 'Image',
   };
 
   return (
@@ -4994,7 +4994,7 @@ export function DocumentsPanel({
                   className="flex items-center justify-between bg-slate-700/30 rounded-lg p-3 hover:bg-slate-700/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-2xl">{fileTypeIcons[doc.file_type] || '📎'}</span>
+                    <span className="text-2xl">{fileTypeIcons[doc.file_type] || 'Attachment'}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{doc.filename}</div>
                       <div className="text-xs text-slate-400">
@@ -5266,7 +5266,7 @@ export function VoiceSetupPanel() {
               <div className="grid grid-cols-2 gap-4">
                 <div className={`rounded-lg p-3 ${status.whisper_installed ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                   <div className={`text-sm font-medium ${status.whisper_installed ? 'text-green-400' : 'text-red-400'}`}>
-                    {status.whisper_installed ? '✓ Whisper Installed' : '✗ Whisper Not Found'}
+                    {status.whisper_installed ? 'Whisper Installed' : 'Whisper Not Found'}
                   </div>
                   {!status.whisper_installed && (
                     <div className="text-xs text-slate-400 mt-1">
@@ -5276,7 +5276,7 @@ export function VoiceSetupPanel() {
                 </div>
                 <div className={`rounded-lg p-3 ${status.ffmpeg_installed ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
                   <div className={`text-sm font-medium ${status.ffmpeg_installed ? 'text-green-400' : 'text-amber-400'}`}>
-                    {status.ffmpeg_installed ? '✓ FFmpeg Installed' : '⚠ FFmpeg Not Found'}
+                    {status.ffmpeg_installed ? 'FFmpeg Installed' : 'FFmpeg Not Found'}
                   </div>
                   {!status.ffmpeg_installed && (
                     <div className="text-xs text-slate-400 mt-1">
@@ -5432,7 +5432,7 @@ export function MetricsDashboard() {
             <MetricCard
               label="Compliance"
               value={`${report.headline.compliance_rate.toFixed(0)}%`}
-              subtext={report.defensibility_analysis.zero_incidents ? '✓ Zero incidents' : ''}
+              subtext={report.defensibility_analysis.zero_incidents ? 'Zero incidents' : ''}
               positive={report.headline.compliance_rate >= 100}
             />
           </div>
@@ -5546,7 +5546,7 @@ export function MetricsDashboard() {
                     ? 'bg-green-500/20 text-green-400'
                     : 'bg-yellow-500/20 text-yellow-400'
                 }`}>
-                  {report.defensibility_analysis.zero_incidents ? '✓' : '!'}
+                  {report.defensibility_analysis.zero_incidents ? 'Zero incidents' : 'Attention'}
                 </div>
                 <div className="flex-1">
                   <div className="font-medium">
@@ -5653,10 +5653,10 @@ export function PrepSheetPanel({
   };
 
   const trendIcons: Record<string, string> = {
-    improving: '📈',
-    stable: '➡️',
-    worsening: '📉',
-    resolved: '✅',
+    improving: 'Improving',
+    stable: 'Stable',
+    worsening: 'Worsening',
+    resolved: 'Resolved',
   };
 
   return (
@@ -5901,7 +5901,7 @@ export function CompletionCheckPanel({
       // a more sophisticated text editing approach
       const newContent = currentContent.replace(
         section.problematic_text,
-        section.suggestion.replace('💡 ', '').replace('Suggestion: ', '')
+        section.suggestion.replace('Suggestion: ', '')
       );
       
       if (newContent !== currentContent) {
@@ -5963,7 +5963,7 @@ export function CompletionCheckPanel({
               </div>
             </div>
             <div className={`text-4xl ${result.is_complete ? 'text-green-400' : 'text-amber-400'}`}>
-              {result.is_complete ? '✓' : '⚠'}
+              {result.is_complete ? 'Complete' : 'Incomplete'}
             </div>
           </div>
 
@@ -6019,7 +6019,7 @@ export function CompletionCheckPanel({
                         <div className="bg-green-500/5 border border-green-500/20 rounded p-2">
                           <div className="text-xs text-green-400 mb-1">Suggested:</div>
                           <div className="text-xs text-slate-300">
-                            "{section.suggestion.replace('💡 ', '').replace('Suggestion: ', '')}"
+                            "{section.suggestion.replace('Suggestion: ', '')}"
                           </div>
                         </div>
                       </div>
@@ -6087,7 +6087,7 @@ export function CompletionCheckPanel({
               <ul className="space-y-1">
                 {result.suggestions.map((suggestion, idx) => (
                   <li key={idx} className="text-sm flex items-start gap-2">
-                    <span className="text-blue-400">💡</span>
+                    <span className="text-blue-400">Tip</span>
                     {suggestion}
                   </li>
                 ))}
@@ -6571,7 +6571,7 @@ export function DeidentificationPanel({
                     <div className="text-xs text-slate-400">Identifiers Removed</div>
                   </div>
                   <div>
-                    <div className="text-lg font-medium text-green-400">✓ Compliant</div>
+                    <div className="text-lg font-medium text-green-400">Compliant</div>
                     <div className="text-xs text-slate-400">Safe Harbor</div>
                   </div>
                   <div>

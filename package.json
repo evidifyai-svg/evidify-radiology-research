@@ -13,6 +13,7 @@
     "support:pack": "bash scripts/support-pack.sh",
     "setup:inbreast": "bash scripts/setup-inbreast.sh",
     "link:inbreast": "bash scripts/link-inbreast.sh",
+    "verify:read-episodes": "node src/verify/read_episode_check.mjs",
     "verify:radiology": "node tools/radiology-verifier/verify-radiology.cjs tools/radiology-verifier/fixtures/pack-valid-mini",
     "verify:research": "npm run verify:radiology"
   }

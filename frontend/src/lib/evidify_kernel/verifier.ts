@@ -499,9 +499,9 @@ export function formatVerifierReport(report: VerifierReport): string {
   
   // Result banner
   if (report.result === 'PASS') {
-    lines.push('║  ✅ VERIFICATION PASSED                                      ║');
+    lines.push('║  VERIFICATION PASSED                                        ║');
   } else {
-    lines.push('║  ❌ VERIFICATION FAILED                                      ║');
+    lines.push('║  VERIFICATION FAILED                                        ║');
   }
   
   lines.push('╠══════════════════════════════════════════════════════════════╣');
@@ -512,7 +512,7 @@ export function formatVerifierReport(report: VerifierReport): string {
   // Individual checks
   lines.push('║  CHECKS:                                                     ║');
   for (const check of report.checks) {
-    const icon = check.status === 'PASS' ? '✓' : check.status === 'FAIL' ? '✗' : '⚠';
+    const icon = check.status === 'PASS' ? 'PASS' : check.status === 'FAIL' ? 'FAIL' : 'WARN';
     const line = `║    ${icon} ${check.check}: ${check.status}`.padEnd(63) + '║';
     lines.push(line);
   }

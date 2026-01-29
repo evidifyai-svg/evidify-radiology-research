@@ -219,7 +219,7 @@ export function ReaderPackExport({
         <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              📦 Reader Pack Export
+              Reader Pack Export
             </h2>
             <p className="text-sm text-slate-500">
               Court-grade export with independent verification
@@ -230,7 +230,7 @@ export function ReaderPackExport({
               ? 'bg-green-100 text-green-700' 
               : 'bg-amber-100 text-amber-700'
           }`}>
-            {allChecksPass ? '✓ Ready to Export' : '⚠ Review Issues'}
+            {allChecksPass ? 'Ready to Export' : 'Review Issues'}
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ export function ReaderPackExport({
                 passed ? 'text-green-600' : 'text-red-600'
               }`}
             >
-              <span>{passed ? '✓' : '✗'}</span>
+              <span>{passed ? 'Pass' : 'Fail'}</span>
               <span>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
             </div>
           ))}
@@ -420,19 +420,19 @@ export function ReaderPackExport({
                 : 'bg-slate-300 text-slate-500 cursor-not-allowed'
             }`}
           >
-            📦 Export Full Reader Pack
+            Export Full Reader Pack
           </button>
           <button
             onClick={() => onExport('summary')}
             className="px-4 py-2 border rounded-lg text-slate-600 hover:bg-white"
           >
-            📋 Summary Only
+            Summary Only
           </button>
           <button
             onClick={() => onExport('verifier')}
             className="px-4 py-2 border rounded-lg text-slate-600 hover:bg-white"
           >
-            🔐 Verifier Tool
+            Verifier Tool
           </button>
         </div>
         

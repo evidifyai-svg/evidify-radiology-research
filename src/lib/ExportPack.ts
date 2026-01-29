@@ -224,6 +224,12 @@ export interface DerivedMetrics {
   deviationRequired: boolean;
   deviationText?: string;
   comprehensionCorrect: boolean | null;
+  comprehensionAnswer?: string | null;
+  comprehensionItemId?: string | null;
+  comprehensionQuestionId?: string | null;
+  preAiReadMs?: number | null;
+  postAiReadMs?: number | null;
+  totalReadMs?: number | null;
   totalTimeMs: number;
   lockToRevealMs: number;
   revealToFinalMs: number;
@@ -367,6 +373,7 @@ export class ExportPackBuilder {
   computeDerivedMetrics(): DerivedMetrics {
     // Find key events
     const sessionStarted = this.events.find(e => e.type === 'SESSION_STARTED');
+    const caseLoaded = this.events.find(e => e.type === 'CASE_LOADED');
     const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
     const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
@@ -398,9 +405,36 @@ export class ExportPackBuilder {
     const deviationText = (deviationSubmitted?.payload as any)?.deviationText;
 
     // Comprehension
-    const comprehensionCorrect = comprehensionResponse
-      ? (comprehensionResponse.payload as any).correct
-      : null;
+    const comprehensionPayload = (comprehensionResponse?.payload as any) ?? {};
+    const comprehensionAnswer =
+      comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+    const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionPayload.questionId ?? null;
+    const comprehensionCorrect =
+      comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
+
+    const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+    const getReadEpisodeTimestamp = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
+      const payloadValue = (event.payload as any)?.[key];
+      return new Date(payloadValue ?? event.timestamp).getTime();
+    };
+    const computeReadEpisodeMs = (episodeType: 'PRE_AI' | 'POST_AI'): number | null => {
+      if (isCalibration) return null;
+      const starts = this.events.filter(
+        event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
+      );
+      const ends = this.events.filter(
+        event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
+      );
+      if (starts.length === 0 || ends.length === 0) return null;
+      const duration = getReadEpisodeTimestamp(ends[0], 'tEndIso') - getReadEpisodeTimestamp(starts[0], 'tStartIso');
+      return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    };
+    const preAiReadMs = computeReadEpisodeMs('PRE_AI');
+    const postAiReadMs = computeReadEpisodeMs('POST_AI');
+    const totalReadMs =
+      typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+        ? preAiReadMs + postAiReadMs
+        : null;
 
     // Timing
     const sessionStart = sessionStarted ? new Date(sessionStarted.timestamp).getTime() : 0;
@@ -430,6 +464,12 @@ export class ExportPackBuilder {
       deviationRequired,
       deviationText,
       comprehensionCorrect,
+      comprehensionAnswer,
+      comprehensionItemId,
+      comprehensionQuestionId: comprehensionPayload.questionId ?? null,
+      preAiReadMs,
+      postAiReadMs,
+      totalReadMs,
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,
@@ -742,7 +782,7 @@ export class ExportPackBuilder {
 | FIRST_IMPRESSION_LOCKED | Initial assessment locked | birads, confidence, timeOnCaseMs |
 | AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence |
 | DISCLOSURE_PRESENTED | FDR/FOR disclosure shown | format, fdr, for |
-| DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | questionId, response, correct |
+| DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | itemId, questionId, response, correct |
 | DEVIATION_STARTED | User began changing assessment | deviationType, initialBirads, aiBirads |
 | DEVIATION_SUBMITTED | Deviation documentation provided | deviationText, clinicalRationale, wordCount |
 | DEVIATION_SKIPPED | User skipped documentation | attestation, attestationTimestamp |
@@ -769,6 +809,8 @@ export class ExportPackBuilder {
 | deviationSkipped | bool | User attested to skip documentation |
 | deviationRequired | bool | TRUE if assessment changed |
 | comprehensionCorrect | bool/null | FDR/FOR comprehension check result |
+| comprehensionAnswer | string/null | Reader answer to comprehension probe |
+| comprehensionItemId | string/null | Comprehension item identifier |
 | totalTimeMs | int | Session duration in milliseconds |
 | lockToRevealMs | int | Time from lock to AI reveal |
 | revealToFinalMs | int | Time from AI reveal to final |

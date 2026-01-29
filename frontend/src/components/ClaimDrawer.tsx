@@ -34,15 +34,15 @@ interface ApiResult<T> {
 // ============================================================================
 
 const CLAIM_TYPE_STYLES: Record<string, { icon: string; bg: string; border: string }> = {
-  record_fact: { icon: '📋', bg: 'bg-blue-50', border: 'border-blue-300' },
-  behavioral_observation: { icon: '👁️', bg: 'bg-teal-50', border: 'border-teal-300' },
-  test_result: { icon: '📊', bg: 'bg-purple-50', border: 'border-purple-300' },
-  collateral_statement: { icon: '💬', bg: 'bg-green-50', border: 'border-green-300' },
-  self_report: { icon: '🗣️', bg: 'bg-cyan-50', border: 'border-cyan-300' },
-  clinical_inference: { icon: '🧠', bg: 'bg-indigo-50', border: 'border-indigo-300' },
-  diagnostic_conclusion: { icon: '🏥', bg: 'bg-rose-50', border: 'border-rose-300' },
-  forensic_opinion: { icon: '⚖️', bg: 'bg-amber-50', border: 'border-amber-300' },
-  ultimate_opinion: { icon: '🎯', bg: 'bg-red-50', border: 'border-red-300' },
+  record_fact: { icon: 'Fact', bg: 'bg-blue-50', border: 'border-blue-300' },
+  behavioral_observation: { icon: 'Obs', bg: 'bg-teal-50', border: 'border-teal-300' },
+  test_result: { icon: 'Test', bg: 'bg-purple-50', border: 'border-purple-300' },
+  collateral_statement: { icon: 'Note', bg: 'bg-green-50', border: 'border-green-300' },
+  self_report: { icon: 'Report', bg: 'bg-cyan-50', border: 'border-cyan-300' },
+  clinical_inference: { icon: 'Inference', bg: 'bg-indigo-50', border: 'border-indigo-300' },
+  diagnostic_conclusion: { icon: 'Dx', bg: 'bg-rose-50', border: 'border-rose-300' },
+  forensic_opinion: { icon: 'Forensic', bg: 'bg-amber-50', border: 'border-amber-300' },
+  ultimate_opinion: { icon: 'Final', bg: 'bg-red-50', border: 'border-red-300' },
 };
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
@@ -134,7 +134,7 @@ export function ClaimDrawer({ reportId, isOpen, onClose, onJumpToCitation }: Cla
       <div className="p-4 border-b bg-slate-50">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-slate-800">Claim Ledger</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">Close</button>
         </div>
 
         {/* Stats Bar */}
@@ -162,7 +162,7 @@ export function ClaimDrawer({ reportId, isOpen, onClose, onJumpToCitation }: Cla
         {/* Orphaned Opinion Warning */}
         {stats.orphanedOpinions > 0 && (
           <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-            ⚠️ {stats.orphanedOpinions} opinion(s) without citation chain. Export will be blocked.
+            Warning: {stats.orphanedOpinions} opinion(s) without citation chain. Export will be blocked.
           </div>
         )}
       </div>
@@ -200,7 +200,7 @@ export function ClaimDrawer({ reportId, isOpen, onClose, onJumpToCitation }: Cla
         ) : (
           filteredClaims.map(claim => {
             const typeStyle = CLAIM_TYPE_STYLES[claim.claim_type] || 
-                             { icon: '📝', bg: 'bg-gray-50', border: 'border-gray-300' };
+                             { icon: 'Note', bg: 'bg-gray-50', border: 'border-gray-300' };
             const statusStyle = STATUS_STYLES[claim.status] || 
                                { label: claim.status, bg: 'bg-gray-100', text: 'text-gray-700' };
             const isExpanded = expandedClaim === claim.id;

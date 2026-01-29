@@ -51,13 +51,13 @@ interface TimelineBuilderProps {
 // ============================================================================
 
 const EVENT_CATEGORIES = [
-  { id: 'legal', label: 'Legal/Court', icon: '⚖️', color: 'blue' },
-  { id: 'medical', label: 'Medical/Treatment', icon: '🏥', color: 'green' },
-  { id: 'psychiatric', label: 'Psychiatric', icon: '🧠', color: 'purple' },
-  { id: 'incident', label: 'Incident/Event', icon: '⚡', color: 'red' },
-  { id: 'contact', label: 'Contact/Interview', icon: '💬', color: 'amber' },
-  { id: 'document', label: 'Document Created', icon: '📄', color: 'slate' },
-  { id: 'other', label: 'Other', icon: '📌', color: 'gray' },
+  { id: 'legal', label: 'Legal/Court', icon: 'Legal', color: 'blue' },
+  { id: 'medical', label: 'Medical/Treatment', icon: 'Medical', color: 'green' },
+  { id: 'psychiatric', label: 'Psychiatric', icon: 'Psych', color: 'purple' },
+  { id: 'incident', label: 'Incident/Event', icon: 'Incident', color: 'red' },
+  { id: 'contact', label: 'Contact/Interview', icon: 'Contact', color: 'amber' },
+  { id: 'document', label: 'Document Created', icon: 'Document', color: 'slate' },
+  { id: 'other', label: 'Other', icon: 'Other', color: 'gray' },
 ];
 
 // ============================================================================
@@ -115,9 +115,9 @@ export function TimelineBuilder({
   const getStatusStyle = (status: TimelineEvent['status']) => {
     switch (status) {
       case 'corroborated':
-        return { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-700', icon: '✓' };
+        return { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-700', icon: 'Pass' };
       case 'contradicted':
-        return { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-700', icon: '⚡' };
+        return { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-700', icon: 'Conflict' };
       case 'unsupported':
         return { bg: 'bg-amber-100', border: 'border-amber-400', text: 'text-amber-700', icon: '?' };
       case 'missing_context':
@@ -132,7 +132,7 @@ export function TimelineBuilder({
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              📅 Timeline Builder
+              Timeline Builder
             </h2>
             <p className="text-sm text-slate-500">
               Multi-source chronology with reconciliation
@@ -152,17 +152,17 @@ export function TimelineBuilder({
             {stats.total} events
           </span>
           <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-            ✓ {stats.corroborated} corroborated
+            {stats.corroborated} corroborated
           </span>
           <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
-            ⚡ {stats.contradicted} contradicted
+            {stats.contradicted} contradicted
           </span>
           <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded">
             ? {stats.unsupported} unsupported
           </span>
           {stats.unresolvedConflicts > 0 && (
             <span className="px-2 py-1 bg-red-200 text-red-800 rounded">
-              🚨 {stats.unresolvedConflicts} conflicts
+              {stats.unresolvedConflicts} conflicts
             </span>
           )}
         </div>
@@ -181,7 +181,7 @@ export function TimelineBuilder({
                   : 'bg-white border hover:bg-slate-100'
               }`}
             >
-              {mode === 'timeline' ? '📅 Timeline' : mode === 'table' ? '📋 Table' : '⚡ Conflicts'}
+              {mode === 'timeline' ? 'Timeline' : mode === 'table' ? 'Table' : 'Conflicts'}
             </button>
           ))}
         </div>
@@ -276,9 +276,9 @@ export function TimelineBuilder({
                                 key={sourceId}
                                 className="text-xs px-1.5 py-0.5 bg-white rounded border"
                               >
-                                {event.source_types[i] === 'record' ? '📄' :
-                                 event.source_types[i] === 'self_report' ? '💬' :
-                                 event.source_types[i] === 'collateral' ? '👥' : '👁️'}
+                                {event.source_types[i] === 'record' ? 'Record' :
+                                 event.source_types[i] === 'self_report' ? 'Report' :
+                                 event.source_types[i] === 'collateral' ? 'Collateral' : 'Observation'}
                                 {getSourceName(sourceId)}
                               </span>
                             ))}
@@ -394,7 +394,7 @@ export function TimelineBuilder({
           <div className="p-4 space-y-3">
             {conflicts.length === 0 ? (
               <div className="text-center py-8 text-green-600">
-                <p className="font-medium">✓ No timeline conflicts detected</p>
+                <p className="font-medium">No timeline conflicts detected</p>
                 <p className="text-sm text-slate-500 mt-1">All events are reconciled</p>
               </div>
             ) : (
@@ -456,7 +456,7 @@ export function TimelineBuilder({
       {/* Footer */}
       <div className="p-3 border-t bg-slate-50">
         <p className="text-xs text-slate-500">
-          💡 Events with multiple independent sources are marked corroborated. 
+          Note: Events with multiple independent sources are marked corroborated. 
           Conflicting sources are flagged for resolution.
         </p>
       </div>

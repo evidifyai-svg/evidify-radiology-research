@@ -162,7 +162,7 @@ export function ReaderPackPreview({ caseId, reportId, onClose, onExport }: Reade
       });
 
       if (result.status === 'success' && result.data) {
-        alert(`✓ Reader Pack exported!\n\nLocation: ${result.data.zip_path || result.data.pack_path}`);
+        alert(`Reader Pack exported.\n\nLocation: ${result.data.zip_path || result.data.pack_path}`);
         onExport?.();
       } else {
         setError(result.error?.message || 'Export failed');
@@ -259,7 +259,7 @@ export function ReaderPackPreview({ caseId, reportId, onClose, onExport }: Reade
                   Exporting...
                 </>
               ) : (
-                <>📦 Export Reader Pack</>
+                <>Export Reader Pack</>
               )}
             </button>
           </div>
@@ -271,7 +271,7 @@ export function ReaderPackPreview({ caseId, reportId, onClose, onExport }: Reade
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className={`text-2xl ${validation.court_ready ? 'text-green-600' : 'text-red-600'}`}>
-                  {validation.court_ready ? '✓' : '✗'}
+                  {validation.court_ready ? 'Pass' : 'Fail'}
                 </span>
                 <div>
                   <p className={`font-medium ${validation.court_ready ? 'text-green-800' : 'text-red-800'}`}>
@@ -386,7 +386,7 @@ export function ReaderPackPreview({ caseId, reportId, onClose, onExport }: Reade
                   .filter(e => e.relied_upon)
                   .map(e => (
                     <div key={e.id} className="flex items-center gap-4 text-sm">
-                      <span className="text-purple-600">✓</span>
+                      <span className="text-purple-600">Pass</span>
                       <span className="font-medium">{e.filename}</span>
                       {e.bates_start && (
                         <span className="text-slate-500 font-mono text-xs">
@@ -436,7 +436,7 @@ export function ReaderPackPreview({ caseId, reportId, onClose, onExport }: Reade
         <div className="fixed bottom-4 right-4 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-lg">
           <div className="flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-4 text-red-500">✕</button>
+            <button onClick={() => setError(null)} className="ml-4 text-red-500">Close</button>
           </div>
         </div>
       )}
