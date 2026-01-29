@@ -34,6 +34,299 @@ function sha256Hex(s) {
   return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 }
 
+function parseCsvLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        const nextChar = line[i + 1];
+        if (nextChar === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+      continue;
+    }
+
+    if (char === ',') {
+      values.push(current);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values;
+}
+
+function parseCsv(content) {
+  const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+  if (lines.length === 0) return { headers: [], rows: [] };
+
+  const headers = parseCsvLine(lines[0]);
+  const rows = lines.slice(1).map(line => parseCsvLine(line));
+  return { headers, rows };
+}
+
+function normalizeCsvValue(value) {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  if (trimmed === '' || trimmed.toUpperCase() === 'NA') return null;
+  if (/^(true|false)$/i.test(trimmed)) return trimmed.toLowerCase() === 'true';
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+  return trimmed;
+}
+
+function normalizeComputedValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'boolean') return value;
+  return value;
+}
+
+function valuesMatch(expectedRaw, actualRaw) {
+  const expected = normalizeCsvValue(expectedRaw);
+  const actual = normalizeComputedValue(actualRaw);
+
+  if (expected === null && actual === null) return true;
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    if (Number.isInteger(expected) && Number.isInteger(actual)) {
+      return expected === actual;
+    }
+    return Math.abs(expected - actual) <= 1e-6;
+  }
+  return expected === actual;
+}
+
+function formatMismatchValue(value) {
+  const normalized = normalizeComputedValue(value);
+  if (normalized === null) return 'null';
+  return String(normalized);
+}
+
+function parseEventsJsonl(fp) {
+  const raw = fs.readFileSync(fp, 'utf8');
+  const lines = raw.split(/\r?\n/).filter(line => line.trim() !== '');
+  return lines.map(line => {
+    const event = JSON.parse(line);
+    if (!event.type && event.eventType) {
+      event.type = event.eventType;
+    }
+    if (!event.id && event.eventId) {
+      event.id = event.eventId;
+    }
+    return event;
+  });
+}
+
+function groupEventsByCase(events) {
+  const grouped = new Map();
+  let activeCaseId = null;
+
+  for (const event of events) {
+    const payload = event.payload || {};
+    if (event.type === 'CASE_LOADED' && payload.caseId) {
+      activeCaseId = payload.caseId;
+      if (!grouped.has(activeCaseId)) {
+        grouped.set(activeCaseId, []);
+      }
+    }
+
+    if (activeCaseId) {
+      grouped.get(activeCaseId).push(event);
+    }
+
+    if (event.type === 'CASE_COMPLETED' && payload.caseId && payload.caseId === activeCaseId) {
+      activeCaseId = null;
+    }
+  }
+
+  return grouped;
+}
+
+function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) {
+  if (isCalibration) {
+    return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
+  }
+
+  const getTimestampMs = (event, key) => {
+    const payloadValue = (event.payload || {})[key];
+    return new Date(payloadValue || event.timestamp).getTime();
+  };
+
+  const computeEpisodeMs = (episodeType) => {
+    const starts = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_STARTED' && (event.payload || {}).episodeType === episodeType
+    );
+    const ends = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_ENDED' && (event.payload || {}).episodeType === episodeType
+    );
+
+    if (starts.length === 0 || ends.length === 0) {
+      return null;
+    }
+
+    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
+    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+  };
+
+  const preAiReadMs = computeEpisodeMs('PRE_AI');
+  const postAiReadMs = computeEpisodeMs('POST_AI');
+  const totalReadMs =
+    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+      ? preAiReadMs + postAiReadMs
+      : null;
+
+  return { preAiReadMs, postAiReadMs, totalReadMs };
+}
+
+function getSessionId(events) {
+  const sessionStarted = events.find(event => event.type === 'SESSION_STARTED');
+  const payload = sessionStarted?.payload || {};
+  return payload.sessionId || payload.sessionID || payload.session_id || null;
+}
+
+function computeMetricsFromEvents(events) {
+  const groupedEvents = groupEventsByCase(events);
+  const sessionId = getSessionId(events);
+  const metricsByCase = new Map();
+
+  for (const [caseId, caseEvents] of groupedEvents.entries()) {
+    const caseLoaded = caseEvents.find(event => event.type === 'CASE_LOADED');
+    const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
+    const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
+    const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
+    const deviationSubmitted = caseEvents.find(event => event.type === 'DEVIATION_SUBMITTED');
+    const deviationSkipped = caseEvents.find(event => event.type === 'DEVIATION_SKIPPED');
+    const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
+    const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+
+    const initialBirads = (firstImpression?.payload || {}).birads ?? null;
+    const finalBirads = (finalAssessment?.payload || {}).birads ?? initialBirads ?? null;
+    const aiPayload = aiRevealed?.payload || {};
+    const aiBirads = aiPayload.suggestedBirads ?? aiPayload.aiBirads ?? null;
+    const aiConfidence = aiPayload.aiConfidence ?? null;
+
+    const changeOccurred =
+      initialBirads === null || finalBirads === null ? null : initialBirads !== finalBirads;
+    const aiConsistentChange =
+      changeOccurred === null || aiBirads === null || finalBirads === null
+        ? null
+        : changeOccurred && finalBirads === aiBirads;
+    const aiInconsistentChange =
+      changeOccurred === null || aiBirads === null || finalBirads === null
+        ? null
+        : changeOccurred && finalBirads !== aiBirads;
+    const addaDenominator = aiBirads === null || initialBirads === null ? null : initialBirads !== aiBirads;
+    const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
+
+    const comprehensionPayload = comprehensionEvent?.payload || {};
+    const comprehensionAnswer =
+      comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+    const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
+    const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
+    const comprehensionCorrect = comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
+    const comprehensionResponseMs =
+      comprehensionEvent && disclosurePresented
+        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+        : null;
+    const normalizedComprehensionResponseMs =
+      typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
+        ? comprehensionResponseMs
+        : null;
+
+    const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration);
+    const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
+      caseEvents,
+      caseId,
+      isCalibration
+    );
+
+    const conditionPayload = caseLoaded?.payload || {};
+    const condition =
+      conditionPayload.condition ??
+      conditionPayload.revealTiming ??
+      conditionPayload.conditionCode ??
+      aiPayload.revealTiming ??
+      '';
+
+    const deviationText =
+      (deviationSubmitted?.payload || {}).deviationText ??
+      (deviationSubmitted?.payload || {}).rationaleText ??
+      (deviationSubmitted?.payload || {}).rationale ??
+      null;
+
+    const sessionStart = events.find(event => event.type === 'SESSION_STARTED');
+    const lockTime = firstImpression ? new Date(firstImpression.timestamp).getTime() : null;
+    const revealTime = aiRevealed ? new Date(aiRevealed.timestamp).getTime() : lockTime;
+    const finalTime = finalAssessment ? new Date(finalAssessment.timestamp).getTime() : revealTime;
+    const caseStartTime = caseLoaded ? new Date(caseLoaded.timestamp).getTime() : null;
+    const totalTimeMs =
+      caseStartTime !== null && finalTime !== null ? finalTime - caseStartTime : null;
+    const lockToRevealMs =
+      lockTime !== null && revealTime !== null ? revealTime - lockTime : null;
+    const revealToFinalMs =
+      revealTime !== null && finalTime !== null ? finalTime - revealTime : null;
+
+    metricsByCase.set(caseId, {
+      sessionId,
+      caseId,
+      condition,
+      initialBirads,
+      finalBirads,
+      aiBirads,
+      aiConfidence,
+      changeOccurred,
+      aiConsistentChange,
+      aiInconsistentChange,
+      addaDenominator,
+      adda,
+      deviationDocumented: deviationSubmitted !== undefined,
+      deviationSkipped: deviationSkipped !== undefined,
+      deviationRequired: changeOccurred === null ? null : changeOccurred,
+      deviationText,
+      comprehensionItemId,
+      comprehensionAnswer,
+      comprehensionCorrect,
+      comprehension_question_id: comprehensionQuestionId,
+      comprehension_answer: comprehensionAnswer,
+      comprehension_correct: comprehensionCorrect,
+      comprehension_response_ms: normalizedComprehensionResponseMs,
+      comprehensionItemIdLegacy: comprehensionItemId,
+      comprehensionAnswerLegacy: comprehensionAnswer,
+      comprehensionCorrectLegacy: comprehensionCorrect,
+      comprehensionQuestionId,
+      preAiReadMs,
+      postAiReadMs,
+      totalReadMs,
+      totalTimeMs,
+      lockToRevealMs,
+      revealToFinalMs,
+      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? null,
+      disclosureFormat: (disclosurePresented?.payload || {}).format ?? null,
+      sessionTimestamp: sessionStart?.timestamp ?? null,
+    });
+  }
+
+  return metricsByCase;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const jsonMode = args.includes('--json');
@@ -177,6 +470,108 @@ function main() {
     }
   }
 
+  // Derived metrics analytics replay check
+  if (out.pass) {
+    const derivedMetricsPath = path.join(pack, 'derived_metrics.csv');
+    if (!exists(derivedMetricsPath)) {
+      out.checks.derived_metrics = {
+        pass: false,
+        mismatches: [{ issue: 'MISSING_DERIVED_METRICS' }],
+      };
+      fail('Missing derived_metrics.csv (required for analytics replay verification)');
+    } else {
+      try {
+        const events = parseEventsJsonl(path.join(pack, 'events.jsonl'));
+        const derivedMetricsRaw = fs.readFileSync(derivedMetricsPath, 'utf8');
+        const { headers, rows } = parseCsv(derivedMetricsRaw);
+
+        const caseIdIndex = headers.indexOf('caseId');
+        if (caseIdIndex === -1) {
+          out.checks.derived_metrics = {
+            pass: false,
+            mismatches: [{ issue: 'MISSING_CASE_ID_COLUMN' }],
+          };
+          fail('derived_metrics.csv missing required caseId column');
+        } else {
+          const derivedByCase = new Map();
+          for (const row of rows) {
+            const caseId = row[caseIdIndex];
+            if (caseId) {
+              const record = {};
+              headers.forEach((header, idx) => {
+                record[header] = row[idx] ?? '';
+              });
+              derivedByCase.set(caseId, record);
+            }
+          }
+
+          const computedByCase = computeMetricsFromEvents(events);
+          const allCaseIds = new Set([
+            ...Array.from(derivedByCase.keys()),
+            ...Array.from(computedByCase.keys()),
+          ]);
+          const mismatches = [];
+
+          for (const caseId of Array.from(allCaseIds).sort()) {
+            const derivedRow = derivedByCase.get(caseId);
+            const computedRow = computedByCase.get(caseId);
+
+            if (!derivedRow) {
+              mismatches.push({
+                caseId,
+                column: 'caseId',
+                expected: 'missing',
+                actual: 'present in events only',
+              });
+              continue;
+            }
+
+            if (!computedRow) {
+              mismatches.push({
+                caseId,
+                column: 'caseId',
+                expected: 'present in derived_metrics.csv',
+                actual: 'missing from events',
+              });
+              continue;
+            }
+
+            for (const column of headers) {
+              const expected = derivedRow[column];
+              const actual = computedRow[column];
+              if (!valuesMatch(expected, actual)) {
+                mismatches.push({
+                  caseId,
+                  column,
+                  expected: expected === undefined ? 'undefined' : expected,
+                  actual: formatMismatchValue(actual),
+                });
+              }
+            }
+          }
+
+          out.checks.derived_metrics = {
+            pass: mismatches.length === 0,
+            mismatches,
+          };
+          if (mismatches.length > 0) {
+            mismatches.forEach(mismatch => {
+              fail(
+                `Derived metrics mismatch caseId=${mismatch.caseId} column=${mismatch.column} expected=${mismatch.expected} actual=${mismatch.actual}`
+              );
+            });
+          }
+        }
+      } catch (e) {
+        out.checks.derived_metrics = {
+          pass: false,
+          mismatches: [{ issue: 'PARSE_ERROR', message: e.message }],
+        };
+        fail(`Derived metrics verification error: ${e.message}`);
+      }
+    }
+  }
+
   if (jsonMode) {
     console.log(JSON.stringify(out, null, 2));
     return;
@@ -202,6 +597,9 @@ function main() {
 
   console.log('Manifest: PASS');
   console.log('Ledger: PASS');
+  if (out.checks.derived_metrics) {
+    console.log(`Derived metrics: ${out.checks.derived_metrics.pass ? 'PASS' : 'FAIL'}`);
+  }
   console.log('✅ VERIFICATION: PASS');
 }
 

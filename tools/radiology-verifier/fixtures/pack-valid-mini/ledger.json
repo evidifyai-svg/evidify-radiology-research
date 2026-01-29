@@ -2,11 +2,118 @@
   {
     "seq": 1,
     "eventId": "evt-0001",
-    "eventType": "CASE_STARTED",
+    "eventType": "SESSION_STARTED",
     "timestamp": "2026-01-28T00:00:00.000Z",
-    "contentHash": "c2cfaece6ac2226d086d5c188b7be28c10345dd425492972ff9e716521d5f4a1",
+    "contentHash": "ac2e0850839cd12c3f10ddeae69e9908dc0d472764213a9b6cf4a78aad50413c",
     "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
-    "chainHash": "49ad6297a42959fe65c002d2da6cc20265f382e63266d4d95a0ee804781f216a"
+    "chainHash": "3393e16a733adf05e4c23130c387fdc4227b4d1ccc49b667f0aa561f1ce5881e"
+  },
+  {
+    "seq": 2,
+    "eventId": "evt-0002",
+    "eventType": "CASE_LOADED",
+    "timestamp": "2026-01-28T00:00:01.000Z",
+    "contentHash": "0a79fb6128857c0e8398db5a11107383b503dd133d1a5905b9a9f874f52b7607",
+    "previousHash": "3393e16a733adf05e4c23130c387fdc4227b4d1ccc49b667f0aa561f1ce5881e",
+    "chainHash": "c4b3d443c4ce97fed3e7f92adbd28774ec8eda8a74707280753189a1d5c5b40a"
+  },
+  {
+    "seq": 3,
+    "eventId": "evt-0003",
+    "eventType": "READ_EPISODE_STARTED",
+    "timestamp": "2026-01-28T00:00:02.000Z",
+    "contentHash": "22147297817216be7cda8ceab78cef56bda30388342bf25328bf833e801fb176",
+    "previousHash": "c4b3d443c4ce97fed3e7f92adbd28774ec8eda8a74707280753189a1d5c5b40a",
+    "chainHash": "16af3dd6ab14d370657200807fd6bae771d9d6fa20df8443d8f7fe260f17c89f"
+  },
+  {
+    "seq": 4,
+    "eventId": "evt-0004",
+    "eventType": "FIRST_IMPRESSION_LOCKED",
+    "timestamp": "2026-01-28T00:00:12.000Z",
+    "contentHash": "16e24c5c4289aef1d79cfb0fb93110bd26342fbf1ace343f3b76cd622fcda4a8",
+    "previousHash": "16af3dd6ab14d370657200807fd6bae771d9d6fa20df8443d8f7fe260f17c89f",
+    "chainHash": "df43ca213d07d76f8832855e031debfb9d910cd7e97405456657b1356cade827"
+  },
+  {
+    "seq": 5,
+    "eventId": "evt-0005",
+    "eventType": "READ_EPISODE_ENDED",
+    "timestamp": "2026-01-28T00:00:12.000Z",
+    "contentHash": "34c3ef57d7b52c55019554a7d22d7feb52a59307458c84ca1b6e786e7a493ee8",
+    "previousHash": "df43ca213d07d76f8832855e031debfb9d910cd7e97405456657b1356cade827",
+    "chainHash": "ef83464376331133a74c260d9afa042d19caaeb59bcee1c0dd7867d658d8843e"
+  },
+  {
+    "seq": 6,
+    "eventId": "evt-0006",
+    "eventType": "AI_REVEALED",
+    "timestamp": "2026-01-28T00:00:13.000Z",
+    "contentHash": "d64bcca58e6a61582b50e7e9a529b15b905636ac1b163afb96817c264541d4c8",
+    "previousHash": "ef83464376331133a74c260d9afa042d19caaeb59bcee1c0dd7867d658d8843e",
+    "chainHash": "8d00d23f1c5e386a96ea36fe8fb2c68dd7356e85e06934b06583c3a5be106a6c"
+  },
+  {
+    "seq": 7,
+    "eventId": "evt-0007",
+    "eventType": "DISCLOSURE_PRESENTED",
+    "timestamp": "2026-01-28T00:00:13.000Z",
+    "contentHash": "526dd50cac38170848303b9a70a5dd5194dcf8674fc1556ab399e3e4c31dfbe4",
+    "previousHash": "8d00d23f1c5e386a96ea36fe8fb2c68dd7356e85e06934b06583c3a5be106a6c",
+    "chainHash": "c7b6153de373055a82058b42d613ee4c0f42e2f2b055f39a2b47e44d0ce3db03"
+  },
+  {
+    "seq": 8,
+    "eventId": "evt-0008",
+    "eventType": "DISCLOSURE_COMPREHENSION_RESPONSE",
+    "timestamp": "2026-01-28T00:00:15.000Z",
+    "contentHash": "cce023830244e847478079036f5de44579d46eef25f1f43d85e9be3aa493e600",
+    "previousHash": "c7b6153de373055a82058b42d613ee4c0f42e2f2b055f39a2b47e44d0ce3db03",
+    "chainHash": "5ab822789923456317c11cb6b546d7b8a48fbc6dc3009adca3db526ac088383f"
+  },
+  {
+    "seq": 9,
+    "eventId": "evt-0009",
+    "eventType": "READ_EPISODE_STARTED",
+    "timestamp": "2026-01-28T00:00:16.000Z",
+    "contentHash": "7211b5938718cad8eaad5ebb06608ab72ef5abf238e778f9fed088c045a6f3df",
+    "previousHash": "5ab822789923456317c11cb6b546d7b8a48fbc6dc3009adca3db526ac088383f",
+    "chainHash": "d7fd3f324136248c09ddac64ecadc925e3e154e4534ed9ac7893e90d37b57a18"
+  },
+  {
+    "seq": 10,
+    "eventId": "evt-0010",
+    "eventType": "READ_EPISODE_ENDED",
+    "timestamp": "2026-01-28T00:00:26.000Z",
+    "contentHash": "970995f0e864eb031ec5bbed1676973fa2502024c703dc070d018f7aff7487e5",
+    "previousHash": "d7fd3f324136248c09ddac64ecadc925e3e154e4534ed9ac7893e90d37b57a18",
+    "chainHash": "a5aef1a500bb57a35bec13f4119881685d29f4ac902eb3e76dda227b2a67d570"
+  },
+  {
+    "seq": 11,
+    "eventId": "evt-0011",
+    "eventType": "FINAL_ASSESSMENT",
+    "timestamp": "2026-01-28T00:00:27.000Z",
+    "contentHash": "4bdf0bd4ec8adeb0fc5b011a8dc73a454acc8a840b3dbed14351219c49262a12",
+    "previousHash": "a5aef1a500bb57a35bec13f4119881685d29f4ac902eb3e76dda227b2a67d570",
+    "chainHash": "6ebc1c7356bc4344d5804b54306ec20e2d87505b091a5e2360454da9f1383e9f"
+  },
+  {
+    "seq": 12,
+    "eventId": "evt-0012",
+    "eventType": "CASE_COMPLETED",
+    "timestamp": "2026-01-28T00:00:28.000Z",
+    "contentHash": "c192c58fa520484ac0cf20c364eb2d337820188193babc39a3dfe80ddda32a29",
+    "previousHash": "6ebc1c7356bc4344d5804b54306ec20e2d87505b091a5e2360454da9f1383e9f",
+    "chainHash": "530b3587da7728c3e662a132246f2b5ea651e619cf9bf19d601692579c8b1bff"
+  },
+  {
+    "seq": 13,
+    "eventId": "evt-0013",
+    "eventType": "SESSION_ENDED",
+    "timestamp": "2026-01-28T00:00:30.000Z",
+    "contentHash": "81549b02ee30ef858483252f2570423728456011fcc7da95fa905f86bad3e301",
+    "previousHash": "530b3587da7728c3e662a132246f2b5ea651e619cf9bf19d601692579c8b1bff",
+    "chainHash": "285787de9a82deeb8c2a4459ad162c544cca822ba9eb2eb47a46655d644c77eb"
   }
 ]
-
