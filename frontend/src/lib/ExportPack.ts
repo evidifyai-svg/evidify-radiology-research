@@ -250,6 +250,8 @@ export interface DerivedMetrics {
 
   // Defensibility metrics
   preAiReadMs?: number;
+  postAiReadMs?: number;
+  totalReadMs?: number;
   aiExposureMs?: number;
   decisionChangeCount?: number;
   overrideCount?: number;

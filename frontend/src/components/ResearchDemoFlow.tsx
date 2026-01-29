@@ -90,6 +90,8 @@ interface DemoState {
 const TOO_FAST_PRE_AI_MS = 5000;
 const TOO_FAST_AI_EXPOSURE_MS = 3000;
 
+type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
+
 const groupEventsByCase = (events: any[]): Map<string, any[]> => {
   const grouped = new Map<string, any[]>();
   let activeCaseId: string | null = null;
@@ -114,6 +116,73 @@ const groupEventsByCase = (events: any[]): Map<string, any[]> => {
   return grouped;
 };
 
+const computeReadEpisodeMetrics = (
+  caseEvents: any[],
+  caseId: string,
+  isCalibration: boolean
+): { preAiReadMs?: number; postAiReadMs?: number; totalReadMs?: number } => {
+  if (isCalibration) {
+    return { preAiReadMs: undefined, postAiReadMs: undefined, totalReadMs: undefined };
+  }
+
+  const warn = (message: string) => {
+    console.warn(`[ReadEpisodes] ${message}`);
+  };
+
+  const getTimestampMs = (event: any, payloadKey: 'tStartIso' | 'tEndIso'): number => {
+    const payloadValue = event?.payload?.[payloadKey];
+    return new Date(payloadValue ?? event.timestamp).getTime();
+  };
+
+  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | undefined => {
+    const starts = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
+    );
+    const ends = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
+    );
+
+    if (starts.length > 1) {
+      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
+    }
+    if (ends.length > 1) {
+      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
+    }
+
+    if (starts.length === 0 && ends.length > 0) {
+      warn(`Missing ${episodeType} start for case ${caseId}.`);
+      return undefined;
+    }
+    if (starts.length > 0 && ends.length === 0) {
+      warn(`Missing ${episodeType} end for case ${caseId}.`);
+      return undefined;
+    }
+    if (starts.length === 0 && ends.length === 0) {
+      return undefined;
+    }
+
+    const startMs = getTimestampMs(starts[0], 'tStartIso');
+    const endMs = getTimestampMs(ends[0], 'tEndIso');
+    const duration = endMs - startMs;
+
+    if (!Number.isFinite(duration) || duration < 0) {
+      warn(`Invalid ${episodeType} duration for case ${caseId}.`);
+      return undefined;
+    }
+
+    return duration;
+  };
+
+  const preAiReadMs = computeEpisodeMs('PRE_AI');
+  const postAiReadMs = computeEpisodeMs('POST_AI');
+  const totalReadMs =
+    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
+      ? preAiReadMs + postAiReadMs
+      : undefined;
+
+  return { preAiReadMs, postAiReadMs, totalReadMs };
+};
+
 const computeDerivedMetricsFromEvents = (
   events: any[],
   caseId: string,
@@ -131,6 +200,8 @@ const computeDerivedMetricsFromEvents = (
   const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
   const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
   const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
+  const caseLoaded = caseEvents.find(event => event.type === 'CASE_LOADED');
+  const isCalibration = Boolean(caseLoaded?.payload?.isCalibration);
 
   const initialBirads = firstImpression?.payload?.birads ?? 0;
   const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
@@ -148,18 +219,13 @@ const computeDerivedMetricsFromEvents = (
   const rationaleProvided = deviationSubmitted.some(event => (event.payload?.rationale ?? '').trim().length > 0);
 
   const timeToLockMs = firstImpression?.payload?.timeToLockMs ?? null;
-  const preAiReadMs =
-    typeof timeToLockMs === 'number'
-      ? timeToLockMs
-      : firstImpression
-        ? new Date(firstImpression.timestamp).getTime() - new Date(caseEvents[0]?.timestamp ?? firstImpression.timestamp).getTime()
-        : 0;
+  const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetrics(
+    caseEvents,
+    caseId,
+    isCalibration
+  );
 
-  const aiExposureMs =
-    finalAssessment?.payload?.postAiTimeMs ??
-    (aiRevealed && finalAssessment
-      ? new Date(finalAssessment.timestamp).getTime() - new Date(aiRevealed.timestamp).getTime()
-      : 0);
+  const aiExposureMs = postAiReadMs ?? undefined;
 
   const totalTimeMs = caseCompleted?.payload?.totalTimeMs ?? 0;
   const lockToRevealMs =
@@ -202,16 +268,19 @@ const computeDerivedMetricsFromEvents = (
     comprehension_question_id: comprehensionEvent?.payload?.questionId ?? null,
     comprehension_response_ms: normalizedComprehensionResponseMs,
     preAiReadMs,
+    postAiReadMs,
+    totalReadMs,
     aiExposureMs,
     decisionChangeCount,
     overrideCount,
     rationaleProvided,
-    timingFlagPreAiTooFast: preAiReadMs < TOO_FAST_PRE_AI_MS,
-    timingFlagAiExposureTooFast: aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS,
+    timingFlagPreAiTooFast: typeof preAiReadMs === 'number' && preAiReadMs < TOO_FAST_PRE_AI_MS,
+    timingFlagAiExposureTooFast:
+      typeof aiExposureMs === 'number' && aiExposureMs > 0 && aiExposureMs < TOO_FAST_AI_EXPOSURE_MS,
     totalTimeMs,
     timeToLockMs,
     lockToRevealMs,
-    revealToFinalMs: aiExposureMs,
+    revealToFinalMs: aiExposureMs ?? 0,
     revealTiming: condition?.condition ?? 'UNKNOWN',
     disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
   };
@@ -3575,6 +3644,9 @@ const counterbalanceArm = (() => {
     
     if (firstCase) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
+      if (!firstCase.isCalibration) {
+        await eventLoggerRef.current!.logReadEpisodeStarted(firstCase.caseId, 'PRE_AI');
+      }
     }
     
     setState(s => ({
@@ -3624,6 +3696,9 @@ const counterbalanceArm = (() => {
     
     if (nextCase) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
+      if (!nextCase.isCalibration) {
+        await eventLoggerRef.current!.logReadEpisodeStarted(nextCase.caseId, 'PRE_AI');
+      }
     }
     
     setState(s => ({
@@ -3681,6 +3756,11 @@ await eventLoggerRef.current!.logAIRevealed({
   finding: (state.currentCase as any).finding ?? 'N/A',
   displayMode: 'PANEL',
 });
+
+    if (!state.currentCase.isCalibration) {
+      await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'PRE_AI', 'AI_REVEALED');
+      await eventLoggerRef.current!.logReadEpisodeStarted(state.currentCase.caseId, 'POST_AI');
+    }
     
     // Log disclosure with adaptive policy info
     const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
@@ -3755,6 +3835,10 @@ setAiAgreementStreak(prev => prev + 1);
       state.initialBirads ?? 0,
       aiSuggestedBirads
     );
+
+    if (!state.currentCase.isCalibration) {
+      await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'POST_AI', 'FINAL_ASSESSMENT');
+    }
     await eventLoggerRef.current!.addEvent('ATTENTION_COVERAGE_PROXY', {
       roiDwellTimes: Object.fromEntries(state.roiDwellTimes), totalDwellMs: Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0),
     });
@@ -3850,6 +3934,9 @@ setAiAgreementStreak(prev => prev + 1);
     
     if (nextCaseDef) {
       await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
+      if (!nextCaseDef.isCalibration) {
+        await eventLoggerRef.current!.logReadEpisodeStarted(nextCaseDef.caseId, 'PRE_AI');
+      }
     }
     
     setState(s => ({
