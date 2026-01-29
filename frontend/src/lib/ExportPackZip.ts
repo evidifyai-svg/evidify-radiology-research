@@ -203,6 +203,12 @@ export class ExportPackZip {
   private getAiModelMetadata(): AIModelMetadata {
     const aiRevealed = this.events.find(event => event.type === 'AI_REVEALED');
     return normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
+  getStudyMetadata(): { studyId: string; protocolVersion: string; siteId: string } {
+    return {
+      studyId: this.studyId,
+      protocolVersion: this.protocolVersion,
+      siteId: this.siteId,
+    };
   }
 
   /**
@@ -489,12 +495,23 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       eventSchemaVersion: 'EVENT_SCHEMA_V1_DRAFT',
       aiModel: aiModelMetadata,
     };
+    const researchMethods: Record<string, unknown> = {
+      disclosure: {
+        revealTiming: this.condition.revealTiming,
+        disclosureFormat: this.condition.disclosureFormat,
+        policy: disclosurePolicy,
+      },
+      ...(this.protocolVersion ? { protocolVersion: this.protocolVersion } : {}),
+      ...(this.studyId ? { studyId: this.studyId } : {}),
+      ...(this.siteId ? { siteId: this.siteId } : {}),
+    };
 
     const exportManifestObj = {
       schema: 'evidify.export_manifest.v1',
       created_utc: new Date().toISOString(),
       methodsSnapshot: methodsSnapshotForManifest,
       aiModel: aiModelMetadata,
+      researchMethods,
       entries: exportManifestEntries,
     };
 
@@ -554,7 +571,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
     const headers =
-      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,aiModelName,aiModelVersion,aiProvider,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
+'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,aiModelName,aiModelVersion,aiProvider,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
@@ -580,9 +597,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           : changeOccurred && finalBirads === aiBirads;
       const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
       const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
-      const comprehensionAnswer = (comprehensionEvent?.payload as any)?.selectedAnswer ?? null;
-      const comprehensionQuestionId = (comprehensionEvent?.payload as any)?.questionId ?? null;
-      const comprehensionCorrect = (comprehensionEvent?.payload as any)?.isCorrect ?? null;
+      const comprehensionPayload = (comprehensionEvent?.payload as any) ?? {};
+      const comprehensionAnswer =
+        comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+      const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
+      const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
+      const comprehensionCorrect =
+        comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
       const comprehensionResponseMs = comprehensionEvent && disclosurePresented
         ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
         : null;
@@ -616,9 +637,12 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         preAiReadMs,
         postAiReadMs,
         totalReadMs,
+        comprehensionItemId,
         comprehensionAnswer,
         comprehensionCorrect,
         comprehensionQuestionId,
+        comprehensionAnswer,
+        comprehensionCorrect,
         normalizedComprehensionResponseMs,
       ];
 
@@ -738,7 +762,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **READ_EPISODE_ENDED**: Reader ends PRE_AI/POST_AI read episode
 - **AI_REVEALED**: AI suggestion shown to reader (includes aiModel metadata)
 - **DISCLOSURE_PRESENTED**: Error rate information shown
-- **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check
+- **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check (includes itemId)
 - **DEVIATION_STARTED**: Reader began changing assessment
 - **DEVIATION_SUBMITTED**: Reader documented rationale for change
 - **DEVIATION_SKIPPED**: Reader skipped documentation (with attestation)
@@ -764,6 +788,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **postAiReadMs**: POST_AI read episode duration
 - **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
 - **totalTimeMs**: Total time on case
+- **comprehensionItemId**: Disclosure comprehension item identifier
+- **comprehensionAnswer**: Reader answer to comprehension probe
+- **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
 
 ## Hash Chain Verification
 

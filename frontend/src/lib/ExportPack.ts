@@ -246,6 +246,7 @@ export interface DerivedMetrics {
   // Comprehension
   comprehensionCorrect: boolean | null;
   comprehensionAnswer?: string | null;
+  comprehensionItemId?: string | null;
   comprehensionQuestionId?: string | null;
   comprehensionResponseMs?: number | null;
   comprehension_answer?: string | null;
@@ -454,9 +455,12 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
       '';
 
     // Comprehension
-    const comprehensionCorrect = comprehensionResponse
-      ? (comprehensionResponse.payload as any).correct
-      : null;
+    const comprehensionPayload = (comprehensionResponse?.payload as any) ?? {};
+    const comprehensionAnswer =
+      comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+    const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionPayload.questionId ?? null;
+    const comprehensionCorrect =
+      comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
 
     // Timing
     const sessionStart = sessionStarted ? new Date(sessionStarted.timestamp).getTime() : 0;
@@ -490,6 +494,9 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
       deviationText,
       deviationRationale: deviationText,
       comprehensionCorrect,
+      comprehensionAnswer,
+      comprehensionItemId,
+      comprehensionQuestionId: comprehensionPayload.questionId ?? null,
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,
@@ -749,7 +756,7 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | FIRST_IMPRESSION_LOCKED | Initial assessment locked | birads, confidence, timeOnCaseMs |
 | AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence, aiModel |
 | DISCLOSURE_PRESENTED | FDR/FOR disclosure shown | format, fdr, for |
-| DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | questionId, response, correct |
+| DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | itemId, questionId, response, correct |
 | DEVIATION_STARTED | User began changing assessment | deviationType, initialBirads, aiBirads |
 | DEVIATION_SUBMITTED | Deviation documentation provided | deviationText, clinicalRationale, wordCount |
 | DEVIATION_SKIPPED | User skipped documentation | attestation, attestationTimestamp |
@@ -776,6 +783,8 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | deviationSkipped | bool | User attested to skip documentation |
 | deviationRequired | bool | TRUE if assessment changed |
 | comprehensionCorrect | bool/null | FDR/FOR comprehension check result |
+| comprehensionAnswer | string/null | Reader answer to comprehension probe |
+| comprehensionItemId | string/null | Comprehension item identifier |
 | totalTimeMs | int | Session duration in milliseconds |
 | lockToRevealMs | int | Time from lock to AI reveal |
 | revealToFinalMs | int | Time from AI reveal to final |

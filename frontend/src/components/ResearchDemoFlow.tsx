@@ -249,6 +249,12 @@ const computeDerivedMetricsFromEvents = (
     typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
       ? comprehensionResponseMs
       : null;
+  const comprehensionPayload = comprehensionEvent?.payload ?? {};
+  const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionPayload.questionId ?? null;
+  const comprehensionAnswer =
+    comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
+  const comprehensionCorrect =
+    comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
 
   return {
     sessionId,
@@ -272,13 +278,14 @@ const computeDerivedMetricsFromEvents = (
     deviationSkipped: changeOccurred && !rationaleProvided && deviationSkipped.length > 0,
     deviationText: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
     deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
-    comprehensionCorrect: comprehensionEvent?.payload?.isCorrect ?? null,
-    comprehensionAnswer: comprehensionEvent?.payload?.selectedAnswer ?? null,
-    comprehensionQuestionId: comprehensionEvent?.payload?.questionId ?? null,
+    comprehensionCorrect,
+    comprehensionAnswer,
+    comprehensionItemId,
+    comprehensionQuestionId: comprehensionPayload.questionId ?? null,
     comprehensionResponseMs: normalizedComprehensionResponseMs,
-    comprehension_answer: comprehensionEvent?.payload?.selectedAnswer ?? null,
-    comprehension_correct: comprehensionEvent?.payload?.isCorrect ?? null,
-    comprehension_question_id: comprehensionEvent?.payload?.questionId ?? null,
+    comprehension_answer: comprehensionAnswer,
+    comprehension_correct: comprehensionCorrect,
+    comprehension_question_id: comprehensionPayload.questionId ?? null,
     comprehension_response_ms: normalizedComprehensionResponseMs,
     preAiReadMs,
     postAiReadMs,
@@ -304,13 +311,22 @@ const buildMethodsSnapshot = (
   condition: ConditionAssignment | null,
   caseQueue: CaseQueueState | null,
   caseResults: DerivedMetrics[],
-  disclosurePolicy: 'STATIC' | 'ADAPTIVE'
+  disclosurePolicy: 'STATIC' | 'ADAPTIVE',
+  studyMetadata?: { studyId?: string; protocolVersion?: string; siteId?: string; validityGates?: Record<string, unknown> }
 ) => {
   const firstLock = events.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
   const finalLock = [...events].reverse().find(event => event.type === 'FINAL_ASSESSMENT');
   const sessionStart = events.find(event => event.type === 'SESSION_STARTED');
   const sessionEnd = [...events].reverse().find(event => event.type === 'SESSION_ENDED');
   const aiModelMetadata = extractAiModelMetadata(events);
+  const comprehensionItemIds = Array.from(
+    new Set(
+      events
+        .filter(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE')
+        .map(event => event.payload?.itemId ?? event.payload?.questionId ?? 'DISCLOSURE_COMPREHENSION_DEFAULT')
+        .filter(Boolean)
+    )
+  );
 
   const avgPreAiReadMs = caseResults.length > 0
     ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.preAiReadMs ?? 0), 0) / caseResults.length)
@@ -319,7 +335,12 @@ const buildMethodsSnapshot = (
     ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.aiExposureMs ?? 0), 0) / caseResults.length)
     : 0;
 
-  return {
+  const snapshot = {
+    ...(studyMetadata?.studyId ? { studyId: studyMetadata.studyId } : {}),
+    ...(studyMetadata?.protocolVersion ? { protocolVersion: studyMetadata.protocolVersion } : {}),
+    ...(studyMetadata?.siteId ? { siteId: studyMetadata.siteId } : {}),
+    revealTiming: condition?.condition ?? 'UNKNOWN',
+    disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
     conditionAssignment: {
       condition: condition?.condition ?? 'UNKNOWN',
       disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
@@ -339,11 +360,20 @@ const buildMethodsSnapshot = (
       policy: disclosurePolicy,
     },
     aiModel: aiModelMetadata,
+    comprehensionItems: {
+      itemIds: comprehensionItemIds.length > 0 ? comprehensionItemIds : ['DISCLOSURE_COMPREHENSION_DEFAULT'],
+    },
     lockPoints: {
       initialLockedTimestamp: firstLock?.timestamp ?? null,
       finalLockedTimestamp: finalLock?.timestamp ?? null,
     },
   };
+
+  if (studyMetadata?.validityGates) {
+    (snapshot as any).validityGates = studyMetadata.validityGates;
+  }
+
+  return snapshot;
 };
 
 // ============================================================================
@@ -3809,6 +3839,7 @@ await eventLoggerRef.current!.logAIRevealed({
         : null;
       await eventLoggerRef.current!.logComprehensionResponse({
         caseId: state.currentCase.caseId,
+        itemId: 'FDR_FOR_COMPREHENSION',
         questionId: 'FDR_FOR_COMPREHENSION',
         selectedAnswer: answer,
         correctAnswer: 'missed_cancer',
@@ -3980,7 +4011,8 @@ setAiAgreementStreak(prev => prev + 1);
       state.condition,
       state.caseQueue,
       state.caseResults,
-      disclosurePolicy
+      disclosurePolicy,
+      exportPackRef.current.getStudyMetadata()
     );
     exportPackRef.current.setMethodsSnapshot(methodsSnapshot);
     
@@ -5514,7 +5546,8 @@ setAiAgreementStreak(prev => prev + 1);
                   state.condition,
                   state.caseQueue,
                   state.caseResults,
-                  disclosurePolicy
+                  disclosurePolicy,
+                  exportPackRef.current.getStudyMetadata()
                 );
                 return (
                   <div style={{ backgroundColor: '#0f172a', padding: '20px', borderRadius: '12px', border: '1px solid #334155', marginBottom: '24px' }}>

@@ -208,6 +208,8 @@ const SimpleDemoFlowHardened: React.FC = () => {
     const correct = state.for_ > state.fdr ? (response === 'for') : (response === 'fdr');
     
     const event = createEvent('DISCLOSURE_COMPREHENSION_RESPONSE', {
+      caseId: state.caseId,
+      itemId: 'FDR_FOR_COMPARISON',
       questionId: 'fdr_for_comparison',
       response,
       correct,
