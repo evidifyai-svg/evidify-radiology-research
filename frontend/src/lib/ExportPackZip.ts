@@ -315,6 +315,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     blob: Blob;
     filename: string;
     manifest: ExportManifest;
+    exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }>;
     verifierOutput: VerifierOutput;
   }> {
     const zip = new JSZip();
@@ -434,7 +435,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const blob = await zip.generateAsync({ type: 'blob' });
     const filename = `evidify_export_${this.sessionId}_${new Date().toISOString().slice(0, 10)}.zip`;
     
-    return { blob, filename, manifest, verifierOutput };
+    return { blob, filename, manifest, exportManifestEntries, verifierOutput };
   }
 
   /**
