@@ -115,6 +115,7 @@ export class ExportPackZip {
   private sessionStartTime: Date;
   private metricsPerCase: DerivedMetrics[] = [];
   private methodsSnapshot: Record<string, unknown> | null = null;
+  private static metricsSelfCheckRan = false;
 
   constructor(config: {
     sessionId: string;
@@ -448,10 +449,8 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     }
     
     const headers = Object.keys(this.metricsPerCase[0]).join(',');
-    const rows = this.metricsPerCase.map(m => 
-      Object.values(m).map(v => 
-        typeof v === 'string' ? `"${v}"` : v
-      ).join(',')
+    const rows = this.metricsPerCase.map(m =>
+      Object.values(m).map(v => this.formatCsvValue(this.normalizeMetricValue(v))).join(',')
     );
     
     return [headers, ...rows].join('\n');
@@ -461,34 +460,121 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
    * Generate metrics from events (fallback)
    */
   private generateMetricsFromEvents(): string {
-    const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
-    const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
-    const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
-    
-    const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
-    const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
-    const finalBirads = (finalAssessment?.payload as any)?.birads ?? null;
-    
-    const changeOccurred = initialBirads !== finalBirads;
-    const aiConsistentChange = changeOccurred && finalBirads === aiBirads;
-    const addaDenominator = initialBirads !== aiBirads;
-    const adda = addaDenominator ? aiConsistentChange : null;
-    
+    this.runMetricsSelfCheckOnce();
+    const groupedEvents = this.groupEventsByCase(this.events);
+    const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
+
     const headers = 'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda';
-    const values = [
-      `"${this.sessionId}"`,
-      `"${this.caseQueue.caseIds[0] || 'unknown'}"`,
-      `"${this.condition.revealTiming}"`,
-      initialBirads,
-      finalBirads,
-      aiBirads,
-      changeOccurred,
-      aiConsistentChange,
-      addaDenominator,
-      adda,
-    ].join(',');
-    
-    return `${headers}\n${values}`;
+    const rows = caseIds.map(caseId => {
+      const caseEvents = groupedEvents.get(caseId) ?? [];
+      const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
+      const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
+      const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+
+      const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
+      const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
+      const finalBirads = (finalAssessment?.payload as any)?.birads ?? initialBirads ?? null;
+
+      const changeOccurred =
+        initialBirads == null || finalBirads == null ? null : initialBirads !== finalBirads;
+      const aiConsistentChange =
+        changeOccurred === null || aiBirads == null || finalBirads == null
+          ? null
+          : changeOccurred && finalBirads === aiBirads;
+      const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
+      const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
+
+      const values = [
+        this.sessionId,
+        caseId,
+        this.condition.revealTiming,
+        initialBirads,
+        finalBirads,
+        aiBirads,
+        changeOccurred,
+        aiConsistentChange,
+        addaDenominator,
+        adda,
+      ];
+
+      return values.map(value => this.formatCsvValue(this.normalizeMetricValue(value))).join(',');
+    });
+
+    return [headers, ...rows].join('\n');
+  }
+
+  private normalizeMetricValue(value: unknown): string | number | boolean {
+    if (value === null || value === undefined) return 'NA';
+    if (typeof value === 'string' && value.trim() === '') return 'NA';
+    return value as string | number | boolean;
+  }
+
+  private formatCsvValue(value: string | number | boolean): string {
+    const raw = String(value);
+    if (/[",\n]/.test(raw)) {
+      return `"${raw.replace(/"/g, '""')}"`;
+    }
+    return raw;
+  }
+
+  private dedupeCaseIds(caseIds: string[]): string[] {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const caseId of caseIds) {
+      if (!seen.has(caseId)) {
+        seen.add(caseId);
+        ordered.push(caseId);
+      }
+    }
+    return ordered;
+  }
+
+  private groupEventsByCase(events: TrialEvent[]): Map<string, TrialEvent[]> {
+    const grouped = new Map<string, TrialEvent[]>();
+    let activeCaseId: string | null = null;
+
+    for (const event of events) {
+      if (event.type === 'CASE_LOADED' && (event as any).payload?.caseId) {
+        activeCaseId = (event as any).payload.caseId as string;
+        if (!grouped.has(activeCaseId)) {
+          grouped.set(activeCaseId, []);
+        }
+      }
+
+      if (activeCaseId) {
+        grouped.get(activeCaseId)?.push(event);
+      }
+
+      if (
+        event.type === 'CASE_COMPLETED' &&
+        (event as any).payload?.caseId &&
+        (event as any).payload.caseId === activeCaseId
+      ) {
+        activeCaseId = null;
+      }
+    }
+
+    return grouped;
+  }
+
+  private runMetricsSelfCheckOnce(): void {
+    if (ExportPackZip.metricsSelfCheckRan) return;
+    ExportPackZip.metricsSelfCheckRan = true;
+
+    const issueMessages: string[] = [];
+    const sampleValues = [null, undefined, '', 0, false, 'ok'];
+    const formatted = sampleValues.map(value => this.formatCsvValue(this.normalizeMetricValue(value)));
+    const expected = ['NA', 'NA', 'NA', '0', 'false', 'ok'];
+
+    expected.forEach((value, index) => {
+      if (formatted[index] !== value) {
+        issueMessages.push(`Value at ${index} expected ${value} but got ${formatted[index]}`);
+      }
+    });
+
+    if (issueMessages.length > 0) {
+      console.warn(`ExportPackZip metrics self-check failed: ${issueMessages.join('; ')}`);
+    }
   }
 
   /**
