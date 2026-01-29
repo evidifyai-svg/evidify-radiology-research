@@ -1,0 +1,12 @@
+[
+  {
+    "seq": 1,
+    "eventId": "evt-0001",
+    "eventType": "CASE_STARTED",
+    "timestamp": "2026-01-28T00:00:00.000Z",
+    "contentHash": "c2cfaece6ac2226d086d5c188b7be28c10345dd425492972ff9e716521d5f4a1",
+    "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "chainHash": "49ad6297a42959fe65c002d2da6cc20265f382e63266d4d95a0ee804781f216a"
+  }
+]
+
