@@ -1,3 +1,5 @@
+import { AI_MODEL_NA, normalizeAiModelMetadata } from './ai_model';
+
 /**
  * ExportPack_v2.ts
  * 
@@ -214,6 +216,9 @@ export interface DerivedMetrics {
   finalBirads: number;
   aiBirads: number | null;
   aiConfidence: number | null;
+  aiModelName?: string | null;
+  aiModelVersion?: string | null;
+  aiProvider?: string | null;
   changeOccurred: boolean;
   aiConsistentChange: boolean;
   aiInconsistentChange: boolean;
@@ -382,6 +387,10 @@ export class ExportPackBuilder {
     const finalBirads = (finalAssessment?.payload as any)?.birads ?? 0;
     const aiBirads = (aiRevealed?.payload as any)?.aiBirads ?? null;
     const aiConfidence = (aiRevealed?.payload as any)?.aiConfidence ?? null;
+    const aiModelMetadata = normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
+    const aiModelName = aiModelMetadata.modelName === AI_MODEL_NA ? null : aiModelMetadata.modelName;
+    const aiModelVersion = aiModelMetadata.modelVersion === AI_MODEL_NA ? null : aiModelMetadata.modelVersion;
+    const aiProvider = aiModelMetadata.provider === AI_MODEL_NA ? null : aiModelMetadata.provider;
 
     // Change analysis
     const changeOccurred = initialBirads !== finalBirads;
@@ -448,6 +457,9 @@ export class ExportPackBuilder {
       finalBirads,
       aiBirads,
       aiConfidence,
+      aiModelName,
+      aiModelVersion,
+      aiProvider,
       changeOccurred,
       aiConsistentChange,
       aiInconsistentChange,
@@ -654,6 +666,8 @@ export class ExportPackBuilder {
     const verifierOutput = await this.runVerifier();
 
     // Generate manifest
+    const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
+    const aiModelMetadata = normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
     const manifest: TrialManifest = {
       exportVersion: '2.0.0',
       schemaVersion: '2.0.0',
@@ -713,6 +727,7 @@ export class ExportPackBuilder {
     const exportManifest = {
       schema: 'evidify.export_manifest.v1',
       created_utc: exportManifestCreatedUtc,
+      aiModel: aiModelMetadata,
       entries: exportManifestEntries,
     };
 
@@ -771,7 +786,7 @@ export class ExportPackBuilder {
 | CASE_LOADED | Case presented to reader | caseId |
 | IMAGE_VIEWED | Image interaction | imageId, viewDurationMs |
 | FIRST_IMPRESSION_LOCKED | Initial assessment locked | birads, confidence, timeOnCaseMs |
-| AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence |
+| AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence, aiModel |
 | DISCLOSURE_PRESENTED | FDR/FOR disclosure shown | format, fdr, for |
 | DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | questionId, response, correct |
 | DEVIATION_STARTED | User began changing assessment | deviationType, initialBirads, aiBirads |

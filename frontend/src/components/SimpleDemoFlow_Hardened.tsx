@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ExportPackBuilder, { TrialEvent } from '../lib/ExportPack';
+import { normalizeAiModelMetadata } from '../lib/ai_model';
 
 type EventType = string;
 import { PacketViewer } from './PacketViewer';
@@ -186,6 +187,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
         aiBirads: state.aiBirads,
         aiConfidence: state.aiConfidence,
         revealTiming: 'human_first',
+        aiModel: normalizeAiModelMetadata(),
       });
       
       // P0: Log DISCLOSURE_PRESENTED with FDR/FOR

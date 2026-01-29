@@ -48,6 +48,7 @@ import { MammogramDualViewSimple } from './research/MammogramDualViewSimple';
 // import { PacketViewer } from './PacketViewer'; // Replaced by ExpertWitnessPacketViewer
 import { ExportPackZip, DerivedMetrics, ExportManifest, VerifierOutput } from '../lib/ExportPackZip';
 import { EventLogger } from '../lib/event_logger';
+import { AI_MODEL_NA, normalizeAiModelMetadata } from '../lib/ai_model';
 import { generateSeed, assignCondition, manualCondition, ConditionAssignment, RevealCondition } from '../lib/condition_matrix';
 import { CaseDefinition, CaseQueueState, generateCaseQueue, getCurrentCase, advanceQueue, isQueueComplete, getQueueProgress } from '../lib/case_queue';
 
@@ -183,6 +184,14 @@ const computeReadEpisodeMetrics = (
   return { preAiReadMs, postAiReadMs, totalReadMs };
 };
 
+const normalizeAiMetricField = (value: string): string | null =>
+  value === AI_MODEL_NA ? null : value;
+
+const extractAiModelMetadata = (events: any[]) => {
+  const aiRevealed = events.find(event => event.type === 'AI_REVEALED');
+  return normalizeAiModelMetadata(aiRevealed?.payload?.aiModel);
+};
+
 const computeDerivedMetricsFromEvents = (
   events: any[],
   caseId: string,
@@ -207,6 +216,7 @@ const computeDerivedMetricsFromEvents = (
   const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
   const aiBirads = aiRevealed?.payload?.suggestedBirads ?? null;
   const aiConfidence = aiRevealed?.payload?.aiConfidence ?? null;
+  const aiModelMetadata = normalizeAiModelMetadata(aiRevealed?.payload?.aiModel);
 
   const changeOccurred = finalBirads !== initialBirads;
   const aiConsistentChange = changeOccurred && aiBirads != null && finalBirads === aiBirads;
@@ -249,6 +259,9 @@ const computeDerivedMetricsFromEvents = (
     finalBirads,
     aiBirads,
     aiConfidence,
+    aiModelName: normalizeAiMetricField(aiModelMetadata.modelName),
+    aiModelVersion: normalizeAiMetricField(aiModelMetadata.modelVersion),
+    aiProvider: normalizeAiMetricField(aiModelMetadata.provider),
     changeOccurred,
     aiConsistentChange,
     aiInconsistentChange,
@@ -297,6 +310,7 @@ const buildMethodsSnapshot = (
   const finalLock = [...events].reverse().find(event => event.type === 'FINAL_ASSESSMENT');
   const sessionStart = events.find(event => event.type === 'SESSION_STARTED');
   const sessionEnd = [...events].reverse().find(event => event.type === 'SESSION_ENDED');
+  const aiModelMetadata = extractAiModelMetadata(events);
 
   const avgPreAiReadMs = caseResults.length > 0
     ? Math.round(caseResults.reduce((sum, metric) => sum + (metric.preAiReadMs ?? 0), 0) / caseResults.length)
@@ -324,6 +338,7 @@ const buildMethodsSnapshot = (
       format: condition?.disclosureFormat ?? 'UNKNOWN',
       policy: disclosurePolicy,
     },
+    aiModel: aiModelMetadata,
     lockPoints: {
       initialLockedTimestamp: firstLock?.timestamp ?? null,
       finalLockedTimestamp: finalLock?.timestamp ?? null,
@@ -3749,12 +3764,15 @@ await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
       (state.currentCase as any)?.aiResult?.confidence ??
       (state.currentCase as any)?.aiConfidence ??
       0.87;
+
+    const aiModelMetadata = normalizeAiModelMetadata((state.currentCase as any)?.aiModelMetadata);
     
 await eventLoggerRef.current!.logAIRevealed({
   suggestedBirads: aiSuggestedBirads,
   aiConfidence,
   finding: (state.currentCase as any).finding ?? 'N/A',
   displayMode: 'PANEL',
+  aiModel: aiModelMetadata,
 });
 
     if (!state.currentCase.isCalibration) {

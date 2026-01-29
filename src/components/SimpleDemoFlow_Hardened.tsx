@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import JSZip from 'jszip';
 import ExportPackBuilder, { TrialEvent, EventType } from '../lib/ExportPack';
+import { normalizeAiModelMetadata } from '../lib/ai_model';
 
 // ============================================================================
 // TYPES
@@ -175,6 +176,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
         aiBirads: state.aiBirads,
         aiConfidence: state.aiConfidence,
         revealTiming: 'human_first',
+        aiModel: normalizeAiModelMetadata(),
       });
       
       // P0: Log DISCLOSURE_PRESENTED with FDR/FOR

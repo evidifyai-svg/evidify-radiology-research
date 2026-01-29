@@ -1,3 +1,5 @@
+import { AI_MODEL_NA, normalizeAiModelMetadata } from './ai_model';
+
 /**
  * ExportPack_v2.ts
  * 
@@ -217,6 +219,9 @@ export interface DerivedMetrics {
   finalBirads: number;
   aiBirads: number | null;
   aiConfidence: number | null;
+  aiModelName?: string | null;
+  aiModelVersion?: string | null;
+  aiProvider?: string | null;
 
   // Change analysis
   changeOccurred: boolean;
@@ -419,6 +424,10 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
     const finalBirads = (finalAssessment?.payload as any)?.birads ?? 0;
     const aiBirads = (aiRevealed?.payload as any)?.aiBirads ?? null;
     const aiConfidence = (aiRevealed?.payload as any)?.aiConfidence ?? null;
+    const aiModelMetadata = normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
+    const aiModelName = aiModelMetadata.modelName === AI_MODEL_NA ? null : aiModelMetadata.modelName;
+    const aiModelVersion = aiModelMetadata.modelVersion === AI_MODEL_NA ? null : aiModelMetadata.modelVersion;
+    const aiProvider = aiModelMetadata.provider === AI_MODEL_NA ? null : aiModelMetadata.provider;
 
     // Change analysis
     const changeOccurred = initialBirads !== finalBirads;
@@ -467,6 +476,9 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
       finalBirads,
       aiBirads,
       aiConfidence,
+      aiModelName,
+      aiModelVersion,
+      aiProvider,
       changeOccurred,
       aiConsistentChange,
       aiInconsistentChange,
@@ -735,7 +747,7 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | CASE_LOADED | Case presented to reader | caseId |
 | IMAGE_VIEWED | Image interaction | imageId, viewDurationMs |
 | FIRST_IMPRESSION_LOCKED | Initial assessment locked | birads, confidence, timeOnCaseMs |
-| AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence |
+| AI_REVEALED | AI recommendation shown | aiBirads, aiConfidence, aiModel |
 | DISCLOSURE_PRESENTED | FDR/FOR disclosure shown | format, fdr, for |
 | DISCLOSURE_COMPREHENSION_RESPONSE | Comprehension check answer | questionId, response, correct |
 | DEVIATION_STARTED | User began changing assessment | deviationType, initialBirads, aiBirads |

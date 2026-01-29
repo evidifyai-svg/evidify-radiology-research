@@ -6,6 +6,8 @@
  */
 
 import JSZip from 'jszip';
+import { AI_MODEL_NA, normalizeAiModelMetadata } from './ai_model';
+import type { AIModelMetadata } from './ai_model';
 
 // Canonical types live in ExportPack.ts — import into local scope and re-export to avoid drift
 import type { DerivedMetrics, TrialEvent, LedgerEntry } from './ExportPack';
@@ -196,6 +198,11 @@ export class ExportPackZip {
     this.condition = config.condition;
     this.caseQueue = config.caseQueue;
     this.sessionStartTime = new Date();
+  }
+
+  private getAiModelMetadata(): AIModelMetadata {
+    const aiRevealed = this.events.find(event => event.type === 'AI_REVEALED');
+    return normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
   }
 
   /**
@@ -469,6 +476,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       typeof (this.methodsSnapshot as any)?.errorRateDisclosure?.policy === 'string'
         ? (this.methodsSnapshot as any).errorRateDisclosure.policy
         : null;
+    const aiModelMetadata = this.getAiModelMetadata();
     const methodsSnapshotForManifest = {
       condition: {
         revealTiming: this.condition.revealTiming,
@@ -479,12 +487,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       studyId: this.studyId,
       siteId: this.siteId,
       eventSchemaVersion: 'EVENT_SCHEMA_V1_DRAFT',
+      aiModel: aiModelMetadata,
     };
 
     const exportManifestObj = {
       schema: 'evidify.export_manifest.v1',
       created_utc: new Date().toISOString(),
       methodsSnapshot: methodsSnapshotForManifest,
+      aiModel: aiModelMetadata,
       entries: exportManifestEntries,
     };
 
@@ -544,7 +554,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
     const headers =
-      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
+      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,aiModelName,aiModelVersion,aiProvider,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehension_answer,comprehension_correct,comprehension_question_id,comprehension_response_ms';
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
@@ -556,6 +566,10 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
       const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
       const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
+      const aiModelMetadata = normalizeAiModelMetadata((aiRevealed?.payload as any)?.aiModel);
+      const aiModelName = aiModelMetadata.modelName === AI_MODEL_NA ? null : aiModelMetadata.modelName;
+      const aiModelVersion = aiModelMetadata.modelVersion === AI_MODEL_NA ? null : aiModelMetadata.modelVersion;
+      const aiProvider = aiModelMetadata.provider === AI_MODEL_NA ? null : aiModelMetadata.provider;
       const finalBirads = (finalAssessment?.payload as any)?.birads ?? initialBirads ?? null;
 
       const changeOccurred =
@@ -592,6 +606,9 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         initialBirads,
         finalBirads,
         aiBirads,
+        aiModelName,
+        aiModelVersion,
+        aiProvider,
         changeOccurred,
         aiConsistentChange,
         addaDenominator,
@@ -719,7 +736,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **FIRST_IMPRESSION_LOCKED**: Initial BI-RADS assessment locked
 - **READ_EPISODE_STARTED**: Reader starts PRE_AI/POST_AI read episode
 - **READ_EPISODE_ENDED**: Reader ends PRE_AI/POST_AI read episode
-- **AI_REVEALED**: AI suggestion shown to reader
+- **AI_REVEALED**: AI suggestion shown to reader (includes aiModel metadata)
 - **DISCLOSURE_PRESENTED**: Error rate information shown
 - **DISCLOSURE_COMPREHENSION_RESPONSE**: Reader answered comprehension check
 - **DEVIATION_STARTED**: Reader began changing assessment

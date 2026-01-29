@@ -21,6 +21,7 @@
  */
 
 import { ExportPackZip, LedgerEntry } from './ExportPackZip';
+import { AIModelMetadata, normalizeAiModelMetadata } from './ai_model';
 
 // ============================================================================
 // EVENT TYPE DEFINITIONS
@@ -175,6 +176,7 @@ export interface AIRevealedPayload {
   aiConfidence: number;
   finding: string;
   displayMode: string;
+  aiModel: AIModelMetadata;
 }
 
 export interface DisclosurePresentedPayload {
@@ -396,7 +398,11 @@ export class EventLogger {
    */
   async logAIRevealed(payload: AIRevealedPayload): Promise<LedgerEntry> {
     this.aiRevealTime = Date.now();
-    return this.exportPack.addEvent('AI_REVEALED', payload);
+    const normalizedPayload: AIRevealedPayload = {
+      ...payload,
+      aiModel: normalizeAiModelMetadata(payload.aiModel),
+    };
+    return this.exportPack.addEvent('AI_REVEALED', normalizedPayload);
   }
 
   /**
