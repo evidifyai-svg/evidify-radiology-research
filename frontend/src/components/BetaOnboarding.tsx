@@ -744,9 +744,9 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
       case 'ready':
         return (
           <>
-            <h2 style={styles.stepTitle}>You're All Set!</h2>
+            <h2 style={styles.stepTitle}>Setup Complete</h2>
             <p style={styles.stepDescription}>
-              Your Evidify installation is ready. Here's what to do next.
+              Your Evidify installation is ready. Next steps are listed below.
             </p>
 
             <div style={{ ...styles.featureCard, marginBottom: '16px', backgroundColor: '#f0fff4', borderColor: '#9ae6b4' }}>
@@ -771,13 +771,13 @@ export const BetaOnboarding: React.FC<BetaOnboardingProps> = ({ onComplete, onSk
             </div>
 
             <div style={styles.trustBadge}>
-              Welcome to the future of clinical documentation
+              Clinical documentation workflows are ready for use
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '32px' }}>
               <p style={{ color: '#718096', fontSize: '14px' }}>
-                Thank you for being a beta tester, {profile.name || 'clinician'}!<br />
-                Your feedback will help make Evidify better for everyone.
+                Thank you for participating in the beta program, {profile.name || 'clinician'}.<br />
+                Your feedback will help improve Evidify for future releases.
               </p>
             </div>
           </>

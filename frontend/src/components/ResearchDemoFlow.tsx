@@ -3881,14 +3881,14 @@ setAiAgreementStreak(prev => prev + 1);
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
             <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Research Study Launcher</h1>
             <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
-              Start a participant session or open the researcher console for the Friday walkthrough.
+              Start a participant session or open the researcher console for a guided walkthrough.
             </p>
           </div>
         ) : (
           <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                <h1 style={{ margin: 0, fontSize: '26px' }}>{isClinician ? 'Clinician Review Shell' : 'Researcher Console'}</h1>
+                <h1 style={{ margin: 0, fontSize: '26px' }}>{isClinician ? 'Clinician Review' : 'Researcher Console'}</h1>
                 {/* Operator View Badge (Researcher Mode Only) */}
                 {isResearcher && (
                   <div style={{
@@ -4112,7 +4112,7 @@ setAiAgreementStreak(prev => prev + 1);
               color: isResearcher ? '#c084fc' : '#60a5fa',
               fontWeight: 600,
             }}>
-              {isResearcher ? 'Press ? for keyboard shortcuts' : 'Clinician workflow focus'}
+              {isResearcher ? 'Press ? for keyboard shortcuts' : 'Clinician workflow view'}
             </div>
           </div>
         )}
