@@ -177,6 +177,84 @@ function main() {
     }
   }
 
+  // Events schema sanity checks
+  if (out.pass) {
+    try {
+      const eventsPath = path.join(pack, 'events.jsonl');
+      const raw = fs.readFileSync(eventsPath, 'utf8');
+      const lines = raw.split(/\r?\n/).filter(line => line.trim().length > 0);
+
+      const sessionLevelEvents = new Set([
+        'SESSION_STARTED',
+        'RANDOMIZATION_ASSIGNED',
+      ]);
+
+      let ok = true;
+      const issues = [];
+      let prevSeq = null;
+
+      lines.forEach((line, index) => {
+        const lineNumber = index + 1;
+        let event;
+        try {
+          event = JSON.parse(line);
+        } catch (e) {
+          ok = false;
+          issues.push({ line: lineNumber, issue: 'JSON_PARSE', message: e.message });
+          return;
+        }
+
+        const seq = event?.seq;
+        if (typeof seq !== 'number' || !Number.isFinite(seq)) {
+          ok = false;
+          issues.push({ line: lineNumber, issue: 'SEQ_INVALID', message: 'seq must be a finite number' });
+        } else if (prevSeq !== null) {
+          const expected = prevSeq + 1;
+          if (seq !== expected) {
+            ok = false;
+            issues.push({ line: lineNumber, issue: 'SEQ_MONOTONIC', expected, got: seq });
+          }
+        }
+
+        prevSeq = typeof seq === 'number' && Number.isFinite(seq) ? seq : prevSeq;
+
+        const timestamp = event?.timestamp;
+        if (typeof timestamp !== 'string' || Number.isNaN(Date.parse(timestamp))) {
+          ok = false;
+          issues.push({ line: lineNumber, issue: 'TIMESTAMP_INVALID', value: timestamp });
+        }
+
+        const eventType = event?.event;
+        if (!sessionLevelEvents.has(eventType)) {
+          const caseId = event?.payload?.caseId;
+          if (typeof caseId !== 'string' || caseId.trim() === '') {
+            ok = false;
+            issues.push({ line: lineNumber, issue: 'CASE_ID_MISSING', event: eventType });
+          }
+        }
+      });
+
+      out.checks.events = { pass: ok, entries: lines.length, issues };
+      if (!ok) {
+        issues.forEach(issue => {
+          if (issue.issue === 'CASE_ID_MISSING') {
+            fail(`Event line ${issue.line} missing payload.caseId for event ${issue.event || 'UNKNOWN'}`);
+          } else if (issue.issue === 'SEQ_MONOTONIC') {
+            fail(`Event line ${issue.line} has non-monotonic seq (expected ${issue.expected}, got ${issue.got})`);
+          } else if (issue.issue === 'TIMESTAMP_INVALID') {
+            fail(`Event line ${issue.line} has invalid timestamp: ${issue.value}`);
+          } else if (issue.issue === 'SEQ_INVALID') {
+            fail(`Event line ${issue.line} has invalid seq`);
+          } else if (issue.issue === 'JSON_PARSE') {
+            fail(`Event line ${issue.line} JSON parse error: ${issue.message}`);
+          }
+        });
+      }
+    } catch (e) {
+      fail(`Events parse/verify error: ${e.message}`);
+    }
+  }
+
   if (jsonMode) {
     console.log(JSON.stringify(out, null, 2));
     return;
