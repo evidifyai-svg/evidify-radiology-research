@@ -187,7 +187,7 @@ export function ReferralQuestionTracker({
   if (questions.length === 0) {
     return (
       <div className="bg-white rounded-lg border p-4">
-        <h3 className="font-semibold text-slate-700 mb-2">📋 Referral Questions</h3>
+        <h3 className="font-semibold text-slate-700 mb-2">Referral Questions</h3>
         <p className="text-sm text-slate-500 italic">No referral questions defined for this case.</p>
       </div>
     );
@@ -198,7 +198,7 @@ export function ReferralQuestionTracker({
       {/* Header with Summary */}
       <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-white">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-slate-700">📋 Referral Questions</h3>
+          <h3 className="font-semibold text-slate-700">Referral Questions</h3>
           <span className={`text-sm font-medium px-2 py-0.5 rounded ${
             summary.completionPercent === 100 ? 'bg-green-100 text-green-700' :
             summary.completionPercent >= 50 ? 'bg-amber-100 text-amber-700' :
@@ -256,7 +256,7 @@ export function ReferralQuestionTracker({
                 qs.status === 'partially_addressed' ? 'bg-amber-400 text-white' :
                 'bg-slate-300 text-slate-600'
               }`}>
-                {qs.status === 'fully_addressed' ? '✓' :
+                {qs.status === 'fully_addressed' ? 'Complete' :
                  qs.status === 'partially_addressed' ? '◐' : '○'}
               </div>
               
@@ -280,7 +280,7 @@ export function ReferralQuestionTracker({
                   </span>
                   {qs.opinion_count > 0 && (
                     <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">
-                      Opinion ✓
+                      Opinion Complete
                     </span>
                   )}
                 </div>
@@ -310,7 +310,7 @@ export function ReferralQuestionTracker({
       {summary.notAddressed > 0 && (
         <div className="p-3 bg-red-50 border-t border-red-100">
           <p className="text-xs text-red-700">
-            ⚠️ <strong>{summary.notAddressed} question{summary.notAddressed > 1 ? 's' : ''}</strong> not yet addressed. 
+            Warning: <strong>{summary.notAddressed} question{summary.notAddressed > 1 ? 's' : ''}</strong> not yet addressed. 
             Report cannot be finalized until all referral questions have opinions.
           </p>
         </div>

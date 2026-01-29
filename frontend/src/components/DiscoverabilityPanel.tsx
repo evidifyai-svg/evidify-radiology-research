@@ -56,20 +56,20 @@ interface ApiResult<T> {
 // ============================================================================
 
 const ARTIFACT_STYLES: Record<string, { icon: string; label: string }> = {
-  FinalReport: { icon: '📄', label: 'Final Report' },
-  Draft: { icon: '📝', label: 'Draft' },
-  GenerationRun: { icon: '🤖', label: 'Generation Run' },
-  Prompt: { icon: '💬', label: 'AI Prompt' },
-  Response: { icon: '💭', label: 'AI Response' },
-  Annotation: { icon: '📌', label: 'Annotation' },
-  Claim: { icon: '📋', label: 'Claim' },
-  ClaimGraph: { icon: '🕸️', label: 'Claim Graph' },
-  AttackSurface: { icon: '🛡️', label: 'Attack Surface' },
-  Evidence: { icon: '📎', label: 'Evidence' },
-  ChainOfCustody: { icon: '🔗', label: 'Chain of Custody' },
-  AuditLog: { icon: '📊', label: 'Audit Log' },
-  NetworkSession: { icon: '🌐', label: 'Network Session' },
-  OverrideAttestation: { icon: '✍️', label: 'Override Attestation' },
+  FinalReport: { icon: 'Report', label: 'Final Report' },
+  Draft: { icon: 'Draft', label: 'Draft' },
+  GenerationRun: { icon: 'Generation', label: 'Generation Run' },
+  Prompt: { icon: 'Prompt', label: 'AI Prompt' },
+  Response: { icon: 'Response', label: 'AI Response' },
+  Annotation: { icon: 'Note', label: 'Annotation' },
+  Claim: { icon: 'Claim', label: 'Claim' },
+  ClaimGraph: { icon: 'Graph', label: 'Claim Graph' },
+  AttackSurface: { icon: 'Surface', label: 'Attack Surface' },
+  Evidence: { icon: 'Evidence', label: 'Evidence' },
+  ChainOfCustody: { icon: 'Chain', label: 'Chain of Custody' },
+  AuditLog: { icon: 'Audit', label: 'Audit Log' },
+  NetworkSession: { icon: 'Network', label: 'Network Session' },
+  OverrideAttestation: { icon: 'Override', label: 'Override Attestation' },
 };
 
 const DISCOVERABILITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -195,7 +195,7 @@ export function DiscoverabilityPanel({ caseId, reportId, isOpen, onClose }: Disc
               What exists, what can be produced, what was purged
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">Close</button>
         </div>
 
         {/* Provenance Status */}
@@ -296,7 +296,7 @@ export function DiscoverabilityPanel({ caseId, reportId, isOpen, onClose }: Disc
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
-                          {ARTIFACT_STYLES[tombstone.artifact_type]?.icon || '📦'}
+                          {ARTIFACT_STYLES[tombstone.artifact_type]?.icon || 'Artifact'}
                         </span>
                         <span className="font-medium text-slate-700">
                           {ARTIFACT_STYLES[tombstone.artifact_type]?.label || tombstone.artifact_type}
@@ -321,7 +321,7 @@ export function DiscoverabilityPanel({ caseId, reportId, isOpen, onClose }: Disc
               ) : (
                 filteredEntries.map(entry => {
                   const artifactStyle = ARTIFACT_STYLES[entry.artifact_type] || 
-                                        { icon: '📦', label: entry.artifact_type };
+                                        { icon: 'Artifact', label: entry.artifact_type };
                   const discStyle = DISCOVERABILITY_STYLES[entry.discoverability] || 
                                     { bg: 'bg-gray-100', text: 'text-gray-700', label: entry.discoverability };
                   const retStyle = RETENTION_STYLES[entry.retention_status] || 

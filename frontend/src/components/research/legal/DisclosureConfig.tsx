@@ -237,7 +237,7 @@ export const DisclosureDisplay: React.FC<DisclosureDisplayProps> = ({
       
       {config.requireAcknowledgement && acknowledged && (
         <div className="mt-2 text-xs text-green-400">
-          ✓ Acknowledged at {new Date().toLocaleTimeString()}
+          Acknowledged at {new Date().toLocaleTimeString()}
         </div>
       )}
     </div>

@@ -250,22 +250,22 @@ export function ConfidenceLanguagePresets({
           className="text-xs border rounded px-2 py-1 bg-white text-slate-600 cursor-pointer hover:border-purple-400"
           defaultValue=""
         >
-          <option value="" disabled>📝 Insert phrase...</option>
-          <optgroup label="🟢 High Confidence">
+          <option value="" disabled>Insert phrase...</option>
+          <optgroup label="High Confidence">
             {CONFIDENCE_PRESETS.filter(p => p.level === 'high').map(preset => (
               <option key={preset.id} value={preset.id}>
                 {preset.phrase}
               </option>
             ))}
           </optgroup>
-          <optgroup label="🟡 Medium Confidence">
+          <optgroup label="Medium Confidence">
             {CONFIDENCE_PRESETS.filter(p => p.level === 'medium').map(preset => (
               <option key={preset.id} value={preset.id}>
                 {preset.phrase}
               </option>
             ))}
           </optgroup>
-          <optgroup label="🔴 Low Confidence / Limitations">
+          <optgroup label="Low Confidence / Limitations">
             {CONFIDENCE_PRESETS.filter(p => p.level === 'low').map(preset => (
               <option key={preset.id} value={preset.id}>
                 {preset.phrase}
@@ -282,7 +282,7 @@ export function ConfidenceLanguagePresets({
     <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
       <div className="p-3 border-b bg-gradient-to-r from-purple-50 to-white">
         <h3 className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-          📝 Forensic Language Presets
+          Forensic Language Presets
         </h3>
         <p className="text-xs text-slate-500 mt-1">
           Click to insert standard forensic phrasing
@@ -306,8 +306,8 @@ export function ConfidenceLanguagePresets({
               }`}
             >
               {level === 'all' ? 'All' :
-               level === 'high' ? '🟢 High' :
-               level === 'medium' ? '🟡 Med' : '🔴 Low'}
+               level === 'high' ? 'High' :
+               level === 'medium' ? 'Medium' : 'Low'}
             </button>
           ))}
         </div>
@@ -329,7 +329,7 @@ export function ConfidenceLanguagePresets({
         {groupedByLevel.high.length > 0 && (
           <div>
             <p className="text-xs font-medium text-green-700 mb-1 px-1">
-              🟢 High Confidence
+              High Confidence
             </p>
             <div className="flex flex-wrap gap-1">
               {groupedByLevel.high.map(preset => (
@@ -356,7 +356,7 @@ export function ConfidenceLanguagePresets({
         {groupedByLevel.medium.length > 0 && (
           <div>
             <p className="text-xs font-medium text-amber-700 mb-1 px-1">
-              🟡 Medium Confidence
+              Medium Confidence
             </p>
             <div className="flex flex-wrap gap-1">
               {groupedByLevel.medium.map(preset => (
@@ -383,7 +383,7 @@ export function ConfidenceLanguagePresets({
         {groupedByLevel.low.length > 0 && (
           <div>
             <p className="text-xs font-medium text-red-700 mb-1 px-1">
-              🔴 Low Confidence / Limitations
+              Low Confidence / Limitations
             </p>
             <div className="flex flex-wrap gap-1">
               {groupedByLevel.low.map(preset => (
@@ -416,7 +416,7 @@ export function ConfidenceLanguagePresets({
       {/* Usage Guide */}
       <div className="p-2 border-t bg-slate-50">
         <p className="text-xs text-slate-500">
-          💡 <strong>Tip:</strong> Match confidence level to evidence strength. 
+          <strong>Tip:</strong> Match confidence level to evidence strength. 
           Use high confidence only with corroborated facts.
         </p>
       </div>

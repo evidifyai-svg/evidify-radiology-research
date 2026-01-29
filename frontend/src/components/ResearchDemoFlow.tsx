@@ -371,7 +371,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
                 return (
                   <div 
                     key={caseId}
-                    title={`${caseId}${isCalibration ? ' (Calibration)' : ''}${isCompleted ? ' ✓ Complete' : isCurrent ? ' ← Current' : ' Pending'}`}
+                    title={`${caseId}${isCalibration ? ' (Calibration)' : ''}${isCompleted ? ' Complete' : isCurrent ? ' Current' : ' Pending'}`}
                     style={{
                       padding: '4px 8px',
                       borderRadius: '4px',
@@ -1611,8 +1611,8 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
             }}
           >
             {currentStep === 'TLX' || (currentStep === 'COMPREHENSION' && !includeTLX) 
-              ? '✓ Complete Case' 
-              : 'Next →'}
+              ? 'Complete Case' 
+              : 'Next'}
           </button>
         </div>
       </div>
@@ -1673,7 +1673,7 @@ const KeyboardHelpModal: React.FC<{ isVisible: boolean; onClose: () => void }> =
           marginBottom: '20px',
         }}>
           <h2 style={{ color: 'white', margin: 0, fontSize: '18px' }}>
-            ⌨️ Keyboard Shortcuts
+            Keyboard Shortcuts
           </h2>
           <button
             onClick={onClose}
@@ -2090,7 +2090,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
           }}>
             <strong style={{ color: 'white', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <Scale size={12} />
-              Multi-Site Ready:
+              Multi-site ready:
             </strong> This pack includes site-specific configuration templates. 
             Each collaborating institution can generate their own session IDs and seeds while maintaining 
             protocol fidelity for federated analysis.
@@ -2143,7 +2143,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
                   <CheckCircle size={24} color="#4ade80" />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ color: 'white', fontWeight: 700 }}>Study_Pack_BRPLL_MAMMO_v1.0.zip</div>
-                    <div style={{ color: '#86efac', fontSize: '12px' }}>Ready for download (2.4 MB)</div>
+                    <div style={{ color: '#86efac', fontSize: '12px' }}>Available for download (2.4 MB)</div>
                   </div>
                 </div>
                 <div style={{ color: '#64748b', fontSize: '11px' }}>
@@ -2176,7 +2176,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ IRB-Ready
+              IRB ready
             </span>
             <span style={{ 
               padding: '4px 10px', 
@@ -2186,7 +2186,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ MRMC-Compatible
+              MRMC compatible
             </span>
           </div>
         </div>
@@ -2258,7 +2258,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '14px'
             }}
           >
-            ✕ Close
+            Close
           </button>
         </div>
         
@@ -2391,19 +2391,19 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
             <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '8px', border: '1px solid #334155' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}>X</span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Pre-AI time &lt; 3 seconds</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}>X</span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Failed comprehension check 3+ times</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}>X</span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Total case time &gt; 10 minutes</span>
                 </div>
                 <div style={{ padding: '10px', backgroundColor: '#1e293b', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#ef4444' }}>✕</span>
+                  <span style={{ color: '#ef4444' }}>X</span>
                   <span style={{ color: '#e2e8f0', fontSize: '12px' }}>Incomplete calibration trials</span>
                 </div>
               </div>
@@ -2444,7 +2444,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ Pre-registered
+              Pre-registered
             </span>
             <span style={{ 
               padding: '4px 10px', 
@@ -2454,7 +2454,7 @@ const StudyDesignPanel: React.FC<StudyDesignPanelProps> = ({ isVisible, onClose 
               fontSize: '10px',
               fontWeight: 600
             }}>
-              ✓ Analysis Plan Locked
+              Analysis Plan Locked
             </span>
           </div>
         </div>
@@ -2948,7 +2948,7 @@ const AutomationBiasRiskMeter: React.FC<RiskMeterProps> = ({
           alignItems: 'center',
           gap: '8px'
         }}>
-          ⚠️ AUTOMATION BIAS RISK
+          Automation bias risk
           <span style={{ 
             backgroundColor: riskBg, 
             color: riskColor, 
@@ -5029,7 +5029,7 @@ setAiAgreementStreak(prev => prev + 1);
               <div style={{ display: 'flex', gap: '16px' }}>
                 <button onClick={() => proceedToProbes(false)} disabled={!state.deviationRationale.trim()}
                   style={{ flex: 1, padding: '16px', backgroundColor: state.deviationRationale.trim() ? '#22c55e' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.deviationRationale.trim() ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600 }}>
-                  ✓ Submit with Documentation
+                  Submit with Documentation
                 </button>
                 <button onClick={() => proceedToProbes(true)}
                   style={{ padding: '16px 24px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
@@ -5127,7 +5127,7 @@ setAiAgreementStreak(prev => prev + 1);
                 </div>
               </div>
               <button onClick={() => nextCase()} style={{ width: '100%', padding: '16px', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
-                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total} →` : 'Complete Study →'}
+                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total}` : 'Complete Study'}
               </button>
             </div>
           )}
@@ -5218,7 +5218,7 @@ setAiAgreementStreak(prev => prev + 1);
                   fontWeight: 600 
                 }}
               >
-                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total} →` : 'Complete Study →'}
+                {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total}` : 'Complete Study'}
               </button>
             </div>
           )}
@@ -5436,7 +5436,7 @@ setAiAgreementStreak(prev => prev + 1);
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>
                       <div style={{ fontWeight: 'bold', fontSize: '18px', color: 'white' }}>
-                        {tamperDemoActive ? 'TAMPERED PACKET DETECTED' : 'Expert Witness Packet Ready'}
+                        {tamperDemoActive ? 'Tampered packet detected' : 'Expert Witness Packet Available'}
                       </div>
                       <div style={{ color: state.verifierResult === 'PASS' ? '#86efac' : '#fca5a5' }}>
                         Verifier: {state.verifierResult}

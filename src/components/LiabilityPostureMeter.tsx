@@ -267,7 +267,7 @@ const LiabilityPostureMeter: React.FC<LiabilityPostureMeterProps> = ({ inputs })
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     }}>
       <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        📊 Liability Posture Analysis
+        Liability Posture Analysis
         <span style={{ 
           fontSize: '10px', 
           backgroundColor: '#e2e8f0', 
@@ -399,8 +399,8 @@ const LiabilityPostureMeter: React.FC<LiabilityPostureMeterProps> = ({ inputs })
                 fontSize: '16px',
                 width: '24px',
               }}>
-                {factor.impact === 'positive' ? '✓' : 
-                 factor.impact === 'negative' ? '✗' : '–'}
+                {factor.impact === 'positive' ? 'Positive' : 
+                 factor.impact === 'negative' ? 'Negative' : 'Neutral'}
               </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: '500' }}>{factor.name}</div>
