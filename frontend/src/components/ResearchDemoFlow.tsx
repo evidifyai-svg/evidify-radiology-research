@@ -3526,22 +3526,41 @@ export const ResearchDemoFlow: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [state.caseStartTime, state.step]);
+// Progress info (derived from queue)
+const progress = useMemo(() => {
+  if (!state.caseQueue) return null;
+  return getQueueProgress(state.caseQueue);
+}, [state.caseQueue]);
 
-  // Progress info
-  const progress = useMemo(() => {
-    if (!state.caseQueue) return null;
-    return getQueueProgress(state.caseQueue);
-  }, [state.caseQueue]);
+  // --- CASE_LOADED: canonical single-source emission (prevents duplicates) ---
+  const lastLoggedCaseIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    const caseId = state.currentCase?.caseId ?? null;
+    if (!eventLoggerRef.current) return;
+    if (!caseId) return;
+
+    // Only log CASE_LOADED once per caseId
+    if (lastLoggedCaseIdRef.current === caseId) return;
+    lastLoggedCaseIdRef.current = caseId;
+
+    const isCalibration = (state.currentCase as any)?.isCalibration ?? false;
+
+    void eventLoggerRef.current.logCaseLoaded({ caseId, isCalibration });
+  }, [state.currentCase?.caseId]);
+  // --- end CASE_LOADED canonical emission ---
+
+  // Current case (derived from queue)
   const currentCase = useMemo(() => {
     if (!state.caseQueue) return null;
     return getCurrentCase(state.caseQueue);
   }, [state.caseQueue]);
-// --- AI helper (compat: old aiResult vs newer case fields) ---
-const aiSuggestedBirads =
-  (currentCase as any)?.aiResult?.birads ??
-  (currentCase as any)?.aiBirads ??
-  4;
+
+  // --- AI helper (compat: old aiResult vs newer case fields) ---
+  const aiSuggestedBirads =
+    (currentCase as any)?.aiResult?.birads ??
+    (currentCase as any)?.aiBirads ??
+    4;
 
 const aiSuggestedConfidence =
   (currentCase as any)?.aiResult?.confidence ??
@@ -3673,7 +3692,6 @@ const counterbalanceArm = (() => {
     });
     
     if (firstCase) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: firstCase.caseId, isCalibration: firstCase.isCalibration });
       if (!firstCase.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(firstCase.caseId, 'PRE_AI');
       }
@@ -3725,7 +3743,6 @@ const counterbalanceArm = (() => {
     const nextCase = getCurrentCase(newQueue);
     
     if (nextCase) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCase.caseId, isCalibration: nextCase.isCalibration });
       if (!nextCase.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(nextCase.caseId, 'PRE_AI');
       }
@@ -3964,7 +3981,6 @@ setAiAgreementStreak(prev => prev + 1);
     const nextCaseDef = getCurrentCase(newQueue);
     
     if (nextCaseDef) {
-      await eventLoggerRef.current!.addEvent('CASE_LOADED', { caseId: nextCaseDef.caseId, isCalibration: nextCaseDef.isCalibration });
       if (!nextCaseDef.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(nextCaseDef.caseId, 'PRE_AI');
       }
