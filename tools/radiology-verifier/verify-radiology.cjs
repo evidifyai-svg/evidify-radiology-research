@@ -34,6 +34,46 @@ function sha256Hex(s) {
   return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 }
 
+function parseCsvRow(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        values.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  values.push(current);
+  return values;
+}
+
+function parseCsv(content) {
+  const lines = content.split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) return { headers: [], rows: [] };
+  const headers = parseCsvRow(lines[0]);
+  const rows = lines.slice(1).map(line => parseCsvRow(line));
+  return { headers, rows };
+}
+
 function main() {
   const args = process.argv.slice(2);
   const jsonMode = args.includes('--json');
@@ -174,6 +214,82 @@ function main() {
       }
     } catch (e) {
       fail(`Ledger parse/verify error: ${e.message}`);
+    }
+  }
+
+  // Derived metrics sanity checks
+  const metricsPath = path.join(pack, 'derived_metrics.csv');
+  if (exists(metricsPath)) {
+    try {
+      const metricsCsv = fs.readFileSync(metricsPath, 'utf8');
+      const { headers, rows } = parseCsv(metricsCsv);
+      const headerIndex = new Map(headers.map((h, i) => [h, i]));
+      const durationHeaders = headers.filter(h => /ms$/i.test(h));
+
+      const eventsRaw = fs.readFileSync(path.join(pack, 'events.jsonl'), 'utf8');
+      const events = eventsRaw.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+      const completedCaseIds = new Set(
+        events
+          .filter(e => e.type === 'CASE_COMPLETED' || e.type === 'FINAL_ASSESSMENT')
+          .map(e => e.payload?.caseId)
+          .filter(Boolean)
+      );
+
+      let ok = true;
+      const issues = [];
+
+      rows.forEach((row, rowIndex) => {
+        durationHeaders.forEach(header => {
+          const idx = headerIndex.get(header);
+          if (idx === undefined) return;
+          const raw = row[idx];
+          if (raw === undefined || raw === '' || raw === 'NA') return;
+          if (raw === 'NaN') {
+            ok = false;
+            issues.push({ row: rowIndex + 2, field: header, issue: 'NaN' });
+            return;
+          }
+          const num = Number(raw);
+          if (!Number.isFinite(num)) {
+            ok = false;
+            issues.push({ row: rowIndex + 2, field: header, issue: 'NaN' });
+            return;
+          }
+          if (num > 1e9) {
+            ok = false;
+            issues.push({ row: rowIndex + 2, field: header, issue: 'EPOCH_LIKE', value: num });
+          }
+        });
+      });
+
+      const caseIdIdx = headerIndex.get('caseId');
+      const totalTimeIdx = headerIndex.get('totalTimeMs');
+      if (caseIdIdx !== undefined && totalTimeIdx !== undefined) {
+        const totalByCase = new Map();
+        rows.forEach(row => {
+          const caseId = row[caseIdIdx];
+          if (!caseId) return;
+          const raw = row[totalTimeIdx];
+          totalByCase.set(caseId, raw);
+        });
+        for (const caseId of completedCaseIds) {
+          const raw = totalByCase.get(caseId);
+          if (raw === undefined || raw === '' || raw === 'NA') {
+            warn(`Missing totalTimeMs for completed case ${caseId}`);
+            continue;
+          }
+          const num = Number(raw);
+          if (Number.isFinite(num) && num === 0) {
+            ok = false;
+            issues.push({ field: 'totalTimeMs', caseId, issue: 'ZERO_DURATION' });
+          }
+        }
+      }
+
+      out.checks.derived_metrics = { pass: ok, issues };
+      if (!ok) fail('Derived metrics sanity checks failed');
+    } catch (e) {
+      fail(`Derived metrics check error: ${e.message}`);
     }
   }
 

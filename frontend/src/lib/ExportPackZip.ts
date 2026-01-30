@@ -105,7 +105,7 @@ function computeReadEpisodeMetricsFromEvents(
   warnLabel: string
 ): { preAiReadMs: number | null; postAiReadMs: number | null; totalReadMs: number | null } {
   if (isCalibration) {
-    return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
+    return { preAiReadMs: 0, postAiReadMs: 0, totalReadMs: 0 };
   }
 
   const warn = (message: string) => {
@@ -148,12 +148,9 @@ function computeReadEpisodeMetricsFromEvents(
     return Number.isFinite(duration) && duration >= 0 ? duration : null;
   };
 
-  const preAiReadMs = computeEpisodeMs('PRE_AI');
-  const postAiReadMs = computeEpisodeMs('POST_AI');
-  const totalReadMs =
-    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
-      ? preAiReadMs + postAiReadMs
-      : null;
+  const preAiReadMs = computeEpisodeMs('PRE_AI') ?? 0;
+  const postAiReadMs = computeEpisodeMs('POST_AI') ?? 0;
+  const totalReadMs = preAiReadMs + postAiReadMs;
 
   return { preAiReadMs, postAiReadMs, totalReadMs };
 }
@@ -563,13 +560,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
     const headers =
-      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
+      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,aiExposureMs,totalTimeMs,timeToLockMs,lockToRevealMs,revealToFinalMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
     const rows = caseIds.map(caseId => {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
       const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
       const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
       const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
+      const caseCompleted = caseEvents.find(e => e.type === 'CASE_COMPLETED');
       const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
       const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
 
@@ -600,6 +598,30 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           ? comprehensionResponseMs
           : null;
 
+      const durationMs = (startEvent?: TrialEvent, endEvent?: TrialEvent): number | null => {
+        if (!startEvent || !endEvent) return null;
+        const startMs = new Date(startEvent.timestamp).getTime();
+        const endMs = new Date(endEvent.timestamp).getTime();
+        const duration = endMs - startMs;
+        return Number.isFinite(duration) && duration >= 0 ? duration : null;
+      };
+
+      const timeToLockCandidate = (firstImpression?.payload as any)?.timeToLockMs;
+      const timeToLockMs =
+        typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
+          ? timeToLockCandidate
+          : durationMs(caseLoaded, firstImpression);
+      const aiExposureMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
+      const rawTotalTimeMs =
+        durationMs(caseLoaded, caseCompleted) ??
+        durationMs(caseLoaded, finalAssessment);
+      const totalTimeMs =
+        typeof rawTotalTimeMs === 'number'
+          ? Math.max(rawTotalTimeMs, 1)
+          : 0;
+      const lockToRevealMs = durationMs(firstImpression, aiRevealed) ?? 0;
+      const revealToFinalMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
+
       const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
       const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
         caseEvents,
@@ -622,6 +644,11 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         preAiReadMs,
         postAiReadMs,
         totalReadMs,
+        aiExposureMs,
+        totalTimeMs,
+        timeToLockMs,
+        lockToRevealMs,
+        revealToFinalMs,
         comprehensionItemId,
         comprehensionAnswer,
         comprehensionCorrect,
@@ -769,10 +796,14 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ai_consistent_change**: TRUE if change moved toward AI suggestion
 
 ### Timing Metrics
+- **timeToLockMs**: Case load → first impression lock duration
+- **lockToRevealMs**: First impression lock → AI reveal duration
+- **revealToFinalMs**: AI reveal → final assessment duration
 - **preAiReadMs**: PRE_AI read episode duration
 - **postAiReadMs**: POST_AI read episode duration
-- **totalReadMs**: Sum of PRE_AI + POST_AI durations (when both exist)
-- **totalTimeMs**: Total time on case
+- **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
+- **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
+- **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
 - **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness

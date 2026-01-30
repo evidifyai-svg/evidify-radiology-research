@@ -409,9 +409,11 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
   computeDerivedMetrics(): DerivedMetrics {
     // Find key events
     const sessionStarted = this.events.find(e => e.type === 'SESSION_STARTED');
+    const caseLoaded = this.events.find(e => e.type === 'CASE_LOADED');
     const firstImpression = this.events.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = this.events.find(e => e.type === 'AI_REVEALED');
     const finalAssessment = this.events.find(e => e.type === 'FINAL_ASSESSMENT');
+    const caseCompleted = this.events.find(e => e.type === 'CASE_COMPLETED');
     const deviationSubmitted = this.events.find(e => e.type === 'DEVIATION_SUBMITTED');
     const deviationSkipped = this.events.find(e => e.type === 'DEVIATION_SKIPPED');
     const comprehensionResponse = this.events.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
@@ -454,14 +456,23 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
       comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
 
     // Timing
-    const sessionStart = sessionStarted ? new Date(sessionStarted.timestamp).getTime() : 0;
-    const lockTime = firstImpression ? new Date(firstImpression.timestamp).getTime() : sessionStart;
-    const revealTime = aiRevealed ? new Date(aiRevealed.timestamp).getTime() : lockTime;
-    const finalTime = finalAssessment ? new Date(finalAssessment.timestamp).getTime() : revealTime;
+    const durationMs = (startEvent?: TrialEvent, endEvent?: TrialEvent): number | null => {
+      if (!startEvent || !endEvent) return null;
+      const startMs = new Date(startEvent.timestamp).getTime();
+      const endMs = new Date(endEvent.timestamp).getTime();
+      const duration = endMs - startMs;
+      return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    };
 
-    const totalTimeMs = finalTime - sessionStart;
-    const lockToRevealMs = revealTime - lockTime;
-    const revealToFinalMs = finalTime - revealTime;
+    const rawTotalTimeMs =
+      durationMs(caseLoaded, caseCompleted) ??
+      durationMs(caseLoaded, finalAssessment);
+    const totalTimeMs =
+      typeof rawTotalTimeMs === 'number'
+        ? Math.max(rawTotalTimeMs, 1)
+        : durationMs(sessionStarted, finalAssessment) ?? 0;
+    const lockToRevealMs = durationMs(firstImpression, aiRevealed) ?? 0;
+    const revealToFinalMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
 
     return {
       sessionId: this.config.sessionId,
@@ -773,7 +784,7 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | comprehensionCorrect | bool/null | FDR/FOR comprehension check result |
 | comprehensionAnswer | string/null | Reader answer to comprehension probe |
 | comprehensionItemId | string/null | Comprehension item identifier |
-| totalTimeMs | int | Session duration in milliseconds |
+| totalTimeMs | int | CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED) |
 | lockToRevealMs | int | Time from lock to AI reveal |
 | revealToFinalMs | int | Time from AI reveal to final |
 | revealTiming | string | human_first / concurrent / ai_first |
