@@ -151,9 +151,14 @@ ELSE:
 
 | Variable | Type | Unit | Description |
 |----------|------|------|-------------|
-| `preAiTimeMs` | integer | ms | Time from case load to first impression lock |
-| `postAiTimeMs` | integer | ms | Time from AI reveal to final assessment |
-| `totalTimeMs` | integer | ms | Total time on case |
+| `timeToLockMs` | integer | ms | Time from case load to first impression lock |
+| `lockToRevealMs` | integer | ms | Time from initial lock to AI reveal |
+| `revealToFinalMs` | integer | ms | Time from AI reveal to final assessment |
+| `preAiReadMs` | integer | ms | PRE_AI read episode duration |
+| `postAiReadMs` | integer | ms | POST_AI read episode duration |
+| `totalReadMs` | integer | ms | `preAiReadMs + postAiReadMs` (missing parts treated as 0) |
+| `aiExposureMs` | integer | ms | Duration from AI reveal to final assessment (AI_FIRST/concurrent use reveal → final) |
+| `totalTimeMs` | integer | ms | Total time on case: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED) |
 
 ### Documentation Variables
 

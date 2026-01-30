@@ -122,7 +122,7 @@ const computeReadEpisodeMetrics = (
   isCalibration: boolean
 ): { preAiReadMs?: number; postAiReadMs?: number; totalReadMs?: number } => {
   if (isCalibration) {
-    return { preAiReadMs: undefined, postAiReadMs: undefined, totalReadMs: undefined };
+    return { preAiReadMs: 0, postAiReadMs: 0, totalReadMs: 0 };
   }
 
   const warn = (message: string) => {
@@ -173,12 +173,9 @@ const computeReadEpisodeMetrics = (
     return duration;
   };
 
-  const preAiReadMs = computeEpisodeMs('PRE_AI');
-  const postAiReadMs = computeEpisodeMs('POST_AI');
-  const totalReadMs =
-    typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
-      ? preAiReadMs + postAiReadMs
-      : undefined;
+  const preAiReadMs = computeEpisodeMs('PRE_AI') ?? 0;
+  const postAiReadMs = computeEpisodeMs('POST_AI') ?? 0;
+  const totalReadMs = preAiReadMs + postAiReadMs;
 
   return { preAiReadMs, postAiReadMs, totalReadMs };
 };
@@ -218,20 +215,35 @@ const computeDerivedMetricsFromEvents = (
   const overrideCount = aiBirads != null && finalBirads !== aiBirads ? 1 : 0;
   const rationaleProvided = deviationSubmitted.some(event => (event.payload?.rationale ?? '').trim().length > 0);
 
-  const timeToLockMs = firstImpression?.payload?.timeToLockMs ?? null;
+  const durationMs = (startEvent?: any, endEvent?: any): number | null => {
+    if (!startEvent || !endEvent) return null;
+    const startMs = new Date(startEvent.timestamp).getTime();
+    const endMs = new Date(endEvent.timestamp).getTime();
+    const duration = endMs - startMs;
+    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+  };
+
+  const timeToLockCandidate = firstImpression?.payload?.timeToLockMs;
+  const timeToLockMs =
+    typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
+      ? timeToLockCandidate
+      : durationMs(caseLoaded, firstImpression);
   const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetrics(
     caseEvents,
     caseId,
     isCalibration
   );
 
-  const aiExposureMs = postAiReadMs ?? undefined;
+  const aiExposureMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
 
-  const totalTimeMs = caseCompleted?.payload?.totalTimeMs ?? 0;
-  const lockToRevealMs =
-    firstImpression && aiRevealed
-      ? new Date(aiRevealed.timestamp).getTime() - new Date(firstImpression.timestamp).getTime()
+  const rawTotalTimeMs =
+    durationMs(caseLoaded, caseCompleted) ??
+    durationMs(caseLoaded, finalAssessment);
+  const totalTimeMs =
+    typeof rawTotalTimeMs === 'number'
+      ? Math.max(rawTotalTimeMs, 1)
       : 0;
+  const lockToRevealMs = durationMs(firstImpression, aiRevealed) ?? 0;
   const comprehensionResponseMs = comprehensionEvent && disclosurePresented
     ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
     : null;
@@ -287,7 +299,7 @@ const computeDerivedMetricsFromEvents = (
     totalTimeMs,
     timeToLockMs,
     lockToRevealMs,
-    revealToFinalMs: aiExposureMs ?? 0,
+    revealToFinalMs: durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0,
     revealTiming: condition?.condition ?? 'UNKNOWN',
     disclosureFormat: condition?.disclosureFormat ?? 'UNKNOWN',
   };
