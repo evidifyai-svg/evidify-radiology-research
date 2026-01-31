@@ -18,10 +18,13 @@ import {
   Brain,
   BookOpen,
   CheckCircle,
+  CheckSquare,
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  Clipboard,
   Clock,
+  Copy,
   Download,
   Eye,
   FileText,
@@ -4396,6 +4399,323 @@ const ErrorContextNote: React.FC = () => (
 );
 
 // ============================================================================
+// DEMO SCRIPT PANEL - Interactive feature checklist for guided demos
+// ============================================================================
+interface DemoScriptPanelProps {
+  isVisible: boolean;
+  onClose: () => void;
+}
+
+interface DemoFeature {
+  id: string;
+  category: string;
+  label: string;
+  description: string;
+  stakeholder?: string;
+}
+
+const DEMO_FEATURES: DemoFeature[] = [
+  // Core Research Features
+  { id: 'study-control', category: 'Study Infrastructure', label: 'Study Control Surface', description: 'Protocol, condition, seed, case queue visibility' },
+  { id: 'randomization', category: 'Study Infrastructure', label: 'Randomized Condition Assignment', description: 'HUMAN_FIRST / AI_FIRST / CONCURRENT conditions' },
+  { id: 'counterbalancing', category: 'Study Infrastructure', label: 'Latin Square Counterbalancing', description: '4x4 design with ARM assignment' },
+  { id: 'mammogram-viewer', category: 'Core Workflow', label: 'Dual-View Mammogram Display', description: 'L-CC, L-MLO, R-CC, R-MLO with zoom/pan' },
+  { id: 'first-impression', category: 'Core Workflow', label: 'First Impression Lock', description: 'Immutable BI-RADS assessment before AI' },
+  { id: 'ai-reveal', category: 'Core Workflow', label: 'AI Revelation with FDR/FOR', description: 'Error rate transparency disclosure' },
+  { id: 'deviation-gate', category: 'Core Workflow', label: 'Deviation Documentation', description: 'Mandatory rationale for assessment changes' },
+  { id: 'comprehension', category: 'Core Workflow', label: 'Comprehension Check', description: 'FDR/FOR understanding verification' },
+
+  // Holy Shit Features - Grayson
+  { id: 'validity-hri', category: 'Validity Panel', label: 'HRI - Hasty Review Index', description: 'Pre-AI time vs session median', stakeholder: 'Grayson' },
+  { id: 'validity-cpi', category: 'Validity Panel', label: 'CPI - Conformity Pattern Index', description: 'AI agreement rate tracking', stakeholder: 'Grayson' },
+  { id: 'validity-dai', category: 'Validity Panel', label: 'DAI - Documentation Avoidance', description: 'Override documentation rate', stakeholder: 'Grayson' },
+  { id: 'validity-eng', category: 'Validity Panel', label: 'ENG - Engagement Index', description: 'Viewer interactions + time', stakeholder: 'Grayson' },
+  { id: 'interpretive-summary', category: 'Validity Panel', label: 'Interpretive Summary', description: 'Auto-generated clinical language', stakeholder: 'Grayson' },
+
+  // Holy Shit Features - Brian
+  { id: 'liability-risk', category: 'Liability Panel', label: 'Liability Risk Classification', description: 'Baird 22-condition framework', stakeholder: 'Brian' },
+  { id: 'cross-exam', category: 'Liability Panel', label: 'Cross-Examination Vulnerability', description: 'Attack vectors and defensive strengths', stakeholder: 'Brian' },
+  { id: 'hash-chain-viz', category: 'Liability Panel', label: 'Hash Chain Visualization', description: '4-block linked diagram', stakeholder: 'Brian' },
+
+  // Holy Shit Features - Mike Bruno
+  { id: 'reader-metrics', category: 'Reader Behavior', label: 'Reader Behavior Metrics', description: 'Time context and interaction counts', stakeholder: 'Mike Bruno' },
+  { id: 'eye-tracking-ready', category: 'Reader Behavior', label: 'Eye Tracking Ready Badge', description: 'Integration status indicator', stakeholder: 'Mike Bruno' },
+  { id: 'error-context', category: 'Reader Behavior', label: 'Error Context Note', description: 'Wolf et al. 3-4% miss rate', stakeholder: 'Mike Bruno' },
+
+  // Holy Shit Features - Mike Bernstein
+  { id: 'study-config', category: 'Study Config', label: 'Study Configuration Panel', description: 'Disclosure, randomization, comprehension', stakeholder: 'Mike Bernstein' },
+  { id: 'intervention-mode', category: 'Study Config', label: 'Intervention Mode Toggle', description: 'Show/hide participant text', stakeholder: 'Mike Bernstein' },
+  { id: 'export-preview', category: 'Study Config', label: 'Export Preview Panel', description: 'Metrics count, events, verification', stakeholder: 'Mike Bernstein' },
+
+  // Export & Verification
+  { id: 'export-events', category: 'Export System', label: 'events.jsonl Export', description: 'SHA-256 hash chain integrity' },
+  { id: 'export-metrics', category: 'Export System', label: 'derived_metrics.csv', description: 'Computed trial metrics' },
+  { id: 'export-ledger', category: 'Export System', label: 'ledger.json', description: 'Hash-chained audit trail' },
+  { id: 'verifier-tool', category: 'Export System', label: 'External Verifier', description: 'Independent verification tool' },
+];
+
+const DemoScriptPanel: React.FC<DemoScriptPanelProps> = ({ isVisible, onClose }) => {
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [urlCopied, setUrlCopied] = useState(false);
+
+  if (!isVisible) return null;
+
+  const toggleItem = (id: string) => {
+    setCheckedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const copyDemoUrl = async () => {
+    const url = 'http://127.0.0.1:5173/research-demo.html';
+    try {
+      await navigator.clipboard.writeText(url);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
+    } catch (e) {
+      console.error('Failed to copy URL:', e);
+    }
+  };
+
+  const categories = [...new Set(DEMO_FEATURES.map(f => f.category))];
+  const progress = (checkedItems.size / DEMO_FEATURES.length) * 100;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000,
+      padding: '20px',
+    }} onClick={onClose}>
+      <div style={{
+        backgroundColor: '#1e293b',
+        borderRadius: '16px',
+        padding: '24px',
+        maxWidth: '700px',
+        width: '100%',
+        maxHeight: '85vh',
+        overflow: 'auto',
+        border: '2px solid #3b82f6',
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}>
+          <div>
+            <h2 style={{ color: 'white', margin: 0, fontSize: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Clipboard size={20} />
+              Demo Script - Feature Checklist
+            </h2>
+            <p style={{ color: '#94a3b8', margin: '4px 0 0', fontSize: '12px' }}>
+              Interactive guide to all platform features
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '24px',
+              cursor: 'pointer',
+              padding: '4px',
+            }}
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ color: '#94a3b8', fontSize: '12px' }}>
+              Progress: {checkedItems.size} / {DEMO_FEATURES.length} features
+            </span>
+            <span style={{ color: progress === 100 ? '#22c55e' : '#60a5fa', fontSize: '12px', fontWeight: 600 }}>
+              {progress.toFixed(0)}%
+            </span>
+          </div>
+          <div style={{
+            height: '8px',
+            backgroundColor: '#334155',
+            borderRadius: '4px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${progress}%`,
+              backgroundColor: progress === 100 ? '#22c55e' : '#3b82f6',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
+        </div>
+
+        {/* Copy URL Button */}
+        <div style={{ marginBottom: '20px' }}>
+          <button
+            onClick={copyDemoUrl}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: urlCopied ? '#166534' : '#1e40af',
+              border: urlCopied ? '2px solid #22c55e' : '2px solid #3b82f6',
+              borderRadius: '8px',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s',
+            }}
+          >
+            {urlCopied ? <CheckCircle size={18} /> : <Copy size={18} />}
+            {urlCopied ? 'URL Copied!' : 'Copy Demo URL'}
+            <span style={{
+              fontSize: '11px',
+              opacity: 0.8,
+              fontFamily: 'monospace',
+              marginLeft: '8px',
+            }}>
+              http://127.0.0.1:5173/research-demo.html
+            </span>
+          </button>
+        </div>
+
+        {/* Feature Checklist */}
+        {categories.map(category => (
+          <div key={category} style={{ marginBottom: '20px' }}>
+            <div style={{
+              color: '#60a5fa',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              marginBottom: '10px',
+              padding: '6px 12px',
+              backgroundColor: '#1e3a5f',
+              borderRadius: '6px',
+              display: 'inline-block',
+            }}>
+              {category}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {DEMO_FEATURES.filter(f => f.category === category).map(feature => (
+                <div
+                  key={feature.id}
+                  onClick={() => toggleItem(feature.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '10px 12px',
+                    backgroundColor: checkedItems.has(feature.id) ? '#166534' : '#0f172a',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: checkedItems.has(feature.id) ? '1px solid #22c55e' : '1px solid #334155',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    flexShrink: 0,
+                    borderRadius: '4px',
+                    border: `2px solid ${checkedItems.has(feature.id) ? '#22c55e' : '#64748b'}`,
+                    backgroundColor: checkedItems.has(feature.id) ? '#22c55e' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {checkedItems.has(feature.id) && <CheckCircle size={14} color="white" />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      color: 'white',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}>
+                      {feature.label}
+                      {feature.stakeholder && (
+                        <span style={{
+                          fontSize: '9px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: '#5b21b6',
+                          color: '#c4b5fd',
+                        }}>
+                          {feature.stakeholder}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
+                      {feature.description}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Reset Button */}
+        <div style={{
+          marginTop: '20px',
+          paddingTop: '16px',
+          borderTop: '1px solid #334155',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <button
+            onClick={() => setCheckedItems(new Set())}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'transparent',
+              border: '1px solid #64748b',
+              borderRadius: '6px',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <RefreshCw size={14} />
+            Reset Checklist
+          </button>
+          <div style={{ color: '#64748b', fontSize: '11px' }}>
+            Toggle Researcher Mode + Advanced Panels to see all features
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 export const ResearchDemoFlow: React.FC = () => {
@@ -4466,6 +4786,8 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
   const [isInterventionMode, setIsInterventionMode] = useState(false);
+  const [showDemoScript, setShowDemoScript] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
@@ -5287,6 +5609,18 @@ setAiAgreementStreak(prev => prev + 1);
     setState(s => ({ ...s, verifierResult: 'PASS' }));
   }, []);
 
+  // Copy demo URL helper
+  const copyDemoUrl = useCallback(async () => {
+    const url = 'http://127.0.0.1:5173/research-demo.html';
+    try {
+      await navigator.clipboard.writeText(url);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
+    } catch (e) {
+      console.error('Failed to copy URL:', e);
+    }
+  }, []);
+
   // ADDA calculation helper
   const computeADDA = useCallback(() => {
     if (!state.currentCase || state.initialBirads === null) return null;
@@ -5472,6 +5806,46 @@ setAiAgreementStreak(prev => prev + 1);
                   >
                     <Upload size={12} />
                     Study Pack
+                  </button>
+                  <button
+                    onClick={() => setShowDemoScript(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'rgba(249, 115, 22, 0.3)',
+                      border: '1px solid rgba(251, 146, 60, 0.5)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Clipboard size={12} />
+                    Demo Script
+                  </button>
+                  <button
+                    onClick={copyDemoUrl}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: urlCopied ? 'rgba(34, 197, 94, 0.4)' : 'rgba(168, 85, 247, 0.3)',
+                      border: urlCopied ? '1px solid rgba(134, 239, 172, 0.6)' : '1px solid rgba(192, 132, 252, 0.5)',
+                      borderRadius: '8px',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s',
+                    }}
+                    title="Copy http://127.0.0.1:5173/research-demo.html"
+                  >
+                    {urlCopied ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    {urlCopied ? 'Copied!' : 'Copy URL'}
                   </button>
                 </>
               )}
@@ -7137,6 +7511,12 @@ setAiAgreementStreak(prev => prev + 1);
       <KeyboardHelpModal
         isVisible={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
+      />
+
+      {/* Demo Script Panel */}
+      <DemoScriptPanel
+        isVisible={showDemoScript}
+        onClose={() => setShowDemoScript(false)}
       />
 
       {/* Post-Case Probes Modal (Instrumentation Isolation) */}
