@@ -50,6 +50,7 @@ import { ExportPackZip, DerivedMetrics, ExportManifest, VerifierOutput } from '.
 import { EventLogger } from '../lib/event_logger';
 import { generateSeed, assignCondition, manualCondition, ConditionAssignment, RevealCondition } from '../lib/condition_matrix';
 import { CaseDefinition, CaseQueueState, generateCaseQueue, getCurrentCase, advanceQueue, isQueueComplete, getQueueProgress } from '../lib/case_queue';
+import { IPProtectionFooter, IPProtectionSplash } from './IPProtection';
 
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
@@ -4097,7 +4098,7 @@ setAiAgreementStreak(prev => prev + 1);
 
   // ============== RENDER ==============
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '20px', paddingBottom: '60px', fontFamily: 'system-ui, sans-serif' }}>
       {/* Study Control Surface - Left Panel (Researcher Mode Only) */}
       {state.condition && isResearcher && (
         <StudyControlSurface
@@ -5906,6 +5907,10 @@ setAiAgreementStreak(prev => prev + 1);
           viewMode={viewMode}
         />
       )}
+
+      {/* IP Protection Components */}
+      <IPProtectionSplash />
+      <IPProtectionFooter />
     </div>
   );
 };

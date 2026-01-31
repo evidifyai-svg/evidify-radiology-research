@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
-    sourcemap: !!process.env.TAURI_DEBUG,
+    sourcemap: false, // Disabled for IP protection - no source maps in production
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
