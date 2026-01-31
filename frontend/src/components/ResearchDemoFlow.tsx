@@ -1520,14 +1520,17 @@ const ProbesBatchModal: React.FC<ProbesBatchModalProps> = ({
   
   if (!isVisible) return null;
   
-  // Comprehension check options
+  // Comprehension check options - tests understanding of FDR/FOR error rate semantics
+  // Note: The correct answer is 'fdr_high' because higher FDR means more false positives (false alarms)
+  // This is invariant regardless of the actual FDR percentage shown
   const comprehensionOptions = [
     { value: 'fdr_high', label: `Higher FDR (${aiFDR}%) means more false alarms` },
     { value: 'fdr_low', label: `Lower FDR (${aiFDR}%) means fewer false alarms` },
     { value: 'for_high', label: `Higher FOR (${aiFOR}%) means more missed cancers` },
     { value: 'for_low', label: `Lower FOR (${aiFOR}%) means fewer missed cancers` },
   ];
-  const correctAnswer = 'fdr_high'; // FDR 15% means 15% false alarms
+  // Higher FDR = more false alarms is always correct (tests error rate semantics understanding)
+  const correctAnswer = 'fdr_high';
   
   const handleNext = () => {
     if (currentStep === 'TRUST') {
@@ -4759,6 +4762,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showControlSurface, setShowControlSurface] = useState(false);
   const [tamperDemoActive, setTamperDemoActive] = useState(false);
   const [tamperFailureCode, setTamperFailureCode] = useState<string | null>(null);
+  const [verifierResultBeforeTamper, setVerifierResultBeforeTamper] = useState<'PASS' | 'FAIL' | null>(null);
   const [tlxMental, setTlxMental] = useState(50);
   const [tlxTemporal, setTlxTemporal] = useState(50);
   const [showModelCard, setShowModelCard] = useState(false);
@@ -5591,7 +5595,11 @@ setAiAgreementStreak(prev => prev + 1);
   }, [state.caseResults, state.condition, state.caseQueue, disclosurePolicy]);
 
   // Tamper Demo - simulates what happens when export is modified
+  // Only allowed when verifier currently shows PASS to avoid masking real failures
   const runTamperDemo = useCallback(() => {
+    // Store the actual verifier result before tampering so we can restore it
+    setVerifierResultBeforeTamper(state.verifierResult);
+
     const failureCodes = [
       { code: 'CHAIN_BROKEN', message: 'Hash chain integrity violated at event #47', detail: 'Expected: 8f3a2b... Got: 0000000...' },
       { code: 'CONTENT_TAMPERED', message: 'Event payload modified after signing', detail: 'Field "finalBirads" changed from 4 to 2' },
@@ -5601,13 +5609,17 @@ setAiAgreementStreak(prev => prev + 1);
     setTamperDemoActive(true);
     setTamperFailureCode(failure.code);
     setState(s => ({ ...s, verifierResult: 'FAIL' }));
-  }, []);
+  }, [state.verifierResult]);
 
   const resetTamperDemo = useCallback(() => {
     setTamperDemoActive(false);
     setTamperFailureCode(null);
-    setState(s => ({ ...s, verifierResult: 'PASS' }));
-  }, []);
+    // Restore the actual verifier result from before the tamper demo
+    // This ensures we don't mask a real verification failure
+    const restoreResult = verifierResultBeforeTamper ?? state.verifierOutput?.result ?? 'PASS';
+    setState(s => ({ ...s, verifierResult: restoreResult as 'PASS' | 'FAIL' }));
+    setVerifierResultBeforeTamper(null);
+  }, [verifierResultBeforeTamper, state.verifierOutput]);
 
   // Copy demo URL helper
   const copyDemoUrl = useCallback(async () => {
@@ -5630,7 +5642,7 @@ setAiAgreementStreak(prev => prev + 1);
     const changeOccurred = finalBirads !== state.initialBirads;
     const aiConsistentChange = changeOccurred && finalBirads === aiBirads;
     return { addaDenominator, changeOccurred, aiConsistentChange, adda: addaDenominator && aiConsistentChange };
-  }, [state.currentCase, state.initialBirads, state.finalBirads]);
+  }, [state.currentCase, state.initialBirads, state.finalBirads, aiSuggestedBirads]);
 
   const isSetupScreen = state.step === 'SETUP';
 
