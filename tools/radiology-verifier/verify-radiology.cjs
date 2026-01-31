@@ -17,6 +17,17 @@ const crypto = require('crypto');
 
 const VERSION = '1.0.0';
 const Z64 = '0'.repeat(64);
+const METRICS_REPLAY_TOLERANCE_MS = 5;
+const METRICS_REPLAY_COLUMNS = [
+  'timeToLockMs',
+  'lockToRevealMs',
+  'revealToFinalMs',
+  'totalTimeMs',
+  'preAiReadMs',
+  'postAiReadMs',
+  'totalReadMs',
+  'aiExposureMs',
+];
 
 function exists(fp) {
   try { fs.accessSync(fp, fs.constants.R_OK); return true; } catch { return false; }
@@ -72,6 +83,64 @@ function parseCsv(content) {
   const headers = parseCsvRow(lines[0]);
   const rows = lines.slice(1).map(line => parseCsvRow(line));
   return { headers, rows };
+}
+
+function parseTimestampMs(timestamp) {
+  if (!timestamp) return null;
+  const parsed = new Date(timestamp).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function durationMs(startEvent, endEvent) {
+  const startMs = parseTimestampMs(startEvent?.timestamp);
+  const endMs = parseTimestampMs(endEvent?.timestamp);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  const duration = endMs - startMs;
+  return Number.isFinite(duration) && duration >= 0 ? duration : null;
+}
+
+function parseMetricValue(raw) {
+  if (raw === undefined || raw === null) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed || trimmed.toUpperCase() === 'NA') return null;
+  const num = Number(trimmed);
+  return Number.isFinite(num) ? num : null;
+}
+
+function computeReadEpisodeMetrics(caseEvents, caseId, isCalibration) {
+  if (isCalibration) {
+    return { preAiReadMs: 0, postAiReadMs: 0, totalReadMs: 0 };
+  }
+
+  const getPayloadTimestamp = (event, key) => {
+    const payloadValue = event?.payload?.[key];
+    return parseTimestampMs(payloadValue ?? event?.timestamp);
+  };
+
+  const computeEpisodeMs = (episodeType) => {
+    const starts = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
+    );
+    const ends = caseEvents.filter(
+      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
+    );
+
+    if (starts.length === 0 && ends.length === 0) {
+      return null;
+    }
+    if (starts.length === 0 || ends.length === 0) {
+      return null;
+    }
+
+    const duration = getPayloadTimestamp(ends[0], 'tEndIso') - getPayloadTimestamp(starts[0], 'tStartIso');
+    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+  };
+
+  const preAiReadMs = computeEpisodeMs('PRE_AI') ?? 0;
+  const postAiReadMs = computeEpisodeMs('POST_AI') ?? 0;
+  const totalReadMs = preAiReadMs + postAiReadMs;
+
+  return { preAiReadMs, postAiReadMs, totalReadMs };
 }
 
 function main() {
@@ -225,6 +294,7 @@ function main() {
       const { headers, rows } = parseCsv(metricsCsv);
       const headerIndex = new Map(headers.map((h, i) => [h, i]));
       const durationHeaders = headers.filter(h => /ms$/i.test(h));
+      const caseIdIdx = headerIndex.get('caseId');
 
       const eventsRaw = fs.readFileSync(path.join(pack, 'events.jsonl'), 'utf8');
       const events = eventsRaw.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
@@ -234,6 +304,13 @@ function main() {
           .map(e => e.payload?.caseId)
           .filter(Boolean)
       );
+      const eventsByCase = new Map();
+      events.forEach(event => {
+        const caseId = event.payload?.caseId;
+        if (!caseId) return;
+        if (!eventsByCase.has(caseId)) eventsByCase.set(caseId, []);
+        eventsByCase.get(caseId).push(event);
+      });
 
       let ok = true;
       const issues = [];
@@ -262,7 +339,6 @@ function main() {
         });
       });
 
-      const caseIdIdx = headerIndex.get('caseId');
       const totalTimeIdx = headerIndex.get('totalTimeMs');
       if (caseIdIdx !== undefined && totalTimeIdx !== undefined) {
         const totalByCase = new Map();
@@ -288,9 +364,82 @@ function main() {
 
       out.checks.derived_metrics = { pass: ok, issues };
       if (!ok) fail('Derived metrics sanity checks failed');
+
+      const metricsReplay = { status: 'PASS', mismatches: [], toleranceMs: METRICS_REPLAY_TOLERANCE_MS };
+      if (caseIdIdx === undefined) {
+        warn('derived_metrics.csv missing caseId column; metrics replay skipped');
+      } else {
+        rows.forEach(row => {
+          const caseId = row[caseIdIdx];
+          if (!caseId) return;
+          const caseEvents = eventsByCase.get(caseId) ?? [];
+          const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
+          const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
+          const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
+          const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+          const caseCompleted = caseEvents.find(e => e.type === 'CASE_COMPLETED');
+          const isCalibration = Boolean(caseLoaded?.payload?.isCalibration);
+          const timeToLockCandidate = firstImpression?.payload?.timeToLockMs;
+          const timeToLockMs =
+            typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
+              ? timeToLockCandidate
+              : durationMs(caseLoaded, firstImpression);
+          const lockToRevealMs = durationMs(firstImpression, aiRevealed) ?? 0;
+          const revealToFinalMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
+          const totalTimeMs = durationMs(caseLoaded, caseCompleted ?? finalAssessment);
+          const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetrics(
+            caseEvents,
+            caseId,
+            isCalibration
+          );
+          const aiExposureMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
+
+          const computed = {
+            timeToLockMs,
+            lockToRevealMs,
+            revealToFinalMs,
+            totalTimeMs,
+            preAiReadMs,
+            postAiReadMs,
+            totalReadMs,
+            aiExposureMs,
+          };
+
+          METRICS_REPLAY_COLUMNS.forEach(column => {
+            const idx = headerIndex.get(column);
+            if (idx === undefined) return;
+            const expectedRaw = row[idx];
+            const expected = parseMetricValue(expectedRaw);
+            const actual = computed[column];
+            const actualNumber = typeof actual === 'number' && Number.isFinite(actual) ? actual : null;
+            const matches =
+              expected === null && actualNumber === null
+                ? true
+                : expected !== null && actualNumber !== null
+                  ? Math.abs(expected - actualNumber) <= METRICS_REPLAY_TOLERANCE_MS
+                  : false;
+            if (!matches) {
+              metricsReplay.mismatches.push({
+                caseId,
+                column,
+                expected: expectedRaw ?? null,
+                actual: actualNumber,
+              });
+            }
+          });
+        });
+
+        if (metricsReplay.mismatches.length) {
+          metricsReplay.status = 'FAIL';
+          fail(`Metrics replay mismatch (tolerance ±${METRICS_REPLAY_TOLERANCE_MS}ms)`);
+        }
+      }
+      out.metricsReplay = metricsReplay;
     } catch (e) {
       fail(`Derived metrics check error: ${e.message}`);
     }
+  } else {
+    out.metricsReplay = { status: 'PASS', mismatches: [], toleranceMs: METRICS_REPLAY_TOLERANCE_MS };
   }
 
   if (jsonMode) {
