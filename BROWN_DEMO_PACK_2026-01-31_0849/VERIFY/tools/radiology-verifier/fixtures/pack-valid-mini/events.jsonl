@@ -1,0 +1,13 @@
+{"id":"evt-0001","seq":1,"type":"SESSION_STARTED","timestamp":"2026-01-28T00:00:00.000Z","payload":{"participantId":"demo-user","sessionId":"SESSION-001"}}
+{"id":"evt-0002","seq":2,"type":"CASE_LOADED","timestamp":"2026-01-28T00:00:01.000Z","payload":{"caseId":"CASE-001","condition":"human_first","isCalibration":false}}
+{"id":"evt-0003","seq":3,"type":"READ_EPISODE_STARTED","timestamp":"2026-01-28T00:00:02.000Z","payload":{"episodeType":"PRE_AI","tStartIso":"2026-01-28T00:00:02.000Z"}}
+{"id":"evt-0004","seq":4,"type":"FIRST_IMPRESSION_LOCKED","timestamp":"2026-01-28T00:00:12.000Z","payload":{"birads":2,"confidence":0.6}}
+{"id":"evt-0005","seq":5,"type":"READ_EPISODE_ENDED","timestamp":"2026-01-28T00:00:12.000Z","payload":{"episodeType":"PRE_AI","tEndIso":"2026-01-28T00:00:12.000Z"}}
+{"id":"evt-0006","seq":6,"type":"AI_REVEALED","timestamp":"2026-01-28T00:00:13.000Z","payload":{"suggestedBirads":3,"aiConfidence":0.87,"revealTiming":"human_first"}}
+{"id":"evt-0007","seq":7,"type":"DISCLOSURE_PRESENTED","timestamp":"2026-01-28T00:00:13.000Z","payload":{"format":"fdr_for"}}
+{"id":"evt-0008","seq":8,"type":"DISCLOSURE_COMPREHENSION_RESPONSE","timestamp":"2026-01-28T00:00:15.000Z","payload":{"itemId":"Q1","questionId":"Q1","selectedAnswer":"B","isCorrect":true}}
+{"id":"evt-0009","seq":9,"type":"READ_EPISODE_STARTED","timestamp":"2026-01-28T00:00:16.000Z","payload":{"episodeType":"POST_AI","tStartIso":"2026-01-28T00:00:16.000Z"}}
+{"id":"evt-0010","seq":10,"type":"READ_EPISODE_ENDED","timestamp":"2026-01-28T00:00:26.000Z","payload":{"episodeType":"POST_AI","tEndIso":"2026-01-28T00:00:26.000Z"}}
+{"id":"evt-0011","seq":11,"type":"FINAL_ASSESSMENT","timestamp":"2026-01-28T00:00:27.000Z","payload":{"birads":3,"confidence":0.8}}
+{"id":"evt-0012","seq":12,"type":"CASE_COMPLETED","timestamp":"2026-01-28T00:00:28.000Z","payload":{"caseId":"CASE-001"}}
+{"id":"evt-0013","seq":13,"type":"SESSION_ENDED","timestamp":"2026-01-28T00:00:30.000Z","payload":{"totalCases":1}}

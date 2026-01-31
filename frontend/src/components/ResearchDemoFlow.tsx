@@ -4471,34 +4471,50 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
-  // Session persistence key
-  const SESSION_STORAGE_KEY = 'evidify_session_recovery';
+// Session persistence key
+const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
-  // Check for recoverable session on mount
-  useEffect(() => {
-    try {
-      const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (savedSession) {
-        const parsed = JSON.parse(savedSession);
-        // Only show recovery if session is less than 24 hours old
-        const hoursSinceSave = (Date.now() - new Date(parsed.lastUpdated).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceSave < 24 && parsed.step !== 'SETUP' && parsed.step !== 'STUDY_COMPLETE') {
-          setRecoveryData({
-            sessionId: parsed.sessionId,
-            step: parsed.step,
-            completedCases: parsed.caseResults?.length || 0,
-            lastUpdated: parsed.lastUpdated,
-          });
-          setHasRecoverableSession(true);
-        } else {
-          // Clear old session
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-        }
+const coerceConditionForDemo = (cond: any) => {
+  // cond expected shape: { condition: 'AI_FIRST' | 'HUMAN_FIRST' | 'CONCURRENT', seed?: string, ... }
+  if (cond?.condition === 'AI_FIRST') {
+    return { ...cond, condition: 'HUMAN_FIRST' };
+  }
+  return cond;
+};
+
+// Check for recoverable session on mount
+useEffect(() => {
+  try {
+    const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSession) {
+      const parsed = JSON.parse(savedSession);
+      parsed.condition = coerceConditionForDemo(parsed.condition);
+
+      // Only show recovery if session is less than 24 hours old
+      const hoursSinceSave =
+        (Date.now() - new Date(parsed.lastUpdated).getTime()) / (1000 * 60 * 60);
+
+      if (
+        hoursSinceSave < 24 &&
+        parsed.step !== 'SETUP' &&
+        parsed.step !== 'STUDY_COMPLETE'
+      ) {
+        setRecoveryData({
+          sessionId: parsed.sessionId,
+          step: parsed.step,
+          completedCases: parsed.caseResults?.length || 0,
+          lastUpdated: parsed.lastUpdated,
+        });
+        setHasRecoverableSession(true);
+      } else {
+        // Clear old session
+        localStorage.removeItem(SESSION_STORAGE_KEY);
       }
-    } catch (e) {
-      console.warn('Failed to check for recoverable session:', e);
     }
-  }, []);
+  } catch (e) {
+    console.warn('Failed to check for recoverable session:', e);
+  }
+}, []);
 
   // Save session state periodically
   useEffect(() => {
@@ -4509,7 +4525,7 @@ export const ResearchDemoFlow: React.FC = () => {
         const sessionData = {
           sessionId: state.sessionId,
           step: state.step,
-          condition: state.condition,
+	  condition: coerceConditionForDemo(state.condition),
           caseQueue: state.caseQueue,
           currentCase: state.currentCase,
           initialBirads: state.initialBirads,
@@ -4841,6 +4857,10 @@ const handleROIEnter = useCallback(async (roiId: string) => {
   const startStudy = useCallback(async (conditionOverride?: RevealCondition) => {
     const seed = generateSeed();
     const condition = conditionOverride ? manualCondition(conditionOverride, 'FDR_FOR') : await assignCondition(seed, 0);
+// DEMO DEFAULT: start Human-first unless explicitly overridden
+if (!conditionOverride && condition?.condition === 'AI_FIRST') {
+  condition.condition = 'HUMAN_FIRST';
+}
     
     const queue = generateCaseQueue({
       includeCalibration: true,

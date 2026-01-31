@@ -17,5 +17,8 @@
     "verify:milestone-caseid": "npm --prefix frontend run verify:milestone-caseid",
     "verify:radiology": "node tools/radiology-verifier/verify-radiology.cjs tools/radiology-verifier/fixtures/pack-valid-mini",
     "verify:research": "npm run verify:radiology"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.6.3"
   }
 }

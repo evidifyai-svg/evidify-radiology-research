@@ -6,7 +6,7 @@
     "distDir": "../frontend/dist"
   },
   "package": {
-    "productName": "Evidify Forensic",
+    "productName": "Evidify Radiology Research",
     "version": "4.3.0-beta"
   },
   "tauri": {
@@ -22,7 +22,7 @@
         "all": false,
         "readFile": false,
         "writeFile": false,
-        "scope": ["$APPDATA/*"]
+        "scope": ["$APPDATA/*", "$DOWNLOAD/*", "$DESKTOP/*"]
       },
       "path": {
         "all": true
@@ -48,15 +48,15 @@
       "active": true,
       "category": "Medical",
       "copyright": "© 2026 Evidify",
-      "identifier": "com.evidify.app",
+      "identifier": "ai.evidify.radiologyresearch",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "longDescription": "Evidify is a local-first clinical documentation platform for mental health professionals. All data stays on your device.",
-      "shortDescription": "Clinical Documentation Platform",
+	"shortDescription": "Radiology Research Workflow & Provenance Platform",
+	"longDescription": "Evidify is a local-first radiology research platform for reader studies and defensible AI-evaluation workflows. It captures time-on-task and decision events, enforces pre/post-AI workflow structure, and produces tamper-evident, audit-verifiable exports to support reproducible analyses and publication-grade study artifacts.",
       "targets": "all",
       "macOS": {
         "entitlements": "../scripts/Entitlements.plist",
