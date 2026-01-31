@@ -40,61 +40,37 @@ function parseCsvLine(line) {
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
-    const char = line[i];
+    const ch = line[i];
 
     if (inQuotes) {
-      if (char === '"') {
-        const nextChar = line[i + 1];
-        if (nextChar === '"') {
-          current += '"';
-          i += 1;
-function parseCsvRow(line) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
       if (ch === '"') {
+        // Escaped quote
         if (line[i + 1] === '"') {
           current += '"';
-          i++;
+          i += 1;
         } else {
           inQuotes = false;
         }
       } else {
-        current += char;
+        current += ch;
       }
       continue;
     }
 
-    if (char === '"') {
+    if (ch === '"') {
       inQuotes = true;
       continue;
     }
 
-    if (char === ',') {
+    if (ch === ',') {
       values.push(current);
       current = '';
       continue;
     }
 
-    current += char;
+    current += ch;
   }
 
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        values.push(current);
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-  }
   values.push(current);
   return values;
 }
@@ -104,7 +80,7 @@ function parseCsv(content) {
   if (lines.length === 0) return { headers: [], rows: [] };
 
   const headers = parseCsvLine(lines[0]);
-  const rows = lines.slice(1).map(line => parseCsvLine(line));
+  const rows = lines.slice(1).map(parseCsvLine);
   return { headers, rows };
 }
 
@@ -351,12 +327,6 @@ function computeMetricsFromEvents(events) {
   return metricsByCase;
 }
 
-  const lines = content.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return { headers: [], rows: [] };
-  const headers = parseCsvRow(lines[0]);
-  const rows = lines.slice(1).map(line => parseCsvRow(line));
-  return { headers, rows };
-}
 
 function main() {
   const args = process.argv.slice(2);
@@ -585,6 +555,7 @@ function main() {
             pass: mismatches.length === 0,
             mismatches,
           };
+
           if (mismatches.length > 0) {
             mismatches.forEach(mismatch => {
               fail(
@@ -600,6 +571,8 @@ function main() {
         };
         fail(`Derived metrics verification error: ${e.message}`);
       }
+    }
+  }
   // Derived metrics sanity checks
   const metricsPath = path.join(pack, 'derived_metrics.csv');
   if (exists(metricsPath)) {
