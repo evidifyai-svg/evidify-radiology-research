@@ -3557,9 +3557,23 @@ const progress = useMemo(() => {
     lastLoggedCaseIdRef.current = caseId;
 
     const isCalibration = (state.currentCase as any)?.isCalibration ?? false;
+    const isAttentionCheck = (state.currentCase as any)?.isAttentionCheck ?? false;
+    const caseIndex = state.caseQueue?.currentIndex ?? 0;
+    const totalCases = state.caseQueue?.cases.length ?? 1;
 
-    void eventLoggerRef.current.logCaseLoaded({ caseId, isCalibration });
-  }, [state.currentCase?.caseId]);
+    void eventLoggerRef.current.logCaseLoaded({
+      caseId,
+      caseIndex,
+      totalCases,
+      isCalibration,
+      isAttentionCheck,
+      metadata: {
+        patientAge: (state.currentCase as any)?.patientAge,
+        breastDensity: (state.currentCase as any)?.breastDensity,
+        indication: (state.currentCase as any)?.indication,
+      },
+    });
+  }, [state.currentCase?.caseId, state.caseQueue?.currentIndex, state.caseQueue?.cases.length]);
   // --- end CASE_LOADED canonical emission ---
 
   // Current case (derived from queue)
