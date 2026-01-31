@@ -51,6 +51,22 @@ import { EventLogger } from '../lib/event_logger';
 import { generateSeed, assignCondition, manualCondition, ConditionAssignment, RevealCondition } from '../lib/condition_matrix';
 import { CaseDefinition, CaseQueueState, generateCaseQueue, getCurrentCase, advanceQueue, isQueueComplete, getQueueProgress } from '../lib/case_queue';
 import { IPProtectionFooter, IPProtectionSplash } from './IPProtection';
+import {
+  computeValidityProfile,
+  generateInterpretiveSummary,
+  ValidityProfile,
+  InterpretiveSummary,
+  ValidityIndicator,
+} from '../lib/validityIndicators';
+import {
+  classifyLiabilityRisk,
+  analyzeCrossExamination,
+  generateHashChainBlocks,
+  getLiabilitySummary,
+  LiabilityClassification,
+  CrossExamAnalysis,
+  HashBlock,
+} from '../lib/liabilityClassifier';
 
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
@@ -3204,6 +3220,1182 @@ const AutomationBiasRiskMeter: React.FC<RiskMeterProps> = ({
 };
 
 // ============================================================================
+// VALIDITY & RESPONSE STYLE PANEL (For Grayson Baird - MMPI-inspired)
+// ============================================================================
+interface ValidityPanelProps {
+  caseResults: DerivedMetrics[];
+  currentPreAiTimeMs?: number;
+  interactionCounts: { zooms: number; pans: number };
+  totalViewingTimeMs: number;
+}
+
+const ValidityIndicatorRow: React.FC<{ indicator: ValidityIndicator }> = ({ indicator }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 12px',
+    backgroundColor: '#0f172a',
+    borderRadius: '8px',
+    borderLeft: `4px solid ${indicator.color}`,
+  }}>
+    <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          fontWeight: 700,
+          color: indicator.color,
+          backgroundColor: indicator.level === 'NORMAL' ? '#166534' : indicator.level === 'MILD' ? '#92400e' : '#991b1b',
+          padding: '2px 6px',
+          borderRadius: '4px',
+        }}>
+          {indicator.code}
+        </span>
+        <span style={{ color: '#94a3b8', fontSize: '11px' }}>{indicator.name}</span>
+      </div>
+      <div style={{ color: indicator.color, fontSize: '10px', marginTop: '4px' }}>
+        {indicator.interpretation}
+      </div>
+    </div>
+    <div style={{
+      minWidth: '50px',
+      textAlign: 'right',
+      color: 'white',
+      fontWeight: 700,
+      fontSize: '14px',
+    }}>
+      {indicator.code === 'DAI' ? (indicator.value === 0 ? 'OK' : indicator.value) : `${indicator.value}%`}
+    </div>
+  </div>
+);
+
+const ValidityResponseStylePanel: React.FC<ValidityPanelProps> = ({
+  caseResults,
+  currentPreAiTimeMs,
+  interactionCounts,
+  totalViewingTimeMs,
+}) => {
+  const profile = computeValidityProfile(caseResults, currentPreAiTimeMs, interactionCounts, totalViewingTimeMs);
+  const summary = generateInterpretiveSummary(profile, caseResults);
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: profile.overallValid ? '1px solid #334155' : '2px solid #f59e0b',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#a855f7',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <BarChart3 size={14} />
+          VALIDITY & RESPONSE STYLE INDICATORS
+          <span style={{
+            backgroundColor: '#4c1d95',
+            color: '#c4b5fd',
+            padding: '2px 8px',
+            borderRadius: '8px',
+            fontSize: '9px',
+          }}>
+            RESEARCH USE
+          </span>
+        </div>
+        <div style={{
+          padding: '4px 10px',
+          borderRadius: '12px',
+          fontSize: '10px',
+          fontWeight: 700,
+          backgroundColor: profile.overallValid ? '#166534' : '#92400e',
+          color: profile.overallValid ? '#4ade80' : '#fcd34d',
+        }}>
+          {profile.overallValid ? 'VALID' : `${profile.flags.length} FLAG${profile.flags.length > 1 ? 'S' : ''}`}
+        </div>
+      </div>
+
+      {/* Indicators */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <ValidityIndicatorRow indicator={profile.HRI} />
+        <ValidityIndicatorRow indicator={profile.CPI} />
+        <ValidityIndicatorRow indicator={profile.DAI} />
+        <ValidityIndicatorRow indicator={profile.ENG} />
+      </div>
+
+      {/* Interpretive Summary */}
+      <div style={{
+        backgroundColor: '#0f172a',
+        padding: '12px',
+        borderRadius: '8px',
+        border: '1px solid #334155',
+      }}>
+        <div style={{
+          fontSize: '10px',
+          color: '#64748b',
+          fontWeight: 600,
+          marginBottom: '8px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}>
+          Interpretive Summary
+        </div>
+        <p style={{
+          color: '#e2e8f0',
+          fontSize: '11px',
+          lineHeight: '1.6',
+          margin: 0,
+        }}>
+          {summary.fullText}
+        </p>
+      </div>
+
+      {/* Disclaimer */}
+      <div style={{
+        marginTop: '12px',
+        padding: '8px',
+        backgroundColor: '#1e3a5f',
+        borderRadius: '6px',
+        fontSize: '9px',
+        color: '#93c5fd',
+        textAlign: 'center',
+        fontStyle: 'italic',
+      }}>
+        MMPI-inspired reporting style for research interpretability; not an MMPI instrument.
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// LIABILITY RISK CLASSIFICATION PANEL (For Brian Shepard)
+// ============================================================================
+interface LiabilityPanelProps {
+  caseResults: DerivedMetrics[];
+  currentCase?: DerivedMetrics | null;
+}
+
+const LiabilityRiskPanel: React.FC<LiabilityPanelProps> = ({ caseResults, currentCase }) => {
+  const nonCalibrationCases = caseResults.filter(r => !(r.caseId ?? '').includes('CALIB'));
+  const summary = getLiabilitySummary(caseResults);
+
+  if (nonCalibrationCases.length === 0 && !currentCase) {
+    return (
+      <div style={{
+        backgroundColor: '#1e293b',
+        borderRadius: '12px',
+        padding: '16px',
+        marginTop: '16px',
+        border: '1px solid #334155',
+      }}>
+        <div style={{ color: '#64748b', fontSize: '12px', textAlign: 'center' }}>
+          Complete cases to see liability risk analysis
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: '1px solid #334155',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#f59e0b',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <Scale size={14} />
+          LIABILITY RISK CLASSIFICATION
+          <span style={{
+            backgroundColor: '#92400e',
+            color: '#fcd34d',
+            padding: '2px 8px',
+            borderRadius: '8px',
+            fontSize: '9px',
+          }}>
+            BAIRD FRAMEWORK
+          </span>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '8px',
+        marginBottom: '16px',
+      }}>
+        {[
+          { level: 'LOW', count: summary.low, color: '#22c55e', bg: '#166534' },
+          { level: 'MODERATE', count: summary.moderate, color: '#eab308', bg: '#854d0e' },
+          { level: 'HIGH', count: summary.high, color: '#f97316', bg: '#9a3412' },
+          { level: 'CRITICAL', count: summary.critical, color: '#dc2626', bg: '#7f1d1d' },
+        ].map(item => (
+          <div key={item.level} style={{
+            backgroundColor: item.count > 0 ? item.bg : '#0f172a',
+            padding: '10px',
+            borderRadius: '8px',
+            textAlign: 'center',
+            border: `1px solid ${item.count > 0 ? item.color : '#334155'}`,
+          }}>
+            <div style={{
+              fontSize: '20px',
+              fontWeight: 700,
+              color: item.count > 0 ? item.color : '#64748b',
+            }}>
+              {item.count}
+            </div>
+            <div style={{
+              fontSize: '9px',
+              color: item.count > 0 ? 'white' : '#64748b',
+              textTransform: 'uppercase',
+            }}>
+              {item.level}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Case-by-case breakdown */}
+      {nonCalibrationCases.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {nonCalibrationCases.map(caseResult => {
+            const classification = classifyLiabilityRisk(caseResult);
+            return (
+              <div key={caseResult.caseId} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                backgroundColor: '#0f172a',
+                borderRadius: '8px',
+                borderLeft: `4px solid ${classification.color}`,
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      color: 'white',
+                    }}>
+                      {caseResult.caseId}
+                    </span>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      backgroundColor: classification.bgColor,
+                      color: classification.color,
+                    }}>
+                      {classification.level}
+                    </span>
+                  </div>
+                  <div style={{ color: '#64748b', fontSize: '10px', marginTop: '4px' }}>
+                    {classification.scenario}
+                  </div>
+                  <div style={{
+                    color: '#475569',
+                    fontSize: '9px',
+                    marginTop: '2px',
+                    fontFamily: 'monospace',
+                  }}>
+                    {classification.logic}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Reference note */}
+      <div style={{
+        marginTop: '12px',
+        fontSize: '9px',
+        color: '#64748b',
+        textAlign: 'center',
+      }}>
+        Based on Baird et al. 22-condition liability framework
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// CROSS-EXAMINATION ANALYSIS PANEL (For Brian Shepard)
+// ============================================================================
+interface CrossExamPanelProps {
+  caseResults: DerivedMetrics[];
+  sessionMedianPreAiMs: number;
+  verifierPassed: boolean;
+  ledgerIntact: boolean;
+}
+
+const CrossExaminationPanel: React.FC<CrossExamPanelProps> = ({
+  caseResults,
+  sessionMedianPreAiMs,
+  verifierPassed,
+  ledgerIntact,
+}) => {
+  const analysis = analyzeCrossExamination(caseResults, sessionMedianPreAiMs, verifierPassed, ledgerIntact);
+
+  const riskColors = {
+    HIGH: { color: '#ef4444', bg: '#7f1d1d' },
+    MODERATE: { color: '#f59e0b', bg: '#92400e' },
+    LOW: { color: '#22c55e', bg: '#166534' },
+  };
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: `2px solid ${riskColors[analysis.overallRisk].color}`,
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#dc2626',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <Gavel size={14} />
+          CROSS-EXAMINATION VULNERABILITY ANALYSIS
+        </div>
+        <div style={{
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '10px',
+          fontWeight: 700,
+          backgroundColor: riskColors[analysis.overallRisk].bg,
+          color: riskColors[analysis.overallRisk].color,
+        }}>
+          {analysis.overallRisk} RISK
+        </div>
+      </div>
+
+      {/* Vulnerabilities */}
+      {analysis.vulnerabilities.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{
+            fontSize: '10px',
+            color: '#ef4444',
+            fontWeight: 600,
+            marginBottom: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}>
+            <AlertTriangle size={12} />
+            POTENTIAL ATTACK VECTORS
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {analysis.vulnerabilities.map((v, i) => (
+              <div key={i} style={{
+                padding: '10px',
+                backgroundColor: v.severity === 'HIGH' ? '#7f1d1d' : '#0f172a',
+                borderRadius: '6px',
+                borderLeft: `3px solid ${v.severity === 'HIGH' ? '#ef4444' : '#f59e0b'}`,
+              }}>
+                <div style={{ color: '#fca5a5', fontSize: '11px' }}>"{v.text}"</div>
+                {v.metric && (
+                  <div style={{ color: '#64748b', fontSize: '9px', marginTop: '4px', fontFamily: 'monospace' }}>
+                    {v.metric}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Defensive Strengths */}
+      {analysis.defenseStrengths.length > 0 && (
+        <div>
+          <div style={{
+            fontSize: '10px',
+            color: '#22c55e',
+            fontWeight: 600,
+            marginBottom: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}>
+            <CheckCircle size={12} />
+            DEFENSIVE STRENGTHS
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {analysis.defenseStrengths.map((d, i) => (
+              <div key={i} style={{
+                padding: '10px',
+                backgroundColor: d.severity === 'HIGH' ? '#166534' : '#0f172a',
+                borderRadius: '6px',
+                borderLeft: `3px solid ${d.severity === 'HIGH' ? '#22c55e' : '#60a5fa'}`,
+              }}>
+                <div style={{ color: '#86efac', fontSize: '11px' }}>{d.text}</div>
+                {d.metric && (
+                  <div style={{ color: '#64748b', fontSize: '9px', marginTop: '4px', fontFamily: 'monospace' }}>
+                    {d.metric}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendation */}
+      <div style={{
+        marginTop: '16px',
+        padding: '10px',
+        backgroundColor: '#1e3a5f',
+        borderRadius: '8px',
+        border: '1px solid #3b82f6',
+      }}>
+        <div style={{ fontSize: '10px', color: '#93c5fd', fontWeight: 600, marginBottom: '4px' }}>
+          RECOMMENDED FOCUS
+        </div>
+        <div style={{ color: 'white', fontSize: '11px' }}>
+          {analysis.recommendedFocus}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// HASH CHAIN VISUALIZATION (For Brian Shepard)
+// ============================================================================
+interface HashChainVisualizationProps {
+  ledger: any[];
+}
+
+const HashChainVisualization: React.FC<HashChainVisualizationProps> = ({ ledger }) => {
+  const blocks = generateHashChainBlocks(ledger, 4);
+
+  if (blocks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: '2px solid #3b82f6',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#3b82f6',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <Link size={14} />
+          TAMPER-EVIDENT AUDIT CHAIN
+        </div>
+        <div style={{
+          padding: '4px 10px',
+          borderRadius: '8px',
+          fontSize: '9px',
+          fontWeight: 600,
+          backgroundColor: '#166534',
+          color: '#4ade80',
+        }}>
+          VERIFIED
+        </div>
+      </div>
+
+      {/* Chain visualization */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', overflowX: 'auto' }}>
+        {blocks.map((block, i) => (
+          <React.Fragment key={i}>
+            {/* Block */}
+            <div style={{
+              backgroundColor: '#0f172a',
+              border: '2px solid #3b82f6',
+              borderRadius: '8px',
+              padding: '10px',
+              minWidth: '140px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: '9px',
+                color: '#60a5fa',
+                fontWeight: 600,
+                marginBottom: '4px',
+              }}>
+                {block.eventType.replace(/_/g, ' ')}
+              </div>
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: '8px',
+                color: '#22c55e',
+                backgroundColor: '#0f2619',
+                padding: '4px 6px',
+                borderRadius: '4px',
+                wordBreak: 'break-all',
+              }}>
+                {block.hash.slice(0, 12)}...
+              </div>
+              {block.prevHash && (
+                <div style={{
+                  fontSize: '8px',
+                  color: '#64748b',
+                  marginTop: '4px',
+                }}>
+                  prev: {block.prevHash.slice(0, 8)}...
+                </div>
+              )}
+            </div>
+            {/* Arrow */}
+            {i < blocks.length - 1 && (
+              <div style={{ color: '#3b82f6', fontSize: '16px', fontWeight: 'bold' }}>→</div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Label */}
+      <div style={{
+        marginTop: '12px',
+        textAlign: 'center',
+        fontSize: '10px',
+        color: '#64748b',
+        fontStyle: 'italic',
+      }}>
+        Any modification breaks verification • {ledger.length} events in chain
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// WATCHING THE WATCHER PANEL (For Mike Bruno)
+// ============================================================================
+interface WatchingTheWatcherProps {
+  interactionCounts: { zooms: number; pans: number };
+  roiDwellTimes: Map<string, number>;
+  currentPreAiTimeMs: number;
+  currentPostAiTimeMs: number;
+  sessionMedianPreAiMs: number;
+  caseResults: DerivedMetrics[];
+  isLive: boolean;
+}
+
+const WatchingTheWatcherPanel: React.FC<WatchingTheWatcherProps> = ({
+  interactionCounts,
+  roiDwellTimes,
+  currentPreAiTimeMs,
+  currentPostAiTimeMs,
+  sessionMedianPreAiMs,
+  caseResults,
+  isLive,
+}) => {
+  const nonCalibrationCases = caseResults.filter(r => !(r.caseId ?? '').includes('CALIB'));
+
+  // Calculate session stats
+  const totalViewingTime = nonCalibrationCases.reduce((sum, r) => sum + (r.totalTimeMs ?? 0), 0);
+  const avgPreAiTime = nonCalibrationCases.length > 0
+    ? nonCalibrationCases.reduce((sum, r) => sum + (r.preAiReadMs ?? r.timeToLockMs ?? 0), 0) / nonCalibrationCases.length
+    : 0;
+
+  // Calculate time ratio for current case
+  const timeRatio = sessionMedianPreAiMs > 0 ? (currentPreAiTimeMs / sessionMedianPreAiMs) * 100 : 100;
+  const timeRatioLevel = timeRatio >= 75 ? 'NORMAL' : timeRatio >= 50 ? 'MILD' : 'LOW';
+  const timeRatioColor = timeRatioLevel === 'NORMAL' ? '#22c55e' : timeRatioLevel === 'MILD' ? '#f59e0b' : '#ef4444';
+
+  // Interaction density
+  const totalInteractions = interactionCounts.zooms + interactionCounts.pans;
+  const interactionDensity = nonCalibrationCases.length > 0
+    ? totalInteractions / nonCalibrationCases.length
+    : totalInteractions;
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: '2px solid #06b6d4',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#06b6d4',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <Eye size={14} />
+          READER BEHAVIOR METRICS
+          <span style={{
+            backgroundColor: '#164e63',
+            color: '#22d3ee',
+            padding: '2px 8px',
+            borderRadius: '8px',
+            fontSize: '9px',
+          }}>
+            WATCHING THE WATCHER
+          </span>
+        </div>
+        {isLive && (
+          <div style={{
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '9px',
+            fontWeight: 600,
+            backgroundColor: '#166534',
+            color: '#4ade80',
+            animation: 'pulse 2s infinite',
+          }}>
+            LIVE
+          </div>
+        )}
+      </div>
+
+      {/* Current Case Time Context (Mike's key request) */}
+      <div style={{
+        backgroundColor: '#0f172a',
+        padding: '12px',
+        borderRadius: '8px',
+        marginBottom: '12px',
+        border: `1px solid ${timeRatioColor}`,
+      }}>
+        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
+          TIME CONTEXT (Current Case)
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#06b6d4', fontSize: '18px', fontWeight: 700 }}>
+              {(currentPreAiTimeMs / 1000).toFixed(1)}s
+            </div>
+            <div style={{ color: '#64748b', fontSize: '9px' }}>Pre-AI Time</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#94a3b8', fontSize: '18px', fontWeight: 700 }}>
+              {(sessionMedianPreAiMs / 1000).toFixed(1)}s
+            </div>
+            <div style={{ color: '#64748b', fontSize: '9px' }}>Session Median</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: timeRatioColor, fontSize: '18px', fontWeight: 700 }}>
+              {Math.round(timeRatio)}%
+            </div>
+            <div style={{ color: '#64748b', fontSize: '9px' }}>Comparison</div>
+          </div>
+        </div>
+        <div style={{
+          marginTop: '8px',
+          textAlign: 'center',
+          fontSize: '10px',
+          color: timeRatioColor,
+          fontWeight: 600,
+        }}>
+          {timeRatioLevel === 'NORMAL' ? 'Within Normal Limits' :
+           timeRatioLevel === 'MILD' ? 'Mildly Below Median' : 'Below Threshold'}
+        </div>
+      </div>
+
+      {/* Interaction Metrics */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '8px',
+        marginBottom: '12px',
+      }}>
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '10px',
+          borderRadius: '8px',
+          textAlign: 'center',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+            <div>
+              <div style={{ color: '#60a5fa', fontSize: '16px', fontWeight: 700 }}>{interactionCounts.zooms}</div>
+              <div style={{ color: '#64748b', fontSize: '9px' }}>Zooms</div>
+            </div>
+            <div>
+              <div style={{ color: '#f59e0b', fontSize: '16px', fontWeight: 700 }}>{interactionCounts.pans}</div>
+              <div style={{ color: '#64748b', fontSize: '9px' }}>Pans</div>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '10px',
+          borderRadius: '8px',
+          textAlign: 'center',
+        }}>
+          <div style={{ color: '#a855f7', fontSize: '16px', fontWeight: 700 }}>
+            {interactionDensity.toFixed(1)}
+          </div>
+          <div style={{ color: '#64748b', fontSize: '9px' }}>Interactions/Case</div>
+        </div>
+      </div>
+
+      {/* Session Summary */}
+      {nonCalibrationCases.length > 0 && (
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '10px',
+          borderRadius: '8px',
+          fontSize: '10px',
+        }}>
+          <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>SESSION SUMMARY</div>
+          <div style={{ color: '#94a3b8' }}>
+            Total viewing time: <span style={{ color: 'white' }}>{Math.floor(totalViewingTime / 60000)}m {Math.round((totalViewingTime % 60000) / 1000)}s</span> across {nonCalibrationCases.length} cases
+          </div>
+          <div style={{ color: '#94a3b8', marginTop: '4px' }}>
+            Average pre-AI review: <span style={{ color: 'white' }}>{(avgPreAiTime / 1000).toFixed(1)}s</span> (median: {(sessionMedianPreAiMs / 1000).toFixed(1)}s)
+          </div>
+        </div>
+      )}
+
+      {/* Eye Tracking Ready Badge */}
+      <div style={{
+        marginTop: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        padding: '8px',
+        backgroundColor: '#164e63',
+        borderRadius: '8px',
+      }}>
+        <Eye size={14} color="#22d3ee" />
+        <span style={{ color: '#22d3ee', fontSize: '10px', fontWeight: 600 }}>
+          Eye Tracking: Ready for Integration
+        </span>
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontSize: '8px',
+          color: '#64748b',
+        }}>
+          WebGazer/Tobii
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// STUDY CONFIGURATION PANEL (For Mike Bernstein)
+// ============================================================================
+interface StudyConfigPanelProps {
+  condition: ConditionAssignment | null;
+  disclosurePolicy: 'STATIC' | 'ADAPTIVE';
+  onDisclosurePolicyChange: (policy: 'STATIC' | 'ADAPTIVE') => void;
+  caseQueue: CaseQueueState | null;
+  isInterventionMode: boolean;
+  onInterventionModeChange: (mode: boolean) => void;
+}
+
+const StudyConfigurationPanel: React.FC<StudyConfigPanelProps> = ({
+  condition,
+  disclosurePolicy,
+  onDisclosurePolicyChange,
+  caseQueue,
+  isInterventionMode,
+  onInterventionModeChange,
+}) => {
+  if (!condition) return null;
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: '2px solid #8b5cf6',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px',
+      }}>
+        <div style={{
+          fontSize: '12px',
+          color: '#8b5cf6',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <Settings size={14} />
+          STUDY CONFIGURATION
+          <span style={{
+            backgroundColor: '#5b21b6',
+            color: '#c4b5fd',
+            padding: '2px 8px',
+            borderRadius: '8px',
+            fontSize: '9px',
+          }}>
+            RESEARCH INSTRUMENT
+          </span>
+        </div>
+        <div style={{
+          padding: '4px 10px',
+          borderRadius: '8px',
+          fontSize: '9px',
+          fontWeight: 600,
+          backgroundColor: '#166534',
+          color: '#4ade80',
+        }}>
+          ACTIVE
+        </div>
+      </div>
+
+      {/* Configuration Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        {/* Disclosure Condition */}
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '12px',
+          borderRadius: '8px',
+        }}>
+          <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+            DISCLOSURE CONDITION
+          </div>
+          <div style={{
+            padding: '8px',
+            backgroundColor: '#334155',
+            borderRadius: '6px',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 600,
+          }}>
+            {condition.disclosureFormat === 'FDR_FOR' ? 'FDR + FOR' :
+             condition.disclosureFormat === 'NATURAL_FREQUENCY' ? 'Natural Frequency' : 'None'}
+          </div>
+        </div>
+
+        {/* Randomization Seed */}
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '12px',
+          borderRadius: '8px',
+        }}>
+          <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+            RANDOMIZATION SEED
+          </div>
+          <code style={{
+            display: 'block',
+            padding: '8px',
+            backgroundColor: '#334155',
+            borderRadius: '6px',
+            color: '#fbbf24',
+            fontSize: '10px',
+            fontFamily: 'monospace',
+          }}>
+            {condition.seed}
+          </code>
+        </div>
+
+        {/* Case Order */}
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '12px',
+          borderRadius: '8px',
+        }}>
+          <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+            CASE ORDER
+          </div>
+          <div style={{
+            padding: '8px',
+            backgroundColor: '#334155',
+            borderRadius: '6px',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 600,
+          }}>
+            {condition.assignmentMethod === 'SEEDED_RANDOM' ? 'Randomized' : 'Fixed'}
+          </div>
+        </div>
+
+        {/* Comprehension Check */}
+        <div style={{
+          backgroundColor: '#0f172a',
+          padding: '12px',
+          borderRadius: '8px',
+        }}>
+          <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+            COMPREHENSION CHECK
+          </div>
+          <div style={{
+            padding: '8px',
+            backgroundColor: '#334155',
+            borderRadius: '6px',
+            color: '#22c55e',
+            fontSize: '12px',
+            fontWeight: 600,
+          }}>
+            Required
+          </div>
+        </div>
+      </div>
+
+      {/* Intervention Mode Toggle */}
+      <div style={{
+        marginTop: '16px',
+        padding: '12px',
+        backgroundColor: '#0f172a',
+        borderRadius: '8px',
+        border: isInterventionMode ? '2px solid #8b5cf6' : '1px solid #334155',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ color: 'white', fontSize: '12px', fontWeight: 600 }}>
+              Intervention Mode
+            </div>
+            <div style={{ color: '#64748b', fontSize: '10px', marginTop: '2px' }}>
+              {isInterventionMode
+                ? 'Explanatory text shown to participants'
+                : 'Research instrumentation hidden from participants'}
+            </div>
+          </div>
+          <button
+            onClick={() => onInterventionModeChange(!isInterventionMode)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isInterventionMode ? '#8b5cf6' : '#334155',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            {isInterventionMode ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+
+      {/* Study Mode Status */}
+      <div style={{
+        marginTop: '12px',
+        padding: '10px',
+        backgroundColor: '#166534',
+        borderRadius: '8px',
+        textAlign: 'center',
+        fontSize: '11px',
+        color: '#86efac',
+        fontWeight: 600,
+      }}>
+        Study Mode: Active | Condition: {condition.disclosureFormat} | Cases: {caseQueue?.cases.length ?? 0}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// EXPORT PREVIEW PANEL (For Mike Bernstein)
+// ============================================================================
+interface ExportPreviewProps {
+  caseResults: DerivedMetrics[];
+  eventCount: number;
+  verifierResult: 'PASS' | 'FAIL' | null;
+}
+
+const ExportPreviewPanel: React.FC<ExportPreviewProps> = ({
+  caseResults,
+  eventCount,
+  verifierResult,
+}) => {
+  const nonCalibrationCases = caseResults.filter(r => !(r.caseId ?? '').includes('CALIB'));
+
+  // Count metrics per case (approximate)
+  const metricsPerCase = 28; // Based on DerivedMetrics interface
+
+  return (
+    <div style={{
+      backgroundColor: '#1e293b',
+      borderRadius: '12px',
+      padding: '16px',
+      marginTop: '16px',
+      border: '1px solid #334155',
+    }}>
+      {/* Header */}
+      <div style={{
+        fontSize: '12px',
+        color: '#22c55e',
+        fontWeight: 700,
+        marginBottom: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      }}>
+        <Download size={14} />
+        EXPORT PREVIEW
+      </div>
+
+      {/* Preview Items */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px',
+          backgroundColor: '#0f172a',
+          borderRadius: '6px',
+        }}>
+          <span style={{ color: '#94a3b8', fontSize: '11px' }}>Metrics per case</span>
+          <span style={{ color: 'white', fontWeight: 600, fontSize: '12px' }}>{metricsPerCase} including time ratios</span>
+        </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px',
+          backgroundColor: '#0f172a',
+          borderRadius: '6px',
+        }}>
+          <span style={{ color: '#94a3b8', fontSize: '11px' }}>Events in hash chain</span>
+          <span style={{ color: 'white', fontWeight: 600, fontSize: '12px' }}>{eventCount}</span>
+        </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px',
+          backgroundColor: '#0f172a',
+          borderRadius: '6px',
+        }}>
+          <span style={{ color: '#94a3b8', fontSize: '11px' }}>Verification</span>
+          <span style={{
+            color: verifierResult === 'PASS' ? '#22c55e' : verifierResult === 'FAIL' ? '#ef4444' : '#64748b',
+            fontWeight: 600,
+            fontSize: '12px',
+          }}>
+            {verifierResult ?? 'Pending'}
+          </span>
+        </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px',
+          backgroundColor: '#0f172a',
+          borderRadius: '6px',
+        }}>
+          <span style={{ color: '#94a3b8', fontSize: '11px' }}>Cases completed</span>
+          <span style={{ color: 'white', fontWeight: 600, fontSize: '12px' }}>{nonCalibrationCases.length}</span>
+        </div>
+      </div>
+
+      {/* Analysis Ready Badge */}
+      <div style={{
+        marginTop: '12px',
+        padding: '10px',
+        backgroundColor: '#166534',
+        borderRadius: '8px',
+        textAlign: 'center',
+        fontSize: '10px',
+        color: '#86efac',
+        fontWeight: 600,
+      }}>
+        Analysis-ready data export • CSV + JSON + Verification report
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// ERROR CONTEXT NOTE (For Mike Bruno)
+// ============================================================================
+const ErrorContextNote: React.FC = () => (
+  <div style={{
+    backgroundColor: '#1e3a5f',
+    borderRadius: '8px',
+    padding: '12px',
+    marginTop: '12px',
+    border: '1px solid #3b82f6',
+  }}>
+    <div style={{
+      fontSize: '10px',
+      color: '#93c5fd',
+      fontWeight: 600,
+      marginBottom: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    }}>
+      <Info size={12} />
+      CONTEXT NOTE
+    </div>
+    <p style={{
+      color: '#e0f2fe',
+      fontSize: '10px',
+      lineHeight: '1.5',
+      margin: 0,
+    }}>
+      Published research indicates radiologist miss rates of 3-4% are typical even with optimal effort (Wolf et al.).
+      This platform documents the decision process to demonstrate reasonableness, not to guarantee error-free performance.
+    </p>
+  </div>
+);
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 export const ResearchDemoFlow: React.FC = () => {
@@ -3273,7 +4465,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const [previousBirads, setPreviousBirads] = useState<number | null>(null);
   const [showProbesModal, setShowProbesModal] = useState(false);
   const [probesCompleted, setProbesCompleted] = useState(false);
-  
+  const [isInterventionMode, setIsInterventionMode] = useState(false);
 
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
@@ -3544,6 +4736,18 @@ const progress = useMemo(() => {
   if (!state.caseQueue) return null;
   return getQueueProgress(state.caseQueue);
 }, [state.caseQueue]);
+
+// Session median pre-AI time calculation (for validity indicators and time context)
+const sessionMedianPreAiMs = useMemo(() => {
+  const nonCalibrationCases = state.caseResults.filter(r => !(r.caseId ?? '').includes('CALIB'));
+  const preAiTimes = nonCalibrationCases
+    .map(r => r.preAiReadMs ?? r.timeToLockMs ?? 0)
+    .filter(t => t > 0)
+    .sort((a, b) => a - b);
+
+  if (preAiTimes.length === 0) return 30000; // Default 30s
+  return preAiTimes[Math.floor(preAiTimes.length / 2)];
+}, [state.caseResults]);
 
   // --- CASE_LOADED: canonical single-source emission (prevents duplicates) ---
   const lastLoggedCaseIdRef = useRef<string | null>(null);
@@ -5185,7 +6389,94 @@ setAiAgreementStreak(prev => prev + 1);
                   aiDwellRatio={(state.roiDwellTimes.get('ai_box') || 0) / Math.max(1, Array.from(state.roiDwellTimes.values()).reduce((a, b) => a + b, 0))}
                 />
               )}
-              
+
+              {/* ============================================================ */}
+              {/* "HOLY SHIT" FEATURE PANELS - Researcher Mode Only            */}
+              {/* ============================================================ */}
+
+              {/* GRAYSON BAIRD: Validity & Response Style Panel (MMPI-inspired) */}
+              {isResearcher && showAdvancedResearcher && (
+                <ValidityResponseStylePanel
+                  caseResults={state.caseResults}
+                  currentPreAiTimeMs={state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0}
+                  interactionCounts={state.interactionCounts}
+                  totalViewingTimeMs={timeOnCase * 1000}
+                />
+              )}
+
+              {/* BRIAN SHEPARD: Liability Risk Classification */}
+              {isResearcher && showAdvancedResearcher && (
+                <LiabilityRiskPanel
+                  caseResults={state.caseResults}
+                  currentCase={null}
+                />
+              )}
+
+              {/* BRIAN SHEPARD: Cross-Examination Vulnerability Analysis */}
+              {isResearcher && showAdvancedResearcher && (
+                <CrossExaminationPanel
+                  caseResults={state.caseResults}
+                  sessionMedianPreAiMs={sessionMedianPreAiMs}
+                  verifierPassed={state.verifierResult === 'PASS'}
+                  ledgerIntact={state.verifierOutput?.chainIntegrity?.brokenAt === null}
+                />
+              )}
+
+              {/* BRIAN SHEPARD: Hash Chain Visualization */}
+              {isResearcher && showAdvancedResearcher && (
+                <HashChainVisualization
+                  ledger={exportPackRef.current?.getLedger() ?? []}
+                />
+              )}
+
+              {/* MIKE BRUNO: Watching the Watcher Panel */}
+              {isResearcher && showAdvancedResearcher && (
+                <WatchingTheWatcherPanel
+                  interactionCounts={state.interactionCounts}
+                  roiDwellTimes={state.roiDwellTimes}
+                  currentPreAiTimeMs={state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0}
+                  currentPostAiTimeMs={state.aiRevealTime ? Date.now() - state.aiRevealTime.getTime() : 0}
+                  sessionMedianPreAiMs={sessionMedianPreAiMs}
+                  caseResults={state.caseResults}
+                  isLive={true}
+                />
+              )}
+
+              {/* MIKE BRUNO: Error Context Note */}
+              {isResearcher && showAdvancedResearcher && (
+                <ErrorContextNote />
+              )}
+
+              {/* MIKE BERNSTEIN: Study Configuration Panel */}
+              {isResearcher && showAdvancedResearcher && (
+                <StudyConfigurationPanel
+                  condition={state.condition}
+                  disclosurePolicy={disclosurePolicy}
+                  onDisclosurePolicyChange={async (policy) => {
+                    setDisclosurePolicy(policy);
+                    if (eventLoggerRef.current) {
+                      await eventLoggerRef.current.addEvent('DISCLOSURE_POLICY_CHANGED', {
+                        policy,
+                        caseId: state.currentCase?.caseId,
+                        timestamp: new Date().toISOString()
+                      });
+                    }
+                  }}
+                  caseQueue={state.caseQueue}
+                  isInterventionMode={isInterventionMode}
+                  onInterventionModeChange={setIsInterventionMode}
+                />
+              )}
+
+              {/* MIKE BERNSTEIN: Export Preview Panel */}
+              {isResearcher && showAdvancedResearcher && (
+                <ExportPreviewPanel
+                  caseResults={state.caseResults}
+                  eventCount={state.eventCount}
+                  verifierResult={state.verifierResult}
+                />
+              )}
+
               {/* Final Assessment */}
               <div style={{ marginTop: '24px', padding: '20px', backgroundColor: '#0f172a', borderRadius: '12px' }}>
                 <div style={{ fontSize: '14px', color: 'white', fontWeight: 600, marginBottom: '16px' }}>
