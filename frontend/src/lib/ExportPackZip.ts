@@ -206,27 +206,54 @@ export class ExportPackZip {
   /**
    * Add event to the chain
    */
-  async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEntry> {
+async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEntry> {
     // Mutex: wait for previous addEvent to finish
     const myTurn = this.addEventLock;
-
-    let release!: () => void;
-    this.addEventLock = new Promise<void>((r) => {
-      release = r;
-    });
-
+    let release: () => void;
+    this.addEventLock = new Promise(r => release = r);
     await myTurn;
 
     try {
       const seq = ++this.seqCounter;
-      const eventId = this.generateUUID();
-      const timestamp = new Date().toISOString();
-
-      // ... keep the rest of your function exactly as-is ...
-
+    const eventId = this.generateUUID();
+    const timestamp = new Date().toISOString();
+    
+    const event: TrialEvent = {
+      id: eventId,
+      seq,
+      type,
+      timestamp,
+      payload,
+    };
+    
+    // Compute content hash
+    const contentHash = await sha256Hex(canonicalJSON({ type, payload, timestamp }));
+    
+    // Get previous hash
+    const previousHash = this.ledger.length === 0 
+      ? '0'.repeat(64)
+      : this.ledger[this.ledger.length - 1].chainHash;;
+    
+    // Compute chain hash
+    const chainInput = `${previousHash}|${contentHash}|${timestamp}`;
+    const chainHash = await sha256Hex(chainInput);
+    
+    const ledgerEntry: LedgerEntry = {
+      seq,
+      eventId,
+      eventType: type,
+      timestamp,
+      contentHash,
+      previousHash,
+      chainHash,
+    };
+    
+    this.events.push(event);
+    this.ledger.push(ledgerEntry);
+    
+      return ledgerEntry;
     } finally {
-      // Always release the mutex even if something throws
-      release();
+      release!();
     }
   }
 
@@ -515,12 +542,42 @@ export class ExportPackZip {
       // Generate from events if no explicit metrics
       return this.generateMetricsFromEvents();
     }
-    
-    const headers = Object.keys(this.metricsPerCase[0]).join(',');
-    const rows = this.metricsPerCase.map(m =>
+
+    // Compute session-level metrics: collect all preAiReadMs values
+    const allPreAiReadMs: number[] = [];
+    for (const m of this.metricsPerCase) {
+      const preAi = (m as any).preAiReadMs;
+      if (typeof preAi === 'number' && preAi > 0) {
+        allPreAiReadMs.push(preAi);
+      }
+    }
+    const sessionMedianPreAITime = this.computeMedian(allPreAiReadMs);
+
+    // Enhance each metrics object with time ratio fields
+    const enhancedMetrics = this.metricsPerCase.map(m => {
+      const preAiReadMs = (m as any).preAiReadMs;
+      const postAiReadMs = (m as any).postAiReadMs;
+
+      const timeRatio = (typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number' && postAiReadMs > 0)
+        ? Math.round((preAiReadMs / postAiReadMs) * 1000) / 1000
+        : null;
+      const preAITimeVsMedian = (typeof preAiReadMs === 'number' && sessionMedianPreAITime !== null)
+        ? Math.round((preAiReadMs - sessionMedianPreAITime) * 100) / 100
+        : null;
+
+      return {
+        ...m,
+        timeRatio,
+        sessionMedianPreAITime,
+        preAITimeVsMedian,
+      };
+    });
+
+    const headers = Object.keys(enhancedMetrics[0]).join(',');
+    const rows = enhancedMetrics.map(m =>
       Object.values(m).map(v => this.formatCsvValue(this.normalizeMetricValue(v))).join(',')
     );
-    
+
     return [headers, ...rows].join('\n');
   }
 
@@ -532,10 +589,40 @@ export class ExportPackZip {
     const groupedEvents = this.groupEventsByCase(this.events);
     const caseIds = this.dedupeCaseIds(this.caseQueue.caseIds);
 
-    const headers =
-      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,aiExposureMs,totalTimeMs,timeToLockMs,lockToRevealMs,revealToFinalMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
-    const rows = caseIds.map(caseId => {
+    // First pass: collect preAiReadMs for all cases to compute session median
+    const allPreAiReadMs: number[] = [];
+    const caseMetricsData: Array<{
+      caseId: string;
+      caseEvents: TrialEvent[];
+      preAiReadMs: number | null;
+      postAiReadMs: number | null;
+      totalReadMs: number | null;
+    }> = [];
+
+    for (const caseId of caseIds) {
       const caseEvents = groupedEvents.get(caseId) ?? [];
+      const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
+      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+      const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
+        caseEvents,
+        caseId,
+        isCalibration,
+        'ExportPackZip'
+      );
+
+      caseMetricsData.push({ caseId, caseEvents, preAiReadMs, postAiReadMs, totalReadMs });
+      if (typeof preAiReadMs === 'number' && preAiReadMs > 0) {
+        allPreAiReadMs.push(preAiReadMs);
+      }
+    }
+
+    // Compute session median preAI time
+    const sessionMedianPreAITime = this.computeMedian(allPreAiReadMs);
+
+    const headers =
+      'sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,timeRatio,sessionMedianPreAITime,preAITimeVsMedian,aiExposureMs,totalTimeMs,timeToLockMs,lockToRevealMs,revealToFinalMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms';
+
+    const rows = caseMetricsData.map(({ caseId, caseEvents, preAiReadMs, postAiReadMs, totalReadMs }) => {
       const firstImpression = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
       const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
       const finalAssessment = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
@@ -595,13 +682,13 @@ export class ExportPackZip {
       const lockToRevealMs = durationMs(firstImpression, aiRevealed) ?? 0;
       const revealToFinalMs = durationMs(aiRevealed, finalAssessment ?? caseCompleted) ?? 0;
 
-      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
-      const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
-        caseEvents,
-        caseId,
-        isCalibration,
-        'ExportPackZip'
-      );
+      // Compute new time ratio metrics
+      const timeRatio = (typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number' && postAiReadMs > 0)
+        ? Math.round((preAiReadMs / postAiReadMs) * 1000) / 1000
+        : null;
+      const preAITimeVsMedian = (typeof preAiReadMs === 'number' && sessionMedianPreAITime !== null)
+        ? Math.round((preAiReadMs - sessionMedianPreAITime) * 100) / 100
+        : null;
 
       const values = [
         this.sessionId,
@@ -617,6 +704,9 @@ export class ExportPackZip {
         preAiReadMs,
         postAiReadMs,
         totalReadMs,
+        timeRatio,
+        sessionMedianPreAITime,
+        preAITimeVsMedian,
         aiExposureMs,
         totalTimeMs,
         timeToLockMs,
@@ -635,6 +725,19 @@ export class ExportPackZip {
     });
 
     return [headers, ...rows].join('\n');
+  }
+
+  /**
+   * Compute median of an array of numbers
+   */
+  private computeMedian(values: number[]): number | null {
+    if (values.length === 0) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+      return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+    }
+    return sorted[mid];
   }
 
   private normalizeMetricValue(value: unknown): string | number | boolean {
@@ -775,6 +878,9 @@ export class ExportPackZip {
 - **preAiReadMs**: PRE_AI read episode duration
 - **postAiReadMs**: POST_AI read episode duration
 - **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
+- **timeRatio**: preAiReadMs / postAiReadMs (ratio of pre-AI to post-AI reading time)
+- **sessionMedianPreAITime**: Median preAiReadMs across all cases in the session
+- **preAITimeVsMedian**: This case's preAiReadMs minus the session median (positive = slower than median)
 - **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
 - **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
 - **comprehensionItemId**: Disclosure comprehension item identifier

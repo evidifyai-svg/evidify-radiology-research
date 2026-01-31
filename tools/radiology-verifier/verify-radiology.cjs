@@ -34,7 +34,6 @@ function sha256Hex(s) {
   return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 }
 
-<<<<<<< HEAD
 function parseCsvLine(line) {
   const values = [];
   let current = '';
@@ -49,7 +48,6 @@ function parseCsvLine(line) {
         if (nextChar === '"') {
           current += '"';
           i += 1;
-=======
 function parseCsvRow(line) {
   const values = [];
   let current = '';
@@ -61,12 +59,10 @@ function parseCsvRow(line) {
         if (line[i + 1] === '"') {
           current += '"';
           i++;
->>>>>>> 4d138bf (Fix derived metrics durations and verifier checks (#27))
         } else {
           inQuotes = false;
         }
       } else {
-<<<<<<< HEAD
         current += char;
       }
       continue;
@@ -86,7 +82,6 @@ function parseCsvRow(line) {
     current += char;
   }
 
-=======
         current += ch;
       }
     } else {
@@ -100,13 +95,11 @@ function parseCsvRow(line) {
       }
     }
   }
->>>>>>> 4d138bf (Fix derived metrics durations and verifier checks (#27))
   values.push(current);
   return values;
 }
 
 function parseCsv(content) {
-<<<<<<< HEAD
   const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
   if (lines.length === 0) return { headers: [], rows: [] };
 
@@ -358,7 +351,6 @@ function computeMetricsFromEvents(events) {
   return metricsByCase;
 }
 
-=======
   const lines = content.split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return { headers: [], rows: [] };
   const headers = parseCsvRow(lines[0]);
@@ -366,7 +358,6 @@ function computeMetricsFromEvents(events) {
   return { headers, rows };
 }
 
->>>>>>> 4d138bf (Fix derived metrics durations and verifier checks (#27))
 function main() {
   const args = process.argv.slice(2);
   const jsonMode = args.includes('--json');
@@ -510,7 +501,6 @@ function main() {
     }
   }
 
-<<<<<<< HEAD
   // Derived metrics analytics replay check
   if (out.pass) {
     const derivedMetricsPath = path.join(pack, 'derived_metrics.csv');
@@ -610,7 +600,6 @@ function main() {
         };
         fail(`Derived metrics verification error: ${e.message}`);
       }
-=======
   // Derived metrics sanity checks
   const metricsPath = path.join(pack, 'derived_metrics.csv');
   if (exists(metricsPath)) {
@@ -684,7 +673,6 @@ function main() {
       if (!ok) fail('Derived metrics sanity checks failed');
     } catch (e) {
       fail(`Derived metrics check error: ${e.message}`);
->>>>>>> 4d138bf (Fix derived metrics durations and verifier checks (#27))
     }
   }
 
