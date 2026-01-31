@@ -128,7 +128,7 @@ export const IPProtectionSplash: React.FC = () => {
         padding: '24px',
       }}
       // Clicking the overlay closes (optional). If you want "must acknowledge", remove this.
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
     >
@@ -147,6 +147,7 @@ export const IPProtectionSplash: React.FC = () => {
       >
         {/* Close (optional) */}
         <button
+          type="button"
           onClick={handleClose}
           aria-label="Close"
           style={{
@@ -210,6 +211,7 @@ export const IPProtectionSplash: React.FC = () => {
         </p>
 
         <button
+          type="button"
           ref={primaryBtnRef}
           onClick={handleAcknowledge}
           style={{
