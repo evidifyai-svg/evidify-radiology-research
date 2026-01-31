@@ -1,0 +1,2 @@
+sessionId,caseId,condition,initialBirads,finalBirads,aiBirads,changeOccurred,aiConsistentChange,addaDenominator,adda,preAiReadMs,postAiReadMs,totalReadMs,comprehensionItemId,comprehensionAnswer,comprehensionCorrect,comprehension_question_id,comprehension_answer,comprehension_correct,comprehension_response_ms
+SESSION-001,CASE-001,human_first,2,3,3,true,true,true,true,10000,10000,20000,Q1,B,true,Q1,B,true,2000
