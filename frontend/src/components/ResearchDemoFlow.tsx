@@ -4866,6 +4866,15 @@ export const ResearchDemoFlow: React.FC = () => {
     }
   }, [state.step]);
 
+  // Cleanup object URL on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (state.exportUrl) {
+        URL.revokeObjectURL(state.exportUrl);
+      }
+    };
+  }, [state.exportUrl]);
+
   // Handle session recovery
   const handleRecoverSession = () => {
     try {
@@ -5577,8 +5586,20 @@ setAiAgreementStreak(prev => prev + 1);
     }
     
     const { blob, filename, verifierOutput, manifest, exportManifestEntries } = await exportPackRef.current.generateZip();
+
+    // Revoke previous object URL to prevent memory leak
+    if (state.exportUrl) {
+      URL.revokeObjectURL(state.exportUrl);
+    }
+
     const url = URL.createObjectURL(blob);
-    
+
+    // Guard against unexpected verifier results
+    const verifierResult: 'PASS' | 'FAIL' =
+      verifierOutput.result === 'PASS' || verifierOutput.result === 'FAIL'
+        ? verifierOutput.result
+        : 'FAIL';
+
     setState(s => ({
       ...s,
       exportReady: true,
@@ -5587,16 +5608,22 @@ setAiAgreementStreak(prev => prev + 1);
       exportManifest: manifest,
       exportManifestEntries,
       verifierOutput,
-      verifierResult: verifierOutput.result as 'PASS' | 'FAIL',
+      verifierResult,
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
     setTamperDemoActive(false);
     setTamperFailureCode(null);
-  }, [state.caseResults, state.condition, state.caseQueue, disclosurePolicy]);
+  }, [state.caseResults, state.condition, state.caseQueue, disclosurePolicy, state.exportUrl]);
 
   // Tamper Demo - simulates what happens when export is modified
   // Only allowed when verifier currently shows PASS to avoid masking real failures
   const runTamperDemo = useCallback(() => {
+    // Guard: only allow tamper demo when verifier shows PASS
+    if (state.verifierResult !== 'PASS') {
+      console.warn('Tamper demo only available when verifier shows PASS');
+      return;
+    }
+
     // Store the actual verifier result before tampering so we can restore it
     setVerifierResultBeforeTamper(state.verifierResult);
 
