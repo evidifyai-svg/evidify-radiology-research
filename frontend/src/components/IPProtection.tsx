@@ -105,7 +105,8 @@ export const IPProtectionSplash: React.FC = () => {
   };
 
   const handleClose = () => {
-    // If you want to REQUIRE acknowledgement, remove this close handler and the X.
+    // Closing the modal counts as acknowledgement (user saw it)
+    safeSessionSet(SESSION_STORAGE_KEY, 'true');
     setIsVisible(false);
   };
 
