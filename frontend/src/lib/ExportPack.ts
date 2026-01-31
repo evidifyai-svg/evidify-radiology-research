@@ -253,6 +253,9 @@ export interface DerivedMetrics {
   preAiReadMs?: number;
   postAiReadMs?: number;
   totalReadMs?: number;
+  timeRatio?: number | null;              // preAiReadMs / postAiReadMs
+  sessionMedianPreAITime?: number | null; // Median preAiReadMs across session
+  preAITimeVsMedian?: number | null;      // This case's preAiReadMs - session median
   aiExposureMs?: number;
   decisionChangeCount?: number;
   overrideCount?: number;
