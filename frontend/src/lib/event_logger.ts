@@ -65,6 +65,13 @@ export type EyeTrackingProxyEventType =
   | 'ATTENTION_COVERAGE_PROXY'
   | 'SACCADE_DETECTED';
 
+// Viewport Attention Proxy events (Wolfe)
+export type ViewportAttentionEventType =
+  | 'VIEWPORT_ATTENTION_START'
+  | 'REGION_VIEWED'
+  | 'VIEWPORT_ATTENTION_SUMMARY'
+  | 'WOLFE_ERROR_CLASSIFICATION';
+
 export type ViewerEventType =
   | 'VIEW_FOCUSED'
   | 'ZOOM_CHANGED'
@@ -73,12 +80,13 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-export type AllEventTypes = 
-  | SessionEventType 
-  | CaseEventType 
-  | CalibrationEventType 
+export type AllEventTypes =
+  | SessionEventType
+  | CaseEventType
+  | CalibrationEventType
   | AttentionEventType
   | EyeTrackingProxyEventType
+  | ViewportAttentionEventType
   | ViewerEventType;
 
 // ============================================================================
@@ -247,6 +255,63 @@ export interface AttentionCoverageProxyPayload {
     zooms: number;
     pans: number;
     windowLevelChanges: number;
+  };
+}
+
+// Viewport Attention Proxy payloads (Wolfe)
+export interface ViewportAttentionStartPayload {
+  caseId: string;
+  timestamp: string;
+  viewsTracked: string[];
+}
+
+export interface RegionViewedPayload {
+  caseId: string;
+  viewKey: 'RCC' | 'LCC' | 'RMLO' | 'LMLO';
+  region: string;
+  zoomLevel: number;
+  dwellTimeMs: number;
+  viewCount: number;
+  percentageViewed: number;
+}
+
+export interface ViewportAttentionSummaryPayload {
+  caseId: string;
+  viewSummaries: Array<{
+    viewKey: string;
+    totalRegions: number;
+    regionsViewed: number;
+    coveragePercent: number;
+    averageDwellTimeMs: number;
+    clinicalCoverageScore: number;
+    regionsNeverViewed: string[];
+    hotspots: string[];
+  }>;
+  aggregateCoverage: {
+    totalRegions: number;
+    regionsViewed: number;
+    coveragePercent: number;
+    highPriorityRegionsViewed: number;
+    highPriorityRegionsTotal: number;
+  };
+}
+
+export interface WolfeErrorClassificationPayload {
+  caseId: string;
+  findingId: string;
+  findingRegion: string;
+  errorType: 'SEARCH_ERROR' | 'RECOGNITION_ERROR' | 'DECISION_ERROR' | 'CORRECT';
+  regionWasViewed: boolean;
+  dwellTimeOnRegion: number;
+  zoomLevelUsed: number;
+  wolfeExplanation: string;
+  metadata: {
+    viewKey: string;
+    findingType: string;
+    groundTruthBirads: number;
+    readerBirads: number;
+    coveragePercent: number;
+    viewCount: number;
   };
 }
 
@@ -637,6 +702,61 @@ const payload: FinalAssessmentPayload = {
   getExportPack(): ExportPackLike {
     return this.exportPack;
   }
+
+  // ==========================================================================
+  // Viewport Attention Proxy events (Wolfe)
+  // ==========================================================================
+
+  /**
+   * Log viewport attention tracking start.
+   * Call when case begins to mark the start of attention tracking.
+   */
+  async logViewportAttentionStart(caseId: string): Promise<LedgerEntry> {
+    const payload: ViewportAttentionStartPayload = {
+      caseId,
+      timestamp: new Date().toISOString(),
+      viewsTracked: ['RCC', 'LCC', 'RMLO', 'LMLO'],
+    };
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_START', payload);
+  }
+
+  /**
+   * Log when a region is viewed (debounced - don't call too frequently).
+   * Use this for significant region viewing events.
+   */
+  async logRegionViewed(payload: RegionViewedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('REGION_VIEWED', payload);
+  }
+
+  /**
+   * Log viewport attention summary at case completion.
+   * This summarizes all attention data for the case.
+   */
+  async logViewportAttentionSummary(payload: ViewportAttentionSummaryPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_SUMMARY', payload);
+  }
+
+  /**
+   * Log Wolfe error classification for a finding.
+   * Call this when comparing reader assessment to ground truth.
+   *
+   * Based on Wolfe's visual attention research:
+   * - SEARCH_ERROR: Finding region never viewed
+   * - RECOGNITION_ERROR: Region viewed but finding missed
+   * - DECISION_ERROR: Finding detected but wrong assessment
+   * - CORRECT: No error
+   */
+  async logWolfeErrorClassification(payload: WolfeErrorClassificationPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WOLFE_ERROR_CLASSIFICATION', payload);
+  }
 }
+
+// Export viewport attention types
+export type {
+  ViewportAttentionStartPayload,
+  RegionViewedPayload,
+  ViewportAttentionSummaryPayload,
+  WolfeErrorClassificationPayload,
+};
 
 export default EventLogger;

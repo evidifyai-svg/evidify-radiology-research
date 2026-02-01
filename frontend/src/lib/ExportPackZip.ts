@@ -175,6 +175,9 @@ export class ExportPackZip {
   private metricsPerCase: DerivedMetrics[] = [];
   private methodsSnapshot: Record<string, unknown> | null = null;
   private static metricsSelfCheckRan = false;
+  // Viewport Attention Proxy (Wolfe) data
+  private attentionHeatmaps: Record<string, unknown>[] = [];
+  private wolfeClassifications: Record<string, unknown>[] = [];
 
   constructor(config: {
     sessionId: string;
@@ -277,6 +280,36 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
   setMethodsSnapshot(snapshot: Record<string, unknown>): void {
     this.methodsSnapshot = snapshot;
+  }
+
+  /**
+   * Add attention heatmap data for a case.
+   * This stores viewport attention tracking data per anatomical region.
+   */
+  addAttentionHeatmap(heatmap: Record<string, unknown>): void {
+    this.attentionHeatmaps.push(heatmap);
+  }
+
+  /**
+   * Add Wolfe error classification for a finding.
+   * Based on Wolfe's visual attention research taxonomy.
+   */
+  addWolfeClassification(classification: Record<string, unknown>): void {
+    this.wolfeClassifications.push(classification);
+  }
+
+  /**
+   * Get attention heatmaps
+   */
+  getAttentionHeatmaps(): Record<string, unknown>[] {
+    return this.attentionHeatmaps;
+  }
+
+  /**
+   * Get Wolfe classifications
+   */
+  getWolfeClassifications(): Record<string, unknown>[] {
+    return this.wolfeClassifications;
   }
   /**
    * Run internal verifier
@@ -460,6 +493,34 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       payloadFiles['methods_snapshot.json'] = JSON.stringify(this.methodsSnapshot, null, 2);
     }
 
+    // Add Viewport Attention Proxy (Wolfe) exports
+    if (this.attentionHeatmaps.length > 0) {
+      payloadFiles['attention_heatmap.json'] = JSON.stringify({
+        schema: 'evidify.attention_heatmap.v1',
+        sessionId: this.sessionId,
+        timestamp: new Date().toISOString(),
+        heatmaps: this.attentionHeatmaps,
+      }, null, 2);
+    }
+
+    if (this.wolfeClassifications.length > 0) {
+      payloadFiles['wolfe_classification.json'] = JSON.stringify({
+        schema: 'evidify.wolfe_classification.v1',
+        sessionId: this.sessionId,
+        timestamp: new Date().toISOString(),
+        methodology: {
+          reference: 'Wolfe, J. M. (2020). Visual Search. Drew, T., et al. (2013). The invisible gorilla strikes again.',
+          errorTypes: {
+            SEARCH_ERROR: 'Finding region never viewed - sampling/search failure',
+            RECOGNITION_ERROR: 'Region viewed but finding not detected - perceptual failure',
+            DECISION_ERROR: 'Finding detected but incorrectly classified - cognitive failure',
+            CORRECT: 'No error - finding correctly detected and classified',
+          },
+        },
+        classifications: this.wolfeClassifications,
+      }, null, 2);
+    }
+
     const exportManifestEntries: Array<{ path: string; sha256: string; bytes: number }> = [];
     for (const filePath of Object.keys(payloadFiles).sort()) {
       const content = payloadFiles[filePath];
@@ -525,6 +586,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     zip.file('codebook.md', codebook);
     if (this.methodsSnapshot) {
       zip.file('methods_snapshot.json', JSON.stringify(this.methodsSnapshot, null, 2));
+    }
+    // Add Viewport Attention Proxy (Wolfe) files
+    if (payloadFiles['attention_heatmap.json']) {
+      zip.file('attention_heatmap.json', payloadFiles['attention_heatmap.json']);
+    }
+    if (payloadFiles['wolfe_classification.json']) {
+      zip.file('wolfe_classification.json', payloadFiles['wolfe_classification.json']);
     }
     
     // Generate ZIP blob
@@ -863,6 +931,12 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ATTENTION_CHECK_PRESENTED**: Catch trial presented
 - **ATTENTION_CHECK_RESPONSE**: Reader response to catch trial
 
+### Viewport Attention Proxy (Wolfe)
+- **VIEWPORT_ATTENTION_START**: Viewport attention tracking started for case
+- **REGION_VIEWED**: Anatomical region entered viewport (debounced)
+- **VIEWPORT_ATTENTION_SUMMARY**: Summary of attention coverage at case completion
+- **WOLFE_ERROR_CLASSIFICATION**: Error classification per Wolfe taxonomy
+
 ## Derived Metrics
 
 ### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
@@ -886,6 +960,42 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
 - **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+
+## Viewport Attention Proxy (Wolfe)
+
+### Anatomical Regions
+Standard breast quadrant divisions used for attention tracking:
+- **UOQ**: Upper Outer Quadrant (highest cancer prevalence - 50% of cases)
+- **UIQ**: Upper Inner Quadrant
+- **LOQ**: Lower Outer Quadrant
+- **LIQ**: Lower Inner Quadrant
+- **AXILLA**: Axillary tail region
+- **NIPPLE/RETRO**: Retroareolar region
+
+Suffix indicates laterality: _R (right breast), _L (left breast)
+
+### Wolfe Error Classification (per Drew, Wolfe et al.)
+
+Based on Dr. Jeremy Wolfe's visual attention research at Harvard:
+
+| Error Type | Definition | Cause |
+|------------|------------|-------|
+| **SEARCH_ERROR** | Finding region never viewed | Sampling failure - eyes never landed on target |
+| **RECOGNITION_ERROR** | Region viewed but finding missed | Perceptual failure - "invisible gorilla" effect |
+| **DECISION_ERROR** | Finding detected but wrong assessment | Cognitive failure - incorrect classification |
+| **CORRECT** | No error | Correct detection and classification |
+
+**References:**
+- Wolfe, J. M. (2020). "Visual Search" in Attention (2nd ed.)
+- Drew, T., Vo, M. L. H., & Wolfe, J. M. (2013). "The invisible gorilla strikes again." Psychological Science, 24(9), 1848-1853.
+- Kundel, H. L., & Nodine, C. F. (1975). "Interpreting chest radiographs without visual search." Radiology, 116(3), 527-532.
+
+### Attention Metrics
+- **dwellTimeMs**: Total time viewport included region (ms)
+- **viewCount**: Number of times region entered viewport
+- **maxZoomLevel**: Highest magnification used on region
+- **percentageViewed**: Maximum % of region visible at any point
+- **clinicalCoverageScore**: Weighted score based on clinical importance
 
 ## Hash Chain Verification
 
