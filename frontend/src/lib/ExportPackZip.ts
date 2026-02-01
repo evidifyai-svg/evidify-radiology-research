@@ -917,6 +917,18 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ATTENTION_CHECK_PRESENTED**: Catch trial presented
 - **ATTENTION_CHECK_RESPONSE**: Reader response to catch trial
 
+### Workload Monitoring Events
+- **WORKLOAD_THRESHOLD_CROSSED**: Reader workload status changed (GREEN→YELLOW→RED)
+- **WORKLOAD_ADVISORY_SHOWN**: Fatigue warning displayed to reader
+- **WORKLOAD_ADVISORY_RESPONSE**: Reader response to advisory (CONTINUE/TAKE_BREAK)
+- **SESSION_WORKLOAD_SUMMARY**: End-of-session workload metrics summary
+
+### Viewport Attention Tracking Events
+- **VIEWPORT_ATTENTION_START**: Case-level attention tracking initialized
+- **REGION_VIEWED**: Anatomical region entered viewport (debounced)
+- **VIEWPORT_ATTENTION_SUMMARY**: End-of-case attention coverage summary
+- **ERROR_CLASSIFICATION**: Error type classification (SEARCH/RECOGNITION/DECISION/CORRECT)
+
 ## Derived Metrics
 
 ### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
@@ -940,6 +952,36 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
 - **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+
+### Workload Metrics
+- **casesPerHour**: Current throughput rate (cases/hour)
+- **fatigueIndex**: Combined fatigue score (0-100) based on time, cases, and rate
+- **workloadStatus**: GREEN (<30 cases/hr), YELLOW (30-40), RED (>40)
+- **timeInZones**: Milliseconds spent in each workload zone
+- **thresholdCrossings**: Count of zone transitions during session
+
+### Viewport Attention Metrics
+- **coveragePercent**: Percentage of anatomical regions viewed
+- **regionsNeverViewed**: List of anatomical regions never in viewport
+- **averageDwellTimeMs**: Mean time per viewed region
+- **hotspots**: Top regions by cumulative attention
+
+### Error Classification Types
+Error types based on visual attention research:
+- **SEARCH_ERROR**: Finding region was never viewed (incomplete systematic search)
+- **RECOGNITION_ERROR**: Region viewed but finding not detected (perceptual miss)
+- **DECISION_ERROR**: Finding recognized but incorrectly assessed (judgment error)
+- **CORRECT**: Finding correctly identified and assessed
+
+### Anatomical Regions
+Standard breast quadrant nomenclature (suffix _R or _L for laterality):
+- **UOQ**: Upper Outer Quadrant
+- **UIQ**: Upper Inner Quadrant
+- **LOQ**: Lower Outer Quadrant
+- **LIQ**: Lower Inner Quadrant
+- **AXILLA**: Axillary region
+- **NIPPLE**: Nipple/areolar complex
+- **RETRO**: Retroareolar region
 
 ## Hash Chain Verification
 

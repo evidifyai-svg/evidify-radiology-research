@@ -73,13 +73,29 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-export type AllEventTypes = 
-  | SessionEventType 
-  | CaseEventType 
-  | CalibrationEventType 
+// Workload monitoring events (fatigue tracking)
+export type WorkloadEventType =
+  | 'WORKLOAD_THRESHOLD_CROSSED'
+  | 'WORKLOAD_ADVISORY_SHOWN'
+  | 'WORKLOAD_ADVISORY_RESPONSE'
+  | 'SESSION_WORKLOAD_SUMMARY';
+
+// Viewport attention tracking events (attention proxy)
+export type ViewportAttentionEventType =
+  | 'VIEWPORT_ATTENTION_START'
+  | 'REGION_VIEWED'
+  | 'VIEWPORT_ATTENTION_SUMMARY'
+  | 'ERROR_CLASSIFICATION';
+
+export type AllEventTypes =
+  | SessionEventType
+  | CaseEventType
+  | CalibrationEventType
   | AttentionEventType
   | EyeTrackingProxyEventType
-  | ViewerEventType;
+  | ViewerEventType
+  | WorkloadEventType
+  | ViewportAttentionEventType;
 
 // ============================================================================
 // EVENT PAYLOADS
@@ -248,6 +264,115 @@ export interface AttentionCoverageProxyPayload {
     pans: number;
     windowLevelChanges: number;
   };
+}
+
+// Workload monitoring payloads
+export interface WorkloadThresholdCrossedPayload {
+  caseId: string;
+  previousStatus: 'GREEN' | 'YELLOW' | 'RED';
+  newStatus: 'GREEN' | 'YELLOW' | 'RED';
+  metrics: {
+    casesCompleted: number;
+    casesPerHour: number;
+    sessionDurationMinutes: number;
+    fatigueIndex: number;
+  };
+  timestamp: string;
+}
+
+export interface WorkloadAdvisoryShownPayload {
+  advisoryLevel: 'GREEN' | 'YELLOW' | 'RED';
+  advisoryMessage: string;
+  metrics: {
+    casesCompleted: number;
+    casesPerHour: number;
+    sessionDurationMinutes: number;
+    fatigueIndex: number;
+  };
+  timestamp: string;
+}
+
+export interface WorkloadAdvisoryResponsePayload {
+  response: 'CONTINUE' | 'TAKE_BREAK';
+  responseTimeMs: number;
+  metrics: {
+    casesCompleted: number;
+    casesPerHour: number;
+    fatigueIndex: number;
+  };
+  timestamp: string;
+}
+
+export interface SessionWorkloadSummaryPayload {
+  totalSessionDurationMs: number;
+  totalCasesCompleted: number;
+  overallAverageTimePerCaseMs: number;
+  peakCasesPerHour: number;
+  finalFatigueIndex: number;
+  timeInZones: {
+    green: number;
+    yellow: number;
+    red: number;
+  };
+  thresholdCrossings: {
+    toYellow: number;
+    toRed: number;
+  };
+  advisoriesShown: number;
+  advisoryResponses: {
+    continued: number;
+    tookBreak: number;
+  };
+}
+
+// Viewport attention tracking payloads
+export interface ViewportAttentionStartPayload {
+  caseId: string;
+  timestamp: string;
+  initialViewport: {
+    zoomLevel: number;
+    panPosition: { x: number; y: number };
+  };
+}
+
+export interface RegionViewedPayload {
+  caseId: string;
+  region: string;
+  zoomLevel: number;
+  enteredAt: string;
+  dwellTimeMs?: number;
+}
+
+export interface ViewportAttentionSummaryPayload {
+  caseId: string;
+  summary: {
+    totalRegions: number;
+    regionsViewed: number;
+    coveragePercent: number;
+    regionsNeverViewed: string[];
+    averageDwellTimeMs: number;
+    hotspots: string[];
+    totalReadingTimeMs: number;
+  };
+  timestamp: string;
+}
+
+export interface ErrorClassificationPayload {
+  caseId: string;
+  analysis: {
+    totalFindings: number;
+    correctFindings: number;
+    searchErrors: number;
+    recognitionErrors: number;
+    decisionErrors: number;
+    classifications: Array<{
+      findingId: string;
+      findingRegion: string;
+      errorType: 'SEARCH_ERROR' | 'RECOGNITION_ERROR' | 'DECISION_ERROR' | 'CORRECT';
+      explanation: string;
+    }>;
+  };
+  timestamp: string;
 }
 
 // ============================================================================
@@ -636,6 +761,84 @@ const payload: FinalAssessmentPayload = {
    */
   getExportPack(): ExportPackLike {
     return this.exportPack;
+  }
+
+  // ==========================================================================
+  // Workload monitoring events
+  // ==========================================================================
+
+  /**
+   * Log workload threshold crossing
+   */
+  async logWorkloadThresholdCrossed(
+    payload: WorkloadThresholdCrossedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_THRESHOLD_CROSSED', payload);
+  }
+
+  /**
+   * Log workload advisory shown to user
+   */
+  async logWorkloadAdvisoryShown(
+    payload: WorkloadAdvisoryShownPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_SHOWN', payload);
+  }
+
+  /**
+   * Log user response to workload advisory
+   */
+  async logWorkloadAdvisoryResponse(
+    payload: WorkloadAdvisoryResponsePayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_RESPONSE', payload);
+  }
+
+  /**
+   * Log session workload summary at session end
+   */
+  async logSessionWorkloadSummary(
+    payload: SessionWorkloadSummaryPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SESSION_WORKLOAD_SUMMARY', payload);
+  }
+
+  // ==========================================================================
+  // Viewport attention tracking events
+  // ==========================================================================
+
+  /**
+   * Log viewport attention tracking start
+   */
+  async logViewportAttentionStart(
+    payload: ViewportAttentionStartPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_START', payload);
+  }
+
+  /**
+   * Log region viewed event
+   */
+  async logRegionViewed(payload: RegionViewedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('REGION_VIEWED', payload);
+  }
+
+  /**
+   * Log viewport attention summary at case completion
+   */
+  async logViewportAttentionSummary(
+    payload: ViewportAttentionSummaryPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_SUMMARY', payload);
+  }
+
+  /**
+   * Log error classification for a case
+   */
+  async logErrorClassification(
+    payload: ErrorClassificationPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('ERROR_CLASSIFICATION', payload);
   }
 }
 
