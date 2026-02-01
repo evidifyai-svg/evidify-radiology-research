@@ -79,6 +79,15 @@ export { OCRVerificationDashboard as OCRVerification } from './OCRVerification';
 export { BackupManager } from './BackupManager';
 
 // ============================================================================
+// SPIEGELHALTER AI VALIDATION FRAMEWORK
+// ============================================================================
+
+// AI Validation Phase Display (4-phase framework)
+export { AIValidationBadge, AIValidationInlineBadge, AIValidationPhaseBar } from './research/legal/AIValidationBadge';
+export { AIValidationDetails } from './research/legal/AIValidationDetails';
+export { ValidationComprehensionCheck, InlineComprehensionCheck } from './research/legal/ValidationComprehensionCheck';
+
+// ============================================================================
 // INTEGRATED WORKSPACE
 // ============================================================================
 

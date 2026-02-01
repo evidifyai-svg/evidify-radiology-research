@@ -73,13 +73,21 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-export type AllEventTypes = 
-  | SessionEventType 
-  | CaseEventType 
-  | CalibrationEventType 
+// Spiegelhalter AI Validation Framework events
+export type AIValidationEventType =
+  | 'AI_VALIDATION_DISPLAYED'
+  | 'AI_VALIDATION_EXPANDED'
+  | 'AI_VALIDATION_ACKNOWLEDGED'
+  | 'AI_VALIDATION_COMPREHENSION_RESPONSE';
+
+export type AllEventTypes =
+  | SessionEventType
+  | CaseEventType
+  | CalibrationEventType
   | AttentionEventType
   | EyeTrackingProxyEventType
-  | ViewerEventType;
+  | ViewerEventType
+  | AIValidationEventType;
 
 // ============================================================================
 // EVENT PAYLOADS
@@ -221,6 +229,47 @@ export interface AttentionCheckPayload {
   expectedResponse: number;
   actualResponse: number;
   passed: boolean;
+}
+
+// ============================================================================
+// AI VALIDATION PAYLOADS (Spiegelhalter Framework)
+// ============================================================================
+
+export interface AIValidationDisplayedPayload {
+  systemId: string;
+  systemName: string;
+  phase: 1 | 2 | 3 | 4;
+  evidenceQuality: 'INSUFFICIENT' | 'LOW' | 'MODERATE' | 'HIGH';
+  timestamp: string;
+  displayDurationMs?: number;
+}
+
+export interface AIValidationExpandedPayload {
+  systemId: string;
+  phase: 1 | 2 | 3 | 4;
+  timestamp: string;
+  sectionsViewed: string[];
+  viewDurationMs: number;
+}
+
+export interface AIValidationAcknowledgedPayload {
+  systemId: string;
+  phase: 1 | 2 | 3 | 4;
+  timestamp: string;
+  displayToAckMs: number;
+  comprehensionRequired: boolean;
+  comprehensionPassed?: boolean;
+}
+
+export interface AIValidationComprehensionPayload {
+  systemId: string;
+  questionId: string;
+  phase: 1 | 2 | 3 | 4;
+  selectedIndex: number;
+  correctIndex: number;
+  isCorrect: boolean;
+  responseTimeMs: number;
+  timestamp: string;
 }
 
 // P1-3: Eye-tracking proxy payloads
@@ -636,6 +685,38 @@ const payload: FinalAssessmentPayload = {
    */
   getExportPack(): ExportPackLike {
     return this.exportPack;
+  }
+
+  // ==========================================================================
+  // AI VALIDATION EVENTS (Spiegelhalter Framework)
+  // ==========================================================================
+
+  /**
+   * Log when AI validation status is displayed to clinician
+   */
+  async logAIValidationDisplayed(payload: AIValidationDisplayedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('AI_VALIDATION_DISPLAYED', payload);
+  }
+
+  /**
+   * Log when clinician expands validation details
+   */
+  async logAIValidationExpanded(payload: AIValidationExpandedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('AI_VALIDATION_EXPANDED', payload);
+  }
+
+  /**
+   * Log when clinician acknowledges validation status
+   */
+  async logAIValidationAcknowledged(payload: AIValidationAcknowledgedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('AI_VALIDATION_ACKNOWLEDGED', payload);
+  }
+
+  /**
+   * Log comprehension check response
+   */
+  async logAIValidationComprehension(payload: AIValidationComprehensionPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('AI_VALIDATION_COMPREHENSION_RESPONSE', payload);
   }
 }
 
