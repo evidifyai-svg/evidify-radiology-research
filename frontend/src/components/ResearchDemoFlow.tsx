@@ -108,25 +108,53 @@ const TOO_FAST_PRE_AI_MS = 5000;
 const TOO_FAST_AI_EXPOSURE_MS = 3000;
 
 type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
+type AnyObj = Record<string, any>;
+
+const coerceJsonObject = (maybe: unknown): AnyObj | null => {
+  if (maybe == null) return null;
+
+  if (typeof maybe === 'string') {
+    try {
+      const parsed = JSON.parse(maybe);
+      return parsed && typeof parsed === 'object' ? (parsed as AnyObj) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof maybe === 'object') return maybe as AnyObj;
+  return null;
+};
+
+const getPayloadObject = (event: any): AnyObj => {
+  const p = coerceJsonObject(event?.payload);
+  const nested = p ? coerceJsonObject(p.payload) : null; // canonicalized/hash-chain form
+  return (nested ?? p ?? {}) as AnyObj;
+};
+
+const getCaseIdFromEvent = (event: any): string | null => {
+  const p = getPayloadObject(event);
+  return (p.caseId ?? p.activeCaseId ?? null) as string | null;
+};
 
 const groupEventsByCase = (events: any[]): Map<string, any[]> => {
   const grouped = new Map<string, any[]>();
   let activeCaseId: string | null = null;
 
-  events.forEach(event => {
-    if (event.type === 'CASE_LOADED' && event.payload?.caseId) {
-      activeCaseId = event.payload.caseId as string;
-      if (!grouped.has(activeCaseId)) {
-        grouped.set(activeCaseId, []);
+  events.forEach((event) => {
+    if (event.type === 'CASE_LOADED') {
+      const cid = getCaseIdFromEvent(event);
+      if (cid) {
+        activeCaseId = cid;
+        if (!grouped.has(activeCaseId)) grouped.set(activeCaseId, []);
       }
     }
 
-    if (activeCaseId) {
-      grouped.get(activeCaseId)?.push(event);
-    }
+    if (activeCaseId) grouped.get(activeCaseId)?.push(event);
 
-    if (event.type === 'CASE_COMPLETED' && event.payload?.caseId === activeCaseId) {
-      activeCaseId = null;
+    if (event.type === 'CASE_COMPLETED') {
+      const cid = getCaseIdFromEvent(event);
+      if (cid && cid === activeCaseId) activeCaseId = null;
     }
   });
 
@@ -139,61 +167,114 @@ const computeReadEpisodeMetrics = (
   isCalibration: boolean
 ): { preAiReadMs?: number; postAiReadMs?: number; totalReadMs?: number } => {
   if (isCalibration) {
-    return { preAiReadMs: 0, postAiReadMs: 0, totalReadMs: 0 };
+    return { preAiReadMs: undefined, postAiReadMs: undefined, totalReadMs: undefined };
   }
 
-  const warn = (message: string) => {
-    console.warn(`[ReadEpisodes] ${message}`);
+  const warn = (message: string) => console.warn(`[ReadEpisodes] ${message}`);
+
+  const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
+  const firstLock = caseEvents.find(e => e.type === 'FIRST_IMPRESSION_LOCKED');
+  const aiRevealed = caseEvents.find(e => e.type === 'AI_REVEALED');
+  const final = caseEvents.find(e => e.type === 'FINAL_ASSESSMENT');
+  const completed = caseEvents.find(e => e.type === 'CASE_COMPLETED');
+
+  const computeEpisodeMs = (episodeType: 'PRE_AI' | 'POST_AI'): number | undefined => {
+    const starts = caseEvents.filter(e => {
+      const p = getPayloadObject(e);
+      return e.type === 'READ_EPISODE_STARTED' && p.episodeType === episodeType;
+    });
+
+    const ends = caseEvents.filter(e => {
+      const p = getPayloadObject(e);
+      return e.type === 'READ_EPISODE_ENDED' && p.episodeType === episodeType;
+    });
+
+    const pickFallbackEnd = (): any | undefined => {
+      // PRE_AI should end at first lock (or AI reveal if you skip lock)
+      if (episodeType === 'PRE_AI') return firstLock ?? aiRevealed ?? completed;
+      // POST_AI should end at final/completed
+      return final ?? completed;
+    };
+
+    // --- Ideal case: 1 + 1 ---
+    if (starts.length === 1 && ends.length === 1) {
+      const startP = getPayloadObject(starts[0]);
+      const endP = getPayloadObject(ends[0]);
+      const startMs = new Date(startP.tStartIso ?? starts[0].timestamp).getTime();
+      const endMs = new Date(endP.tEndIso ?? ends[0].timestamp).getTime();
+      const d = endMs - startMs;
+      return Number.isFinite(d) && d >= 0 ? d : undefined;
+    }
+
+    // --- END without START ---
+    if (starts.length === 0 && ends.length === 1) {
+      const endP = getPayloadObject(ends[0]);
+      const inferredStartIso = endP.tStartIso ?? caseLoaded?.timestamp;
+      if (inferredStartIso) {
+        const startMs = new Date(inferredStartIso).getTime();
+        const endMs = new Date(endP.tEndIso ?? ends[0].timestamp).getTime();
+        const d = endMs - startMs;
+        if (Number.isFinite(d) && d >= 0) return d;
+      }
+      warn(`Case ${caseId} ${episodeType}: end-only; could not infer start`);
+      return undefined;
+    }
+
+    // --- START without END ---
+    if (starts.length === 1 && ends.length === 0) {
+      const startP = getPayloadObject(starts[0]);
+      const inferredEnd = pickFallbackEnd();
+      if (inferredEnd) {
+        const startMs = new Date(startP.tStartIso ?? starts[0].timestamp).getTime();
+        const endMs = new Date(inferredEnd.timestamp).getTime();
+        const d = endMs - startMs;
+        if (Number.isFinite(d) && d >= 0) return d;
+      }
+      warn(`Case ${caseId} ${episodeType}: start-only; could not infer end`);
+      return undefined;
+    }
+
+    // --- Multiple starts/ends or 0/0: still warn ---
+    if (starts.length !== 0 || ends.length !== 0) {
+      warn(`Case ${caseId} ${episodeType}: expected 1 start+1 end, got starts=${starts.length} ends=${ends.length}`);
+    }
+    return undefined;
   };
 
-  const getTimestampMs = (event: any, payloadKey: 'tStartIso' | 'tEndIso'): number => {
-    const payloadValue = event?.payload?.[payloadKey];
-    return new Date(payloadValue ?? event.timestamp).getTime();
-  };
+  // primary: explicit episodes (with asymmetric shape handling)
+  let preAiReadMs = computeEpisodeMs('PRE_AI');
+  let postAiReadMs = computeEpisodeMs('POST_AI');
 
-  const computeEpisodeMs = (episodeType: ReadEpisodeType): number | undefined => {
-    const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
-    );
-    const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
-    );
+  // fallback: derive PRE_AI from canonical lifecycle markers if still undefined
+  if (preAiReadMs == null) {
+    const durationMs = (a?: any, b?: any): number | undefined => {
+      if (!a || !b) return undefined;
+      const start = new Date(a.timestamp).getTime();
+      const end = new Date(b.timestamp).getTime();
+      const d = end - start;
+      return Number.isFinite(d) && d >= 0 ? d : undefined;
+    };
 
-    if (starts.length > 1) {
-      warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
-    }
-    if (ends.length > 1) {
-      warn(`Multiple ${episodeType} ends detected for case ${caseId}.`);
-    }
+    preAiReadMs =
+      durationMs(caseLoaded, firstLock) ??
+      durationMs(caseLoaded, aiRevealed) ??
+      0;
+  }
 
-    if (starts.length === 0 && ends.length > 0) {
-      warn(`Missing ${episodeType} start for case ${caseId}.`);
-      return undefined;
-    }
-    if (starts.length > 0 && ends.length === 0) {
-      warn(`Missing ${episodeType} end for case ${caseId}.`);
-      return undefined;
-    }
-    if (starts.length === 0 && ends.length === 0) {
-      return undefined;
-    }
+  // fallback: if POST_AI still missing, derive from AI_REVEALED -> FINAL/COMPLETE
+  if (postAiReadMs == null) {
+    const durationMs = (a?: any, b?: any): number | undefined => {
+      if (!a || !b) return undefined;
+      const start = new Date(a.timestamp).getTime();
+      const end = new Date(b.timestamp).getTime();
+      const d = end - start;
+      return Number.isFinite(d) && d >= 0 ? d : undefined;
+    };
 
-    const startMs = getTimestampMs(starts[0], 'tStartIso');
-    const endMs = getTimestampMs(ends[0], 'tEndIso');
-    const duration = endMs - startMs;
+    postAiReadMs = durationMs(aiRevealed, final ?? completed) ?? 0;
+  }
 
-    if (!Number.isFinite(duration) || duration < 0) {
-      warn(`Invalid ${episodeType} duration for case ${caseId}.`);
-      return undefined;
-    }
-
-    return duration;
-  };
-
-  const preAiReadMs = computeEpisodeMs('PRE_AI') ?? 0;
-  const postAiReadMs = computeEpisodeMs('POST_AI') ?? 0;
-  const totalReadMs = preAiReadMs + postAiReadMs;
-
+  const totalReadMs = (preAiReadMs ?? 0) + (postAiReadMs ?? 0);
   return { preAiReadMs, postAiReadMs, totalReadMs };
 };
 
@@ -205,22 +286,30 @@ const computeDerivedMetricsFromEvents = (
 ): DerivedMetrics => {
   const groupedEvents = groupEventsByCase(events);
   const caseEvents = groupedEvents.get(caseId) ?? [];
-  const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
-  const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
-  const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
-  const deviationSubmitted = caseEvents.filter(event => event.type === 'DEVIATION_SUBMITTED');
-  const deviationStarted = caseEvents.filter(event => event.type === 'DEVIATION_STARTED');
-  const deviationSkipped = caseEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
-  const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
-  const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
-  const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
-  const caseLoaded = caseEvents.find(event => event.type === 'CASE_LOADED');
-  const isCalibration = Boolean(caseLoaded?.payload?.isCalibration);
 
-  const initialBirads = firstImpression?.payload?.birads ?? 0;
-  const finalBirads = finalAssessment?.payload?.birads ?? initialBirads;
-  const aiBirads = aiRevealed?.payload?.suggestedBirads ?? null;
-  const aiConfidence = aiRevealed?.payload?.aiConfidence ?? null;
+  const firstImpression = caseEvents.find((e) => e.type === 'FIRST_IMPRESSION_LOCKED');
+  const aiRevealed = caseEvents.find((e) => e.type === 'AI_REVEALED');
+  const finalAssessment = caseEvents.find((e) => e.type === 'FINAL_ASSESSMENT');
+  const caseLoaded = caseEvents.find((e) => e.type === 'CASE_LOADED');
+
+  const caseLoadedP = getPayloadObject(caseLoaded);
+  const firstP = getPayloadObject(firstImpression);
+  const aiP = getPayloadObject(aiRevealed);
+  const finalP = getPayloadObject(finalAssessment);
+
+  const isCalibration = Boolean(caseLoadedP.isCalibration);
+
+  const initialBirads = firstP.birads ?? 0;
+  const finalBirads = finalP.birads ?? initialBirads;
+  const aiBirads = aiP.suggestedBirads ?? null;
+  const aiConfidence = aiP.aiConfidence ?? null;
+
+  const deviationSubmitted = caseEvents.filter(e => e.type === 'DEVIATION_SUBMITTED');
+  const deviationStarted = caseEvents.filter(e => e.type === 'DEVIATION_STARTED');
+  const deviationSkipped = caseEvents.filter(e => e.type === 'DEVIATION_SKIPPED');
+  const caseCompleted = caseEvents.find(e => e.type === 'CASE_COMPLETED');
+  const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+  const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
 
   const changeOccurred = finalBirads !== initialBirads;
   const aiConsistentChange = changeOccurred && aiBirads != null && finalBirads === aiBirads;
@@ -230,7 +319,10 @@ const computeDerivedMetricsFromEvents = (
 
   const decisionChangeCount = deviationStarted.length > 0 ? deviationStarted.length : changeOccurred ? 1 : 0;
   const overrideCount = aiBirads != null && finalBirads !== aiBirads ? 1 : 0;
-  const rationaleProvided = deviationSubmitted.some(event => (event.payload?.rationale ?? '').trim().length > 0);
+  const rationaleProvided = deviationSubmitted.some((e) => {
+    const p = getPayloadObject(e);
+    return (p.rationale ?? '').trim().length > 0;
+  });
 
   const durationMs = (startEvent?: any, endEvent?: any): number | null => {
     if (!startEvent || !endEvent) return null;
@@ -240,7 +332,7 @@ const computeDerivedMetricsFromEvents = (
     return Number.isFinite(duration) && duration >= 0 ? duration : null;
   };
 
-  const timeToLockCandidate = firstImpression?.payload?.timeToLockMs;
+  const timeToLockCandidate = firstP?.timeToLockMs;
   const timeToLockMs =
     typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
       ? timeToLockCandidate
@@ -268,7 +360,7 @@ const computeDerivedMetricsFromEvents = (
     typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
       ? comprehensionResponseMs
       : null;
-  const comprehensionPayload = comprehensionEvent?.payload ?? {};
+  const comprehensionPayload = getPayloadObject(comprehensionEvent) ?? {};
   const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionPayload.questionId ?? null;
   const comprehensionAnswer =
     comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
@@ -292,8 +384,8 @@ const computeDerivedMetricsFromEvents = (
     deviationRequired: changeOccurred,
     deviationDocumented: rationaleProvided,
     deviationSkipped: changeOccurred && !rationaleProvided && deviationSkipped.length > 0,
-    deviationText: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
-    deviationRationale: rationaleProvided ? deviationSubmitted[0]?.payload?.rationale : undefined,
+    deviationText: rationaleProvided ? getPayloadObject(deviationSubmitted[0]).rationale : undefined,
+    deviationRationale: rationaleProvided ? getPayloadObject(deviationSubmitted[0]).rationale : undefined,
     comprehensionCorrect,
     comprehensionAnswer,
     comprehensionItemId,
@@ -5163,7 +5255,7 @@ setAiAgreementStreak(prev => prev + 1);
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
     
-    const completedCaseId = state.currentCase?.caseId ?? currentCase?.caseId ?? 'UNKNOWN_CASE';
+    const completedCaseId = currentCase?.caseId ?? state.currentCase?.caseId ?? 'UNKNOWN_CASE';
     const metrics = computeDerivedMetricsFromEvents(
       exportPackRef.current?.getEvents() ?? [],
       completedCaseId,
@@ -6639,8 +6731,8 @@ setAiAgreementStreak(prev => prev + 1);
               {(() => {
                 const latestMetrics = state.caseResults[state.caseResults.length - 1];
                 if (!latestMetrics) return null;
-                const preAiSeconds = latestMetrics.preAiReadMs ? (latestMetrics.preAiReadMs / 1000).toFixed(1) : '0.0';
-                const aiExposureSeconds = latestMetrics.aiExposureMs ? (latestMetrics.aiExposureMs / 1000).toFixed(1) : '0.0';
+                const preAiSeconds = typeof latestMetrics.preAiReadMs === 'number' ? (latestMetrics.preAiReadMs / 1000).toFixed(1) : 'N/A';
+                const aiExposureSeconds = typeof latestMetrics.aiExposureMs === 'number' ? (latestMetrics.aiExposureMs / 1000).toFixed(1) : 'N/A';
                 return (
                   <div style={{ marginBottom: '24px', backgroundColor: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'white', fontWeight: 600 }}>
@@ -6678,20 +6770,38 @@ setAiAgreementStreak(prev => prev + 1);
                   </div>
                 );
               })()}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pre-AI</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.caseResults[state.caseResults.length - 1]?.preAiReadMs ? ((state.caseResults[state.caseResults.length - 1]?.preAiReadMs ?? 0) / 1000).toFixed(1) : '0'}s</div>
-                </div>
-                <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Post-AI</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{state.caseResults[state.caseResults.length - 1]?.aiExposureMs ? ((state.caseResults[state.caseResults.length - 1]?.aiExposureMs ?? 0) / 1000).toFixed(1) : '0'}s</div>
-                </div>
-                <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Total</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{timeOnCase.toFixed(1)}s</div>
-                </div>
-              </div>
+              {(() => {
+                const latest = state.caseResults[state.caseResults.length - 1];
+
+                const preAiSeconds =
+                  typeof latest?.preAiReadMs === 'number'
+                    ? (latest.preAiReadMs / 1000).toFixed(1)
+                    : 'N/A';
+
+                const aiExposureSeconds =
+                  typeof latest?.aiExposureMs === 'number'
+                    ? (latest.aiExposureMs / 1000).toFixed(1)
+                    : 'N/A';
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+                    <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Pre-AI</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{preAiSeconds}s</div>
+                    </div>
+
+                    <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Post-AI</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{aiExposureSeconds}s</div>
+                    </div>
+
+                    <div style={{ padding: '16px', backgroundColor: '#334155', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '12px', color: '#94a3b8' }}>Total</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{timeOnCase.toFixed(1)}s</div>
+                    </div>
+                  </div>
+                );
+              })()}
               <button onClick={() => nextCase()} style={{ width: '100%', padding: '16px', backgroundColor: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}>
                 {progress && progress.current < progress.total ? `Continue to Case ${progress.current + 1}/${progress.total}` : 'Complete Study'}
               </button>
