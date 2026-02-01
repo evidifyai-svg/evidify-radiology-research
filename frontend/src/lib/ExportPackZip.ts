@@ -98,6 +98,50 @@ function canonicalJSON(obj: unknown): string {
 
 type ReadEpisodeType = 'PRE_AI' | 'POST_AI';
 
+// ============================================================================
+// PAYLOAD PARSING (handles direct, stringified, and nested payload forms)
+// ============================================================================
+
+type AnyObj = Record<string, unknown>;
+
+/**
+ * Safely coerce a value to an object (handles stringified JSON)
+ */
+function coerceJsonObject(maybe: unknown): AnyObj | null {
+  if (maybe == null) return null;
+
+  if (typeof maybe === 'string') {
+    try {
+      const parsed = JSON.parse(maybe);
+      return parsed && typeof parsed === 'object' ? (parsed as AnyObj) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof maybe === 'object') return maybe as AnyObj;
+  return null;
+}
+
+/**
+ * Unwrap payload from event - handles nested hash-chain form where payload.payload exists
+ */
+function getPayloadObject(event: TrialEvent | null | undefined): AnyObj {
+  if (!event) return {};
+  const p = coerceJsonObject(event.payload);
+  // Handle nested payload (canonicalized/hash-chain form)
+  const nested = p ? coerceJsonObject(p.payload) : null;
+  return (nested ?? p ?? {}) as AnyObj;
+}
+
+/**
+ * Get caseId from event, handling various payload structures
+ */
+function getCaseIdFromEvent(event: TrialEvent | null | undefined): string | null {
+  const p = getPayloadObject(event);
+  return (p.caseId ?? p.activeCaseId ?? null) as string | null;
+}
+
 function computeReadEpisodeMetricsFromEvents(
   caseEvents: TrialEvent[],
   caseId: string,
@@ -113,17 +157,23 @@ function computeReadEpisodeMetricsFromEvents(
   };
 
   const getTimestampMs = (event: TrialEvent, key: 'tStartIso' | 'tEndIso'): number => {
-    const payloadValue = (event.payload as Record<string, unknown>)?.[key];
-    return new Date((payloadValue as string | undefined) ?? event.timestamp).getTime();
+    const p = getPayloadObject(event);
+    const payloadValue = p[key] as string | undefined;
+    return new Date(payloadValue ?? event.timestamp).getTime();
   };
 
   const computeEpisodeMs = (episodeType: ReadEpisodeType): number | null => {
-    const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && (event.payload as any)?.episodeType === episodeType
-    );
-    const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && (event.payload as any)?.episodeType === episodeType
-    );
+    // Use getPayloadObject for proper unwrapping of nested/stringified payloads
+    const starts = caseEvents.filter(event => {
+      if (event.type !== 'READ_EPISODE_STARTED') return false;
+      const p = getPayloadObject(event);
+      return p.episodeType === episodeType;
+    });
+    const ends = caseEvents.filter(event => {
+      if (event.type !== 'READ_EPISODE_ENDED') return false;
+      const p = getPayloadObject(event);
+      return p.episodeType === episodeType;
+    });
 
     if (starts.length > 1) {
       warn(`Multiple ${episodeType} starts detected for case ${caseId}.`);
@@ -602,7 +652,8 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     for (const caseId of caseIds) {
       const caseEvents = groupedEvents.get(caseId) ?? [];
       const caseLoaded = caseEvents.find(e => e.type === 'CASE_LOADED');
-      const isCalibration = Boolean((caseLoaded?.payload as any)?.isCalibration);
+      const caseLoadedP = getPayloadObject(caseLoaded);
+      const isCalibration = Boolean(caseLoadedP.isCalibration);
       const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
         caseEvents,
         caseId,
@@ -631,9 +682,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
       const comprehensionEvent = caseEvents.find(e => e.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
       const disclosurePresented = caseEvents.find(e => e.type === 'DISCLOSURE_PRESENTED');
 
-      const initialBirads = (firstImpression?.payload as any)?.birads ?? null;
-      const aiBirads = (aiRevealed?.payload as any)?.suggestedBirads ?? null;
-      const finalBirads = (finalAssessment?.payload as any)?.birads ?? initialBirads ?? null;
+      const firstP = getPayloadObject(firstImpression);
+      const aiP = getPayloadObject(aiRevealed);
+      const finalP = getPayloadObject(finalAssessment);
+
+      const initialBirads = firstP.birads ?? null;
+      const aiBirads = aiP.suggestedBirads ?? null;
+      const finalBirads = finalP.birads ?? initialBirads ?? null;
 
       const changeOccurred =
         initialBirads == null || finalBirads == null ? null : initialBirads !== finalBirads;
@@ -643,7 +698,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
           : changeOccurred && finalBirads === aiBirads;
       const addaDenominator = aiBirads == null || initialBirads == null ? null : initialBirads !== aiBirads;
       const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
-      const comprehensionPayload = (comprehensionEvent?.payload as any) ?? {};
+      const comprehensionPayload = getPayloadObject(comprehensionEvent);
       const comprehensionAnswer =
         comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
       const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
@@ -666,7 +721,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         return Number.isFinite(duration) && duration >= 0 ? duration : null;
       };
 
-      const timeToLockCandidate = (firstImpression?.payload as any)?.timeToLockMs;
+      const timeToLockCandidate = firstP.timeToLockMs;
       const timeToLockMs =
         typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
           ? timeToLockCandidate
@@ -771,8 +826,11 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
     let activeCaseId: string | null = null;
 
     for (const event of events) {
-      if (event.type === 'CASE_LOADED' && (event as any).payload?.caseId) {
-        activeCaseId = (event as any).payload.caseId as string;
+      // Use getCaseIdFromEvent for proper payload unwrapping
+      const eventCaseId = getCaseIdFromEvent(event);
+
+      if (event.type === 'CASE_LOADED' && eventCaseId) {
+        activeCaseId = eventCaseId;
         if (!grouped.has(activeCaseId)) {
           grouped.set(activeCaseId, []);
         }
@@ -782,11 +840,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
         grouped.get(activeCaseId)?.push(event);
       }
 
-      if (
-        event.type === 'CASE_COMPLETED' &&
-        (event as any).payload?.caseId &&
-        (event as any).payload.caseId === activeCaseId
-      ) {
+      if (event.type === 'CASE_COMPLETED' && eventCaseId && eventCaseId === activeCaseId) {
         activeCaseId = null;
       }
     }

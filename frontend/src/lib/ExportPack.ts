@@ -250,9 +250,9 @@ export interface DerivedMetrics {
   comprehension_response_ms?: number | null;
 
   // Defensibility metrics
-  preAiReadMs?: number;
-  postAiReadMs?: number;
-  totalReadMs?: number;
+  preAiReadMs?: number | null;
+  postAiReadMs?: number | null;
+  totalReadMs?: number | null;
   timeRatio?: number | null;              // preAiReadMs / postAiReadMs
   sessionMedianPreAITime?: number | null; // Median preAiReadMs across session
   preAITimeVsMedian?: number | null;      // This case's preAiReadMs - session median

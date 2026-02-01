@@ -4568,7 +4568,9 @@ const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
 const coerceConditionForDemo = (cond: any) => {
   // cond expected shape: { condition: 'AI_FIRST' | 'HUMAN_FIRST' | 'CONCURRENT', seed?: string, ... }
-  if (cond?.condition === 'AI_FIRST') {
+  // For research-demo.html, always coerce to HUMAN_FIRST unless already HUMAN_FIRST
+  if (cond?.condition && cond.condition !== 'HUMAN_FIRST') {
+    console.info(`[ResearchDemo] Coercing recovered condition ${cond.condition} -> HUMAN_FIRST`);
     return { ...cond, condition: 'HUMAN_FIRST' };
   }
   return cond;
@@ -4948,11 +4950,36 @@ const handleROIEnter = useCallback(async (roiId: string) => {
   // Start study with seeded randomization + calibration
   const startStudy = useCallback(async (conditionOverride?: RevealCondition) => {
     const seed = generateSeed();
-    const condition = conditionOverride ? manualCondition(conditionOverride, 'FDR_FOR') : await assignCondition(seed, 0);
-// DEMO DEFAULT: start Human-first unless explicitly overridden
-if (!conditionOverride && condition?.condition === 'AI_FIRST') {
-  condition.condition = 'HUMAN_FIRST';
-}
+
+    // Check query params for explicit condition override
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryCondition = urlParams.get('condition') || urlParams.get('revealTiming');
+    const validQueryCondition = queryCondition && ['HUMAN_FIRST', 'AI_FIRST', 'CONCURRENT'].includes(queryCondition)
+      ? queryCondition as RevealCondition
+      : null;
+
+    // Priority: explicit override > query param > HUMAN_FIRST default (for research-demo.html)
+    let conditionSource: 'override' | 'query' | 'default' = 'default';
+    let finalCondition: ConditionAssignment;
+
+    if (conditionOverride) {
+      finalCondition = manualCondition(conditionOverride, 'FDR_FOR');
+      conditionSource = 'override';
+    } else if (validQueryCondition) {
+      finalCondition = manualCondition(validQueryCondition, 'FDR_FOR');
+      conditionSource = 'query';
+    } else {
+      // DEMO DEFAULT: always HUMAN_FIRST for research-demo.html unless explicitly overridden
+      finalCondition = manualCondition('HUMAN_FIRST', 'FDR_FOR');
+      conditionSource = 'default';
+    }
+
+    // Preserve seed for reproducibility even when using default
+    finalCondition.seed = seed;
+
+    console.info(`[ResearchDemo] Condition resolved: ${finalCondition.condition} (source: ${conditionSource})`);
+
+    const condition = finalCondition;
     
     const queue = generateCaseQueue({
       includeCalibration: true,
