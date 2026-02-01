@@ -863,6 +863,13 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ATTENTION_CHECK_PRESENTED**: Catch trial presented
 - **ATTENTION_CHECK_RESPONSE**: Reader response to catch trial
 
+### Workload Monitoring (Macknik Research)
+- **WORKLOAD_THRESHOLD_YELLOW**: Crossed into yellow zone (30+ cases/hr)
+- **WORKLOAD_THRESHOLD_RED**: Crossed into red zone (40+ cases/hr)
+- **WORKLOAD_ADVISORY_SHOWN**: Fatigue/workload warning displayed to reader
+- **WORKLOAD_ADVISORY_RESPONSE**: Reader response (CONTINUE or TAKE_BREAK)
+- **SESSION_WORKLOAD_SUMMARY**: End-of-session workload metrics summary
+
 ## Derived Metrics
 
 ### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
@@ -886,6 +893,33 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
 - **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+
+## Workload Metrics (Macknik Research)
+
+Based on Dr. Stephen Macknik's research on radiologist fatigue and performance degradation.
+
+### Macknik Status Thresholds
+- **GREEN**: <30 cases/hour - Normal operating range
+- **YELLOW**: 30-40 cases/hour - Elevated workload, accuracy may decrease
+- **RED**: >40 cases/hour - High workload, significant error risk
+
+### Workload Event Payload Fields
+- **casesCompleted**: Total cases read in session
+- **casesPerHour**: Current reading rate
+- **fatigueIndex**: Composite score 0-100 based on time + cases + rate
+- **macknikStatus**: GREEN/YELLOW/RED threshold indicator
+- **totalSessionMinutes**: Session duration in minutes
+- **thresholdCrossings**: Count of status changes during session
+- **advisoriesShown**: Number of workload warnings displayed
+- **advisoryResponse**: CONTINUE or TAKE_BREAK choice
+- **workloadProfile**: LOW/MODERATE/HIGH/EXCESSIVE classification
+
+### Legal Defensibility
+Workload metrics provide documented evidence of cognitive load during reading sessions.
+This data can demonstrate:
+- Reader was operating within/beyond recommended thresholds
+- Warnings were presented and acknowledged
+- Reader choices in response to fatigue warnings
 
 ## Hash Chain Verification
 

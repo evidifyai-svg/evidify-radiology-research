@@ -73,13 +73,22 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-export type AllEventTypes = 
-  | SessionEventType 
-  | CaseEventType 
-  | CalibrationEventType 
+// Workload monitoring events (Macknik research)
+export type WorkloadEventType =
+  | 'WORKLOAD_THRESHOLD_YELLOW'
+  | 'WORKLOAD_THRESHOLD_RED'
+  | 'WORKLOAD_ADVISORY_SHOWN'
+  | 'WORKLOAD_ADVISORY_RESPONSE'
+  | 'SESSION_WORKLOAD_SUMMARY';
+
+export type AllEventTypes =
+  | SessionEventType
+  | CaseEventType
+  | CalibrationEventType
   | AttentionEventType
   | EyeTrackingProxyEventType
-  | ViewerEventType;
+  | ViewerEventType
+  | WorkloadEventType;
 
 // ============================================================================
 // EVENT PAYLOADS
@@ -248,6 +257,70 @@ export interface AttentionCoverageProxyPayload {
     pans: number;
     windowLevelChanges: number;
   };
+}
+
+// ============================================================================
+// WORKLOAD EVENT PAYLOADS (Macknik research)
+// ============================================================================
+
+export type MacknikStatus = 'GREEN' | 'YELLOW' | 'RED';
+
+export interface WorkloadThresholdPayload {
+  sessionId: string;
+  timestamp: string;
+  casesCompleted: number;
+  casesPerHour: number;
+  fatigueIndex: number;
+  totalSessionMinutes: number;
+  previousStatus: MacknikStatus;
+  newStatus: MacknikStatus;
+}
+
+export interface WorkloadAdvisoryShownPayload {
+  sessionId: string;
+  timestamp: string;
+  casesCompleted: number;
+  casesPerHour: number;
+  fatigueIndex: number;
+  macknikStatus: MacknikStatus;
+  advisoryType: 'CASE_RATE' | 'SESSION_DURATION' | 'FATIGUE_INDEX';
+  message: string;
+}
+
+export interface WorkloadAdvisoryResponsePayload {
+  sessionId: string;
+  timestamp: string;
+  advisoryType: 'CASE_RATE' | 'SESSION_DURATION' | 'FATIGUE_INDEX';
+  response: 'CONTINUE' | 'TAKE_BREAK';
+  responseTimeMs: number;
+  casesAtResponse: number;
+  fatigueIndexAtResponse: number;
+}
+
+export interface SessionWorkloadSummaryPayload {
+  sessionId: string;
+  sessionStartTime: string;
+  sessionEndTime: string;
+  totalSessionMs: number;
+  totalSessionMinutes: number;
+  totalCasesCompleted: number;
+  averageCasesPerHour: number;
+  averageTimePerCaseMs: number;
+  peakCasesPerHour: number;
+  peakFatigueIndex: number;
+  thresholdCrossings: {
+    yellowCrossings: number;
+    redCrossings: number;
+    timeInYellowMs: number;
+    timeInRedMs: number;
+  };
+  advisoriesShown: number;
+  advisoryResponses: {
+    continued: number;
+    tookBreak: number;
+  };
+  finalMacknikStatus: MacknikStatus;
+  workloadProfile: 'LOW' | 'MODERATE' | 'HIGH' | 'EXCESSIVE';
 }
 
 // ============================================================================
@@ -636,6 +709,45 @@ const payload: FinalAssessmentPayload = {
    */
   getExportPack(): ExportPackLike {
     return this.exportPack;
+  }
+
+  // ==========================================================================
+  // WORKLOAD MONITORING EVENTS (Macknik research)
+  // ==========================================================================
+
+  /**
+   * Log workload threshold crossing to yellow
+   */
+  async logWorkloadThresholdYellow(payload: WorkloadThresholdPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_THRESHOLD_YELLOW', payload);
+  }
+
+  /**
+   * Log workload threshold crossing to red
+   */
+  async logWorkloadThresholdRed(payload: WorkloadThresholdPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_THRESHOLD_RED', payload);
+  }
+
+  /**
+   * Log when workload advisory is shown to user
+   */
+  async logWorkloadAdvisoryShown(payload: WorkloadAdvisoryShownPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_SHOWN', payload);
+  }
+
+  /**
+   * Log user response to workload advisory
+   */
+  async logWorkloadAdvisoryResponse(payload: WorkloadAdvisoryResponsePayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_RESPONSE', payload);
+  }
+
+  /**
+   * Log session workload summary at session end
+   */
+  async logSessionWorkloadSummary(payload: SessionWorkloadSummaryPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SESSION_WORKLOAD_SUMMARY', payload);
   }
 }
 
