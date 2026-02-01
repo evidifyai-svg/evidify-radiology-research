@@ -1,0 +1,689 @@
+/**
+ * Expert Witness Packet Styles
+ *
+ * Professional, court-ready styling for the enhanced
+ * expert witness packet components.
+ */
+
+/* =============================================================================
+   BASE CONTAINER STYLES
+   ============================================================================= */
+
+.packetContainer {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  line-height: 1.6;
+  color: #1a1a1a;
+  max-width: 8.5in;
+  margin: 0 auto;
+  padding: 0.5in;
+  background: #ffffff;
+}
+
+/* =============================================================================
+   HEADER & FOOTER
+   ============================================================================= */
+
+.packetHeader {
+  text-align: center;
+  border-bottom: 3px double #333;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.packetHeader h1 {
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+  font-weight: bold;
+}
+
+.packetMeta {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  font-size: 0.875rem;
+  color: #666;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.packetFooter {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+/* =============================================================================
+   TABLE OF CONTENTS
+   ============================================================================= */
+
+.tableOfContents {
+  background: #f5f5f5;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid #ddd;
+}
+
+.tableOfContents h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.tableOfContents ol {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.tableOfContents li {
+  margin: 0.25rem 0;
+}
+
+.tableOfContents a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.tableOfContents a:hover {
+  text-decoration: underline;
+}
+
+/* =============================================================================
+   SECTION STYLES
+   ============================================================================= */
+
+.section {
+  margin-bottom: 2rem;
+  page-break-inside: avoid;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.25rem;
+  margin: 0 0 1rem;
+  font-weight: bold;
+}
+
+.section h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem;
+  font-weight: bold;
+}
+
+.section h4 {
+  font-size: 0.95rem;
+  margin: 1rem 0 0.5rem;
+  font-weight: bold;
+}
+
+/* =============================================================================
+   STATUS BADGES
+   ============================================================================= */
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.875rem;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.statusGreen {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusYellow {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.statusRed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* =============================================================================
+   CHECK ITEMS
+   ============================================================================= */
+
+.checksContainer {
+  margin: 1rem 0;
+}
+
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.checkIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.checkPassed {
+  color: #166534;
+}
+
+.checkFailed {
+  color: #991b1b;
+}
+
+.evidenceItem {
+  margin-left: 1.75rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* =============================================================================
+   TABLES
+   ============================================================================= */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.table th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* =============================================================================
+   SCORE BAR
+   ============================================================================= */
+
+.scoreBar {
+  height: 1.5rem;
+  background: #e5e5e5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.scoreFill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+  color: white;
+  font-weight: bold;
+  font-size: 0.75rem;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  transition: width 0.3s ease;
+}
+
+/* =============================================================================
+   EXECUTIVE SUMMARY SECTION
+   ============================================================================= */
+
+.summaryText {
+  font-size: 1rem;
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+.factorList {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.mitigatingFactor {
+  color: #166534;
+}
+
+.aggravatingFactor {
+  color: #991b1b;
+}
+
+.recommendation {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #f0f9ff;
+  border-left: 4px solid #0066cc;
+}
+
+/* =============================================================================
+   WORKFLOW COMPLIANCE SECTION
+   ============================================================================= */
+
+.workflowDiagram {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.workflowStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.stageCompleted {
+  border-color: #22c55e;
+  background: #dcfce7;
+}
+
+.stageCurrent {
+  border-color: #0066cc;
+  background: #e0f2fe;
+}
+
+.stagePending {
+  border-color: #ddd;
+  background: #f5f5f5;
+}
+
+.stageSkipped {
+  border-color: #fbbf24;
+  background: #fef9c3;
+}
+
+.stageIcon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.stageName {
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.stageTime {
+  font-size: 0.65rem;
+  color: #666;
+}
+
+.workflowArrow {
+  font-size: 1.5rem;
+  color: #999;
+}
+
+.timestamp {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background: #f0f0f0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+}
+
+/* =============================================================================
+   CASE DIFFICULTY SECTION
+   ============================================================================= */
+
+.difficultyHeader {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.difficultyScore {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scoreLabel {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.difficultyMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.radpeerDescription {
+  font-style: italic;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.scientificBasis {
+  background: #f5f5f5;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.missRate {
+  color: #854d0e;
+  font-weight: bold;
+}
+
+/* =============================================================================
+   ERROR CLASSIFICATION SECTION
+   ============================================================================= */
+
+.noError {
+  color: #166534;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.errorHeader {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.errorType,
+.errorConfidence {
+  display: flex;
+  flex-direction: column;
+}
+
+.errorLabel,
+.confidenceLabel {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.errorValue {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.confidenceValue {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #0066cc;
+}
+
+.scientificContext {
+  background: #f0f9ff;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 4px solid #0066cc;
+}
+
+.expectedRate {
+  color: #666;
+  font-style: italic;
+}
+
+.liabilityImplications {
+  background: #fef9c3;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 4px solid #eab308;
+}
+
+/* =============================================================================
+   COGNITIVE LOAD SECTION
+   ============================================================================= */
+
+.thresholdStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.thresholdLabel {
+  font-weight: bold;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.thresholdExplanation {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.fatigueIndex {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.fatigueLabel {
+  font-weight: bold;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.fatigueValue {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.conclusion {
+  background: #f5f5f5;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 4px solid #333;
+}
+
+/* =============================================================================
+   AI DISCLOSURE SECTION
+   ============================================================================= */
+
+.opennessScore {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.opennessLabel {
+  font-weight: bold;
+}
+
+.opennessValue {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.pillarsContainer {
+  margin: 1rem 0;
+}
+
+.disclosureContent,
+.validationWarning {
+  background: #f5f5f5;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.validationWarning {
+  background: #fef9c3;
+  border-color: #eab308;
+}
+
+/* =============================================================================
+   ATTENTION ANALYSIS SECTION
+   ============================================================================= */
+
+.regionVisited {
+  color: #166534;
+  font-weight: bold;
+}
+
+.regionMissed {
+  color: #991b1b;
+  font-weight: bold;
+}
+
+.attentionList {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+/* =============================================================================
+   CRYPTOGRAPHIC VERIFICATION SECTION
+   ============================================================================= */
+
+.hash {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background: #f0f0f0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+}
+
+.tamperingAlert {
+  color: #991b1b;
+  font-weight: bold;
+  background: #fee2e2;
+}
+
+.cryptoConclusion {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #dcfce7;
+  border-left: 4px solid #22c55e;
+  border-radius: 4px;
+}
+
+/* =============================================================================
+   APPENDICES SECTION
+   ============================================================================= */
+
+.citationList {
+  font-size: 0.9rem;
+}
+
+.citationList li {
+  margin-bottom: 0.75rem;
+}
+
+.citationList em {
+  font-style: italic;
+}
+
+.glossary {
+  margin: 0;
+}
+
+.glossary dt {
+  font-weight: bold;
+  margin-top: 0.75rem;
+}
+
+.glossary dd {
+  margin-left: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.glossary em {
+  font-style: italic;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+  .packetContainer {
+    padding: 0;
+    max-width: none;
+  }
+
+  .tableOfContents {
+    page-break-after: always;
+  }
+
+  .section {
+    page-break-inside: avoid;
+  }
+
+  .sectionTitle {
+    page-break-after: avoid;
+  }
+
+  .table {
+    page-break-inside: avoid;
+  }
+
+  .statusBadge {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .scoreFill {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .workflowStage {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* =============================================================================
+   RESPONSIVE STYLES
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .packetContainer {
+    padding: 1rem;
+  }
+
+  .packetMeta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .difficultyHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .workflowDiagram {
+    flex-direction: column;
+  }
+
+  .workflowArrow {
+    transform: rotate(90deg);
+  }
+
+  .table {
+    font-size: 0.8rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.25rem;
+  }
+}
