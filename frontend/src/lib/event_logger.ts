@@ -46,7 +46,9 @@ export type CaseEventType =
   | 'DEVIATION_STARTED'
   | 'DEVIATION_SUBMITTED'
   | 'DEVIATION_SKIPPED'
-  | 'FINAL_ASSESSMENT';
+  | 'FINAL_ASSESSMENT'
+  | 'CASE_DIFFICULTY_CALCULATED'
+  | 'CASE_DIFFICULTY_DISPLAYED';
 
 export type CalibrationEventType =
   | 'CALIBRATION_STARTED'
@@ -248,6 +250,43 @@ export interface AttentionCoverageProxyPayload {
     pans: number;
     windowLevelChanges: number;
   };
+}
+
+// Case Difficulty Index (CDI) payloads
+// Based on Macknik SL, et al. Perceptual Limits in Radiology. Radiology. 2022.
+export interface CaseDifficultyCalculatedPayload {
+  caseId: string;
+  compositeScore: number;
+  difficulty: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+  radpeerPrediction: 1 | 2;
+  percentile: number;
+  components: {
+    tissueComplexity: number;
+    targetConspicuity: number;
+    distractorLoad: number;
+    locationDifficulty: number;
+    findingSubtlety: number;
+  };
+  prevalenceRate: number;
+  priorProbability: number;
+  difficultyFactors: string[];
+  configUsed: {
+    weights: Record<string, number>;
+    thresholds: Record<string, number>;
+  };
+}
+
+export interface CaseDifficultyDisplayedPayload {
+  caseId: string;
+  compositeScore: number;
+  difficulty: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+  radpeerPrediction: 1 | 2;
+  percentile: number;
+  displayPhase: string;
+  displayTiming: string;
+  showPercentile: boolean;
+  showRadpeerPrediction: boolean;
+  showFactors: boolean;
 }
 
 // ============================================================================
@@ -636,6 +675,30 @@ const payload: FinalAssessmentPayload = {
    */
   getExportPack(): ExportPackLike {
     return this.exportPack;
+  }
+
+  // ==========================================================================
+  // Case Difficulty Index (CDI) Events
+  // ==========================================================================
+
+  /**
+   * Log CDI calculation event
+   * Called when Case Difficulty Index is computed for a case
+   */
+  async logCaseDifficultyCalculated(
+    payload: CaseDifficultyCalculatedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('CASE_DIFFICULTY_CALCULATED', payload);
+  }
+
+  /**
+   * Log CDI displayed event
+   * Called when CDI is shown to the participant (if configured)
+   */
+  async logCaseDifficultyDisplayed(
+    payload: CaseDifficultyDisplayedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('CASE_DIFFICULTY_DISPLAYED', payload);
   }
 }
 

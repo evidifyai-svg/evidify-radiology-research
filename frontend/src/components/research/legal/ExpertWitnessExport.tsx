@@ -16,6 +16,8 @@
 import React from 'react';
 import { ImpressionLedgerExport, IntegrityReport, LedgerEntry } from './ImpressionLedger';
 import { DeviationDocumentation, DEVIATION_REASON_CODES, FOLLOWUP_RECOMMENDATIONS } from './DeviationBuilder';
+import type { CaseDifficultyIndex } from '../../../lib/caseDifficulty';
+import { CaseDifficultyLegalSummary } from '../CaseDifficultyDisplay';
 
 // ============================================================================
 // TYPES
@@ -81,7 +83,12 @@ export interface ExpertWitnessPacket {
   
   // Deviation documentation (if applicable)
   deviation: DeviationDocumentation | null;
-  
+
+  // Case Difficulty Index (CDI) analysis
+  // Supports RADPEER Score 2 documentation for difficult cases
+  // Reference: Macknik SL, et al. Perceptual Limits in Radiology. 2022.
+  caseDifficultyAnalysis: CaseDifficultyIndex | null;
+
   // Rubber-stamp risk indicators
   rubberStampIndicators: RubberStampIndicator[];
   
@@ -197,7 +204,8 @@ export function calculateRubberStampRiskLevel(
 export function generateExpertWitnessPacket(
   ledger: ImpressionLedgerExport,
   deviation: DeviationDocumentation | null = null,
-  studyProtocolId?: string
+  studyProtocolId?: string,
+  caseDifficultyAnalysis: CaseDifficultyIndex | null = null
 ): ExpertWitnessPacket {
   const { summary, entries, integrity } = ledger;
   
@@ -268,6 +276,7 @@ export function generateExpertWitnessPacket(
     },
     
     deviation,
+    caseDifficultyAnalysis,
     rubberStampIndicators,
     integrity,
     rawLedger: ledger,
@@ -577,6 +586,43 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               {' • '}Completed in {(packet.deviation.timeToCompleteMs / 1000).toFixed(1)}s
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Case Difficulty Analysis */}
+      {packet.caseDifficultyAnalysis && (
+        <div className="p-6 border-b border-slate-800">
+          <CaseDifficultyLegalSummary cdi={packet.caseDifficultyAnalysis} />
+
+          {/* RADPEER Justification for HIGH/VERY_HIGH cases */}
+          {(packet.caseDifficultyAnalysis.difficulty === 'HIGH' ||
+            packet.caseDifficultyAnalysis.difficulty === 'VERY_HIGH') && (
+            <div className="mt-4 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-purple-400 mb-1">
+                    RADPEER Score 2 Documentation
+                  </h4>
+                  <p className="text-sm text-slate-300">
+                    This case meets criteria for RADPEER Score 2a: "Understandable miss -
+                    difficult case, not necessarily an error." The Case Difficulty Index of{' '}
+                    <span className="font-semibold text-white">
+                      {packet.caseDifficultyAnalysis.compositeScore}/100
+                    </span>{' '}
+                    (harder than {packet.caseDifficultyAnalysis.percentile}% of cases)
+                    documents that a missed finding on this case would be consistent with
+                    normal perceptual limitations rather than negligent interpretation.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
