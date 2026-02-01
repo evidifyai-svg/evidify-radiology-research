@@ -67,6 +67,8 @@ import {
   CrossExamAnalysis,
   HashBlock,
 } from '../lib/liabilityClassifier';
+import { useWorkloadMetrics } from '../hooks/useWorkloadMetrics';
+import { WorkloadMonitor } from './research/WorkloadMonitor';
 
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
@@ -4563,6 +4565,9 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
+  // Workload monitoring (feature-flagged via ?workload=1 or localStorage.workloadMonitor=1)
+  const workloadMetrics = useWorkloadMetrics({ sessionId: state.sessionId });
+
 // Session persistence key
 const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
@@ -5281,7 +5286,10 @@ setAiAgreementStreak(prev => prev + 1);
     });
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
-    
+
+    // Record case completion for workload tracking (timeOnCase is in seconds)
+    workloadMetrics.recordCaseComplete(timeOnCase * 1000);
+
     const completedCaseId = currentCase?.caseId ?? state.currentCase?.caseId ?? 'UNKNOWN_CASE';
     const metrics = computeDerivedMetricsFromEvents(
       exportPackRef.current?.getEvents() ?? [],
@@ -5296,7 +5304,7 @@ setAiAgreementStreak(prev => prev + 1);
       caseResults: [...s.caseResults, metrics],
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired]);
+  }, [state, timeOnCase, aiAgreementStreak, deviationsSkipped, totalDeviationsRequired, workloadMetrics]);
 
   // Proceed to deviation or probes
   const proceedToDeviation = useCallback(async () => {
@@ -5471,6 +5479,14 @@ setAiAgreementStreak(prev => prev + 1);
           }
         />
       )}
+
+      {/* Workload Monitor (feature-flagged) */}
+      <WorkloadMonitor
+        metrics={workloadMetrics.metrics}
+        enabled={workloadMetrics.enabled}
+        compact={isClinician}
+        position="top-right"
+      />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && isResearcher ? '360px' : 'auto' }}>
         {/* Header */}
