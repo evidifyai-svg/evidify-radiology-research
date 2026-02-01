@@ -151,12 +151,45 @@ const computeReadEpisodeMetrics = (
     return new Date(payloadValue ?? event.timestamp).getTime();
   };
 
+  const coerceJsonObject = (maybe: unknown): Record<string, any> | null => {
+    if (!maybe) return null;
+    if (typeof maybe === 'string') {
+      try {
+        const parsed = JSON.parse(maybe);
+        return parsed && typeof parsed === 'object' ? (parsed as Record<string, any>) : null;
+      } catch (error) {
+        return null;
+      }
+    }
+    if (typeof maybe === 'object') {
+      return maybe as Record<string, any>;
+    }
+    return null;
+  };
+
+  const getEpisodeTypeFromPayload = (payload: unknown): ReadEpisodeType | undefined => {
+    const payloadObject = coerceJsonObject(payload);
+    if (!payloadObject) return undefined;
+    if (payloadObject.episodeType) {
+      return payloadObject.episodeType as ReadEpisodeType;
+    }
+    const nestedPayload = coerceJsonObject(payloadObject.payload);
+    if (nestedPayload?.episodeType) {
+      return nestedPayload.episodeType as ReadEpisodeType;
+    }
+    return undefined;
+  };
+
   const computeEpisodeMs = (episodeType: ReadEpisodeType): number | undefined => {
     const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && event.payload?.episodeType === episodeType
+      event =>
+        event.type === 'READ_EPISODE_STARTED' &&
+        getEpisodeTypeFromPayload(event.payload) === episodeType
     );
     const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && event.payload?.episodeType === episodeType
+      event =>
+        event.type === 'READ_EPISODE_ENDED' &&
+        getEpisodeTypeFromPayload(event.payload) === episodeType
     );
 
     if (starts.length > 1) {
@@ -4469,6 +4502,7 @@ export const ResearchDemoFlow: React.FC = () => {
 
   const exportPackRef = useRef<ExportPackZip | null>(null);
   const eventLoggerRef = useRef<EventLogger | null>(null);
+  const startedEpisodesRef = useRef<Set<string>>(new Set());
   const roiEnterTimeRef = useRef<number>(0);
 
 // Session persistence key
@@ -4853,6 +4887,29 @@ const handleROIEnter = useCallback(async (roiId: string) => {
     }
   }, [state.currentCase]);
 
+  const ensureEpisodeStarted = useCallback(
+    async (caseId: string, episodeType: ReadEpisodeType): Promise<boolean> => {
+      if (!eventLoggerRef.current) {
+        console.warn(`[ReadEpisodes] Missing logger for ${episodeType} start on case ${caseId}.`);
+        return false;
+      }
+      const key = `${caseId}:${episodeType}`;
+      if (startedEpisodesRef.current.has(key)) {
+        return true;
+      }
+      startedEpisodesRef.current.add(key);
+      try {
+        await eventLoggerRef.current.logReadEpisodeStarted(caseId, episodeType);
+        return true;
+      } catch (error) {
+        startedEpisodesRef.current.delete(key);
+        console.warn(`[ReadEpisodes] Failed to start ${episodeType} for case ${caseId}.`, error);
+        return false;
+      }
+    },
+    []
+  );
+
   // Start study with seeded randomization + calibration
   const startStudy = useCallback(async (conditionOverride?: RevealCondition) => {
     const seed = generateSeed();
@@ -4942,10 +4999,8 @@ const counterbalanceArm = (() => {
       studyCases: queue.cases.filter(c => !c.isCalibration).map(c => c.caseId),
     });
     
-    if (firstCase) {
-      if (!firstCase.isCalibration) {
-        await eventLoggerRef.current!.logReadEpisodeStarted(firstCase.caseId, 'PRE_AI');
-      }
+    if (firstCase && !firstCase.isCalibration) {
+      await ensureEpisodeStarted(firstCase.caseId, 'PRE_AI');
     }
     
     setState(s => ({
@@ -4993,10 +5048,8 @@ const counterbalanceArm = (() => {
     const newQueue = advanceQueue(state.caseQueue);
     const nextCase = getCurrentCase(newQueue);
     
-    if (nextCase) {
-      if (!nextCase.isCalibration) {
-        await eventLoggerRef.current!.logReadEpisodeStarted(nextCase.caseId, 'PRE_AI');
-      }
+    if (nextCase && !nextCase.isCalibration) {
+      await ensureEpisodeStarted(nextCase.caseId, 'PRE_AI');
     }
     
     setState(s => ({
@@ -5056,8 +5109,16 @@ await eventLoggerRef.current!.logAIRevealed({
 });
 
     if (!state.currentCase.isCalibration) {
+      const okPre = await ensureEpisodeStarted(state.currentCase.caseId, 'PRE_AI');
+      if (!okPre) {
+        console.warn(`[ReadEpisodes] Missing PRE_AI start for case ${state.currentCase.caseId}.`);
+        return;
+      }
       await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'PRE_AI', 'AI_REVEALED');
-      await eventLoggerRef.current!.logReadEpisodeStarted(state.currentCase.caseId, 'POST_AI');
+      const okPost = await ensureEpisodeStarted(state.currentCase.caseId, 'POST_AI');
+      if (!okPost) {
+        console.warn(`[ReadEpisodes] Missing POST_AI start for case ${state.currentCase.caseId}.`);
+      }
     }
     
     // Log disclosure with adaptive policy info
@@ -5231,10 +5292,8 @@ setAiAgreementStreak(prev => prev + 1);
     
     const nextCaseDef = getCurrentCase(newQueue);
     
-    if (nextCaseDef) {
-      if (!nextCaseDef.isCalibration) {
-        await eventLoggerRef.current!.logReadEpisodeStarted(nextCaseDef.caseId, 'PRE_AI');
-      }
+    if (nextCaseDef && !nextCaseDef.isCalibration) {
+      await ensureEpisodeStarted(nextCaseDef.caseId, 'PRE_AI');
     }
     
     setState(s => ({
