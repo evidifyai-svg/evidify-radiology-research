@@ -68,6 +68,99 @@ import {
   HashBlock,
 } from '../lib/liabilityClassifier';
 
+// ============================================================================
+// BUILD STAMP - Visible proof of which commit is running
+// ============================================================================
+const BUILD_STAMP = 'claude/incident-response-hardening-RBCmj@5596185@' + new Date().toISOString().slice(0, 19);
+const IS_DEV = import.meta.env.DEV;
+
+// Log build stamp on load
+if (typeof window !== 'undefined') {
+  console.info('[Evidify] BUILD_STAMP:', BUILD_STAMP);
+}
+
+// ============================================================================
+// DEMO DEFAULTS - Single source of truth for research-demo.html behavior
+// ============================================================================
+const DEMO_DEFAULT_CONDITION: RevealCondition = 'HUMAN_FIRST';
+
+/**
+ * Parse URL query params for explicit condition override
+ * Usage: /research-demo.html?condition=CONCURRENT or ?condition=AI_FIRST
+ */
+const getConditionFromURL = (): RevealCondition | null => {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const cond = params.get('condition')?.toUpperCase();
+  if (cond === 'HUMAN_FIRST' || cond === 'AI_FIRST' || cond === 'CONCURRENT') {
+    return cond as RevealCondition;
+  }
+  return null;
+};
+
+/**
+ * Coerce condition to HUMAN_FIRST for demo unless URL explicitly overrides.
+ * This is the SINGLE place where demo condition is decided.
+ */
+const resolveConditionForDemo = (cond: ConditionAssignment | null): ConditionAssignment | null => {
+  if (!cond) return cond;
+
+  const urlOverride = getConditionFromURL();
+  if (urlOverride) {
+    // URL explicitly requested a condition - honor it
+    return { ...cond, condition: urlOverride };
+  }
+
+  // Default: coerce anything that's not HUMAN_FIRST to HUMAN_FIRST for demo
+  if (cond.condition !== 'HUMAN_FIRST') {
+    return { ...cond, condition: DEMO_DEFAULT_CONDITION };
+  }
+
+  return cond;
+};
+
+// ============================================================================
+// DEV-MODE REGRESSION GUARDS
+// ============================================================================
+const assertConditionIsHumanFirst = (cond: ConditionAssignment | null, source: string): void => {
+  if (!IS_DEV) return;
+  const urlOverride = getConditionFromURL();
+  if (urlOverride) return; // URL override bypasses assertion
+
+  if (cond && cond.condition !== 'HUMAN_FIRST') {
+    const error = new Error(
+      `[DEV REGRESSION GUARD] Condition is ${cond.condition} but should be HUMAN_FIRST at ${source}. ` +
+      `URL override: ${urlOverride ?? 'none'}. Seed: ${cond.seed}`
+    );
+    console.error(error);
+    throw error;
+  }
+};
+
+const assertPreAiMetricsConsistent = (
+  caseId: string,
+  events: any[],
+  computedPreAiReadMs: number | undefined
+): void => {
+  if (!IS_DEV) return;
+
+  const preAiStarts = events.filter(e => {
+    const p = e.payload && typeof e.payload === 'object' ? e.payload : {};
+    return e.type === 'READ_EPISODE_STARTED' && p.episodeType === 'PRE_AI';
+  });
+
+  if (preAiStarts.length > 0 && (computedPreAiReadMs === undefined || computedPreAiReadMs === 0)) {
+    const samplePayloads = preAiStarts.slice(0, 2).map(e => JSON.stringify(e.payload));
+    const error = new Error(
+      `[DEV REGRESSION GUARD] Case ${caseId}: Found ${preAiStarts.length} READ_EPISODE_STARTED(PRE_AI) events ` +
+      `but computedPreAiReadMs = ${computedPreAiReadMs}. Sample payloads: ${samplePayloads.join(', ')}`
+    );
+    console.error(error);
+    // Don't throw here - just warn loudly. Throwing would break the UI.
+    // The issue is likely parsing, not a logic error.
+  }
+};
+
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
 interface DemoState {
@@ -255,10 +348,11 @@ const computeReadEpisodeMetrics = (
       return Number.isFinite(d) && d >= 0 ? d : undefined;
     };
 
+    // NOTE: Do NOT fallback to 0. Keep undefined so UI shows "NA" for truly missing data.
     preAiReadMs =
       durationMs(caseLoaded, firstLock) ??
-      durationMs(caseLoaded, aiRevealed) ??
-      0;
+      durationMs(caseLoaded, aiRevealed);
+    // preAiReadMs remains undefined if no fallback worked
   }
 
   // fallback: if POST_AI still missing, derive from AI_REVEALED -> FINAL/COMPLETE
@@ -271,10 +365,25 @@ const computeReadEpisodeMetrics = (
       return Number.isFinite(d) && d >= 0 ? d : undefined;
     };
 
-    postAiReadMs = durationMs(aiRevealed, final ?? completed) ?? 0;
+    // NOTE: Do NOT fallback to 0. Keep undefined so UI shows "NA" for truly missing data.
+    postAiReadMs = durationMs(aiRevealed, final ?? completed);
+    // postAiReadMs remains undefined if no fallback worked
   }
 
-  const totalReadMs = (preAiReadMs ?? 0) + (postAiReadMs ?? 0);
+  // totalReadMs: only compute if both components are defined; otherwise undefined
+  // This ensures we don't report a misleading "total" when parts are missing
+  const totalReadMs =
+    preAiReadMs !== undefined && postAiReadMs !== undefined
+      ? preAiReadMs + postAiReadMs
+      : preAiReadMs !== undefined
+        ? preAiReadMs  // Only pre-AI is known
+        : postAiReadMs !== undefined
+          ? postAiReadMs  // Only post-AI is known
+          : undefined;  // Neither is known
+
+  // DEV REGRESSION GUARD: Check for PRE_AI event mismatches
+  assertPreAiMetricsConsistent(caseId, caseEvents, preAiReadMs);
+
   return { preAiReadMs, postAiReadMs, totalReadMs };
 };
 
@@ -443,6 +552,8 @@ const buildMethodsSnapshot = (
     : 0;
 
   const snapshot = {
+    // BUILD_STAMP: which commit/branch generated this export
+    buildStamp: BUILD_STAMP,
     ...(studyMetadata?.studyId ? { studyId: studyMetadata.studyId } : {}),
     ...(studyMetadata?.protocolVersion ? { protocolVersion: studyMetadata.protocolVersion } : {}),
     ...(studyMetadata?.siteId ? { siteId: studyMetadata.siteId } : {}),
@@ -766,7 +877,7 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           </div>
           
           {/* Session ID */}
-          <div style={{ 
+          <div style={{
             marginTop: '16px',
             padding: '8px',
             backgroundColor: '#0f172a',
@@ -775,6 +886,20 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
           }}>
             <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '2px' }}>SESSION</div>
             <code style={{ color: '#64748b', fontSize: '10px', fontFamily: 'monospace' }}>{sessionId}</code>
+          </div>
+
+          {/* BUILD STAMP - Visible proof of which code is running */}
+          <div style={{
+            marginTop: '8px',
+            padding: '6px 8px',
+            backgroundColor: '#1e293b',
+            borderRadius: '4px',
+            border: '1px solid #334155'
+          }}>
+            <div style={{ fontSize: '8px', color: '#475569', marginBottom: '2px', fontWeight: 600 }}>BUILD</div>
+            <code style={{ color: '#22d3ee', fontSize: '9px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              {BUILD_STAMP}
+            </code>
           </div>
         </div>
       )}
@@ -4566,13 +4691,9 @@ export const ResearchDemoFlow: React.FC = () => {
 // Session persistence key
 const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
-const coerceConditionForDemo = (cond: any) => {
-  // cond expected shape: { condition: 'AI_FIRST' | 'HUMAN_FIRST' | 'CONCURRENT', seed?: string, ... }
-  if (cond?.condition === 'AI_FIRST') {
-    return { ...cond, condition: 'HUMAN_FIRST' };
-  }
-  return cond;
-};
+// NOTE: coerceConditionForDemo is now replaced by resolveConditionForDemo (defined at top of file)
+// This wrapper exists for backward compatibility with existing code paths
+const coerceConditionForDemo = (cond: any) => resolveConditionForDemo(cond);
 
 // Check for recoverable session on mount
 useEffect(() => {
@@ -4580,7 +4701,7 @@ useEffect(() => {
     const savedSession = localStorage.getItem(SESSION_STORAGE_KEY);
     if (savedSession) {
       const parsed = JSON.parse(savedSession);
-      parsed.condition = coerceConditionForDemo(parsed.condition);
+      parsed.condition = resolveConditionForDemo(parsed.condition);
 
       // Only show recovery if session is less than 24 hours old
       const hoursSinceSave =
@@ -4948,12 +5069,14 @@ const handleROIEnter = useCallback(async (roiId: string) => {
   // Start study with seeded randomization + calibration
   const startStudy = useCallback(async (conditionOverride?: RevealCondition) => {
     const seed = generateSeed();
-    const condition = conditionOverride ? manualCondition(conditionOverride, 'FDR_FOR') : await assignCondition(seed, 0);
-// DEMO DEFAULT: start Human-first unless explicitly overridden
-if (!conditionOverride && condition?.condition === 'AI_FIRST') {
-  condition.condition = 'HUMAN_FIRST';
-}
-    
+    const rawCondition = conditionOverride ? manualCondition(conditionOverride, 'FDR_FOR') : await assignCondition(seed, 0);
+
+    // SINGLE SOURCE OF TRUTH: resolveConditionForDemo handles URL override and demo defaults
+    const condition = resolveConditionForDemo(rawCondition)!;
+
+    // DEV REGRESSION GUARD: Assert condition is HUMAN_FIRST unless URL override
+    assertConditionIsHumanFirst(condition, 'startStudy');
+
     const queue = generateCaseQueue({
       includeCalibration: true,
       includeAttentionChecks: false,

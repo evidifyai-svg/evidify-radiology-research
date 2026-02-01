@@ -148,9 +148,20 @@ function computeReadEpisodeMetricsFromEvents(
     return Number.isFinite(duration) && duration >= 0 ? duration : null;
   };
 
-  const preAiReadMs = computeEpisodeMs('PRE_AI') ?? 0;
-  const postAiReadMs = computeEpisodeMs('POST_AI') ?? 0;
-  const totalReadMs = preAiReadMs + postAiReadMs;
+  // NOTE: Do NOT coerce null to 0. Return null so CSV exports show "NA" for missing data.
+  const preAiReadMs = computeEpisodeMs('PRE_AI');
+  const postAiReadMs = computeEpisodeMs('POST_AI');
+
+  // totalReadMs: only compute sum if both components are non-null
+  // If one is null, use the other; if both null, return null
+  const totalReadMs =
+    preAiReadMs !== null && postAiReadMs !== null
+      ? preAiReadMs + postAiReadMs
+      : preAiReadMs !== null
+        ? preAiReadMs
+        : postAiReadMs !== null
+          ? postAiReadMs
+          : null;
 
   return { preAiReadMs, postAiReadMs, totalReadMs };
 }
