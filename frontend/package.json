@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "verify:milestone-caseid": "tsx src/verify/milestone_caseid_check.ts"
+    "verify:milestone-caseid": "tsx src/verify/milestone_caseid_check.ts",
+    "test:wolfe": "npx tsx src/lib/__tests__/runAllTests.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "^1.5.3",
