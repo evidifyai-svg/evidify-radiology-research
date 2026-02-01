@@ -257,8 +257,8 @@ const computeReadEpisodeMetrics = (
 
     preAiReadMs =
       durationMs(caseLoaded, firstLock) ??
-      durationMs(caseLoaded, aiRevealed) ??
-      0;
+      durationMs(caseLoaded, aiRevealed);
+    // Do NOT coerce to 0 when missing; leave as undefined
   }
 
   // fallback: if POST_AI still missing, derive from AI_REVEALED -> FINAL/COMPLETE
@@ -271,10 +271,14 @@ const computeReadEpisodeMetrics = (
       return Number.isFinite(d) && d >= 0 ? d : undefined;
     };
 
-    postAiReadMs = durationMs(aiRevealed, final ?? completed) ?? 0;
+    postAiReadMs = durationMs(aiRevealed, final ?? completed);
+    // Do NOT coerce to 0 when missing; leave as undefined
   }
 
-  const totalReadMs = (preAiReadMs ?? 0) + (postAiReadMs ?? 0);
+  // Only compute total if both values are present; otherwise undefined
+  const totalReadMs = (typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number')
+    ? preAiReadMs + postAiReadMs
+    : undefined;
   return { preAiReadMs, postAiReadMs, totalReadMs };
 };
 
