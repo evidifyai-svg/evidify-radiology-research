@@ -1,0 +1,11 @@
+# Tomorrow
+- Branch I parked: (fill in)
+- Last known-good branch: (fill in)
+- Issue observed: AI condition showing CONCURRENT unexpectedly
+- Suspects:
+  - condition assignment being overwritten (setState condition in effect)
+  - manualCondition defaulting to CONCURRENT
+  - seed regeneration / missing seed
+- Next steps:
+  - grep assignCondition/manualCondition/setState condition
+  - git blame condition_matrix + ResearchDemoFlow label renderer
