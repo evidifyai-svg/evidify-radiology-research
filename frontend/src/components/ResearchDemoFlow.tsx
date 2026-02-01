@@ -59,6 +59,11 @@ import {
   ValidityIndicator,
 } from '../lib/validityIndicators';
 import {
+  getAdaptiveDisclosureConfig,
+  buildAdaptiveDisclosureEventPayload,
+  type AdaptiveDifficultyLevel,
+} from '../lib/adaptiveDisclosure';
+import {
   classifyLiabilityRisk,
   analyzeCrossExamination,
   generateHashChainBlocks,
@@ -5060,19 +5065,13 @@ await eventLoggerRef.current!.logAIRevealed({
       await eventLoggerRef.current!.logReadEpisodeStarted(state.currentCase.caseId, 'POST_AI');
     }
     
-    // Log disclosure with adaptive policy info
-    const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
-    const disclosureIntensity = disclosurePolicy === 'STATIC' ? 'STANDARD' : 
-      caseDifficulty === 'EASY' ? 'MINIMAL' : caseDifficulty === 'MEDIUM' ? 'STANDARD' : 'FULL_DEBIAS';
-    
+    // Log disclosure with adaptive policy info - using actual case difficulty
+    const caseDifficulty = (state.currentCase?.difficulty as AdaptiveDifficultyLevel) ?? 'MEDIUM';
+    const disclosureConfig = getAdaptiveDisclosureConfig(disclosurePolicy, caseDifficulty);
+    const disclosureEventPayload = buildAdaptiveDisclosureEventPayload(disclosureConfig);
+
     await eventLoggerRef.current!.logDisclosurePresented({ format: 'FDR_FOR', fdrValue: 4, forValue: 12 });
-    await eventLoggerRef.current!.addEvent('ADAPTIVE_DISCLOSURE_DECISION', {
-      policy: disclosurePolicy,
-      caseDifficulty,
-      disclosureIntensity,
-      showFdrFor: disclosurePolicy === 'STATIC' || caseDifficulty !== 'EASY',
-      showDebiasPrompt: disclosurePolicy === 'ADAPTIVE' && caseDifficulty === 'HARD',
-    });
+    await eventLoggerRef.current!.addEvent('ADAPTIVE_DISCLOSURE_DECISION', disclosureEventPayload);
     
     setState(s => ({
       ...s, step: 'AI_REVEALED', lockTime, aiRevealTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
@@ -5345,10 +5344,8 @@ setAiAgreementStreak(prev => prev + 1);
             }
           }}
           currentCaseDifficulty={
-            // Derive difficulty from case metadata or use round-robin for demo
-            state.caseQueue && state.currentCase 
-              ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3]
-              : undefined
+            // Use actual case difficulty from CaseDefinition (CDI-integrated)
+            state.currentCase?.difficulty as AdaptiveDifficultyLevel ?? undefined
           }
         />
       )}
@@ -6151,11 +6148,12 @@ setAiAgreementStreak(prev => prev + 1);
                     <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {(aiSuggestedConfidence * 100).toFixed(0)}%</div>
                   </div>
                   
-                  {/* FDR/FOR Disclosure - Adaptive based on policy + difficulty */}
+                  {/* FDR/FOR Disclosure - Adaptive based on policy + case difficulty (CDI-integrated) */}
                   {(() => {
-                    const caseDifficulty = state.caseQueue ? (['EASY', 'MEDIUM', 'HARD'] as const)[state.caseQueue.currentIndex % 3] : 'MEDIUM';
-                    const showFdrFor = disclosurePolicy === 'STATIC' || caseDifficulty !== 'EASY';
-                    const showDebias = disclosurePolicy === 'ADAPTIVE' && caseDifficulty === 'HARD';
+                    const caseDifficulty = (state.currentCase?.difficulty as AdaptiveDifficultyLevel) ?? 'MEDIUM';
+                    const adaptiveConfig = getAdaptiveDisclosureConfig(disclosurePolicy, caseDifficulty);
+                    const showFdrFor = adaptiveConfig.showFdrFor;
+                    const showDebias = adaptiveConfig.showDebiasPrompt;
                     
                     return (
                       <div 
