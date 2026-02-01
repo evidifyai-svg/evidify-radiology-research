@@ -70,3 +70,54 @@ export {
   type ParticipantAssignment,
   type CasePoolItem,
 } from './StudyProtocol';
+
+// Spiegelhalter Uncertainty Disclosure Framework
+// Based on David Spiegelhalter's research on risk communication
+export {
+  // Type definitions
+  type SpiegelhalterDisclosureFormat,
+  type SpiegelhalterDisclosureConfig,
+  type AIMetrics,
+  type AIRecommendation,
+  type AIDisclosure,
+  type FormattedDisclosure,
+  type ComprehensionCheckType,
+  type IntelligentOpennessScore,
+  type DisclosureRandomization,
+  type FormatAnalytics,
+  type DisclosureAnalytics,
+
+  // Constants
+  DEFAULT_VERBAL_SCALE,
+  DEFAULT_DISCLOSURE_CONFIG,
+  COMPARATIVE_RISKS,
+
+  // Display components
+  SpiegelhalterDisclosureDisplay,
+  generateFormattedDisclosure,
+  PercentageDisclosure,
+  NaturalFrequencyDisclosure,
+  IconArrayDisclosure,
+  VerbalDisclosure,
+  OddsDisclosure,
+  ComparativeDisclosure,
+
+  // Comprehension check
+  ComprehensionCheck,
+  COMPREHENSION_QUESTIONS,
+
+  // Intelligent Openness scorer
+  IntelligentOpennessScorer,
+  computeIntelligentOpenness,
+
+  // Randomization hook
+  useDisclosureRandomization,
+  RANDOMIZATION_PRESETS,
+
+  // Analytics
+  computeDisclosureAnalytics,
+  compareFormats,
+  rankFormats,
+  exportAnalyticsAsCSV,
+  generateAnalyticsSummary,
+} from './spiegelhalter';
