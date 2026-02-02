@@ -84,7 +84,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [windowLevel, setWindowLevel] = useState<WindowLevel>(WL_PRESETS.Standard);
   const [activePreset, setActivePreset] = useState<WLPresetName>('Standard');
-  const [activeView, setActiveView] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<ValidViewKey | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isRightDrag, setIsRightDrag] = useState(false);
@@ -225,8 +225,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
 
-    // Get current active view as ValidViewKey for emission
-    const currentViewKey = activeView as ValidViewKey | undefined;
+    // Get current active view for emission (already typed as ValidViewKey | null)
+    const currentViewKey = activeView ?? undefined;
 
     if (isRightDrag) {
       // Right-drag: adjust window/level
