@@ -73,13 +73,21 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-export type AllEventTypes = 
-  | SessionEventType 
-  | CaseEventType 
-  | CalibrationEventType 
+// Workload monitoring events (fatigue tracking)
+export type WorkloadEventType =
+  | 'WORKLOAD_THRESHOLD_CROSSED'
+  | 'WORKLOAD_ADVISORY_SHOWN'
+  | 'WORKLOAD_ADVISORY_RESPONSE'
+  | 'SESSION_WORKLOAD_SUMMARY';
+
+export type AllEventTypes =
+  | SessionEventType
+  | CaseEventType
+  | CalibrationEventType
   | AttentionEventType
   | EyeTrackingProxyEventType
-  | ViewerEventType;
+  | ViewerEventType
+  | WorkloadEventType
 
 // ============================================================================
 // EVENT PAYLOADS
@@ -778,6 +786,45 @@ const payload: FinalAssessmentPayload = {
     payload: ErrorClassificationPayload
   ): Promise<LedgerEntry> {
     return this.exportPack.addEvent('ERROR_CLASSIFICATION', payload);
+
+  // ==========================================================================
+  // Workload monitoring events
+  // ==========================================================================
+
+  /**
+   * Log workload threshold crossing
+   */
+  async logWorkloadThresholdCrossed(
+    payload: WorkloadThresholdCrossedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_THRESHOLD_CROSSED', payload);
+  }
+
+  /**
+   * Log workload advisory shown to user
+   */
+  async logWorkloadAdvisoryShown(
+    payload: WorkloadAdvisoryShownPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_SHOWN', payload);
+  }
+
+  /**
+   * Log user response to workload advisory
+   */
+  async logWorkloadAdvisoryResponse(
+    payload: WorkloadAdvisoryResponsePayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('WORKLOAD_ADVISORY_RESPONSE', payload);
+  }
+
+  /**
+   * Log session workload summary at session end
+   */
+  async logSessionWorkloadSummary(
+    payload: SessionWorkloadSummaryPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SESSION_WORKLOAD_SUMMARY', payload);
   }
 }
 

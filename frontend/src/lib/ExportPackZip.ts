@@ -917,6 +917,42 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **ATTENTION_CHECK_PRESENTED**: Catch trial presented
 - **ATTENTION_CHECK_RESPONSE**: Reader response to catch trial
 
+### Workload Monitoring Events
+- **WORKLOAD_THRESHOLD_CROSSED**: Reader workload status changed (GREEN→YELLOW→RED)
+- **WORKLOAD_ADVISORY_SHOWN**: Fatigue warning displayed to reader
+- **WORKLOAD_ADVISORY_RESPONSE**: Reader response to advisory (CONTINUE/TAKE_BREAK)
+- **SESSION_WORKLOAD_SUMMARY**: End-of-session workload metrics summary
+
+## Derived Metrics
+
+### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
+- **adda**: TRUE if reader changed toward AI when initial ≠ AI suggestion
+- **adda_denominator**: TRUE if initial assessment differed from AI (eligible for ADDA)
+- **change_occurred**: TRUE if final ≠ initial assessment
+- **ai_consistent_change**: TRUE if change moved toward AI suggestion
+
+### Timing Metrics
+- **timeToLockMs**: Case load → first impression lock duration
+- **lockToRevealMs**: First impression lock → AI reveal duration
+- **revealToFinalMs**: AI reveal → final assessment duration
+- **preAiReadMs**: PRE_AI read episode duration
+- **postAiReadMs**: POST_AI read episode duration
+- **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
+- **timeRatio**: preAiReadMs / postAiReadMs (ratio of pre-AI to post-AI reading time)
+- **sessionMedianPreAITime**: Median preAiReadMs across all cases in the session
+- **preAITimeVsMedian**: This case's preAiReadMs minus the session median (positive = slower than median)
+- **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
+- **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
+- **comprehensionItemId**: Disclosure comprehension item identifier
+- **comprehensionAnswer**: Reader answer to comprehension probe
+- **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+
+### Workload Metrics
+- **casesPerHour**: Current throughput rate (cases/hour)
+- **fatigueIndex**: Combined fatigue score (0-100) based on time, cases, and rate
+- **workloadStatus**: GREEN (<30 cases/hr), YELLOW (30-40), RED (>40)
+- **timeInZones**: Milliseconds spent in each workload zone
+- **thresholdCrossings**: Count of zone transitions during session
 ### Viewport Attention Tracking Events
 - **VIEWPORT_ATTENTION_START**: Case-level attention tracking initialized
 - **REGION_VIEWED**: Anatomical region entered viewport (debounced)
@@ -969,7 +1005,6 @@ Standard breast quadrant nomenclature (suffix _R or _L for laterality):
 - **AXILLA**: Axillary region
 - **NIPPLE**: Nipple/areolar complex
 - **RETRO**: Retroareolar region
-
 ## Hash Chain Verification
 
 Each event is linked via SHA-256 hash chain:
