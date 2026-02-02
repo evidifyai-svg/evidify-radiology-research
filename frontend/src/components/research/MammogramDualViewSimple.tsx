@@ -1,12 +1,14 @@
 /**
  * MammogramDualViewSimple.tsx - RADIOLOGY EDITOR GRADE
- * 
+ *
  * Enhanced to meet journal reviewer requirements:
  * 1. Window/Level presets (Standard, High Contrast, Soft Tissue, Inverted)
  * 2. ROI/Measurement tool with distance display
  * 3. AI Overlay toggles (Box, Contour, Heatmap)
  * 4. Professional toolbar layout
- * 5. Interaction logging for all tools
+ * 5. Core interaction logging (VIEW_FOCUSED, ZOOM_CHANGED, PAN_CHANGED,
+ *    WINDOW_LEVEL_CHANGED, AI_OVERLAY_TOGGLED, VIEWS_LINKED_TOGGLED);
+ *    measurement/ROI state stored locally
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -23,7 +25,8 @@ interface Props {
   showAI?: boolean;
   showAIOverlay?: boolean;
   aiConfidence?: number;
-  onInteraction?: (event: ViewerInteractionEvent['eventType'], data?: Record<string, unknown>, viewKey?: ValidViewKey) => void;
+  /** Callback for viewer interaction events - receives full ViewerInteractionEvent objects */
+  onInteraction?: (event: ViewerInteractionEvent) => void;
   onZoom?: () => void;
   onPan?: () => void;
   onToolChange?: (tool: string) => void;
@@ -61,20 +64,6 @@ const DEFAULT_IMAGES = {
   LMLO: '/images/inbreast/20586986_6c613a14b80a8591_MG_L_ML_ANON.png',
 };
 
-// Helper to normalize view key labels to valid ViewerInteractionEvent viewKey
-const normalizeViewKey = (key: string): ValidViewKey | undefined => {
-  const normalized = key.toUpperCase().replace(/\s+/g, '');
-  if (normalized === 'LCC' || normalized === 'LMLO' || normalized === 'RCC' || normalized === 'RMLO') {
-    return normalized as ValidViewKey;
-  }
-  // Map common label patterns
-  if (normalized.includes('LCC') || normalized === 'LEFT' || normalized === 'L CC') return 'LCC';
-  if (normalized.includes('RCC') || normalized === 'RIGHT' || normalized === 'R CC') return 'RCC';
-  if (normalized.includes('LMLO') || normalized === 'L MLO') return 'LMLO';
-  if (normalized.includes('RMLO') || normalized === 'R MLO') return 'RMLO';
-  return undefined;
-};
-
 export const MammogramDualViewSimple: React.FC<Props> = ({
   leftImage,
   rightImage,
@@ -109,10 +98,28 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const [measurements, setMeasurements] = useState<Array<{ start: { x: number; y: number }; end: { x: number; y: number }; distance: number }>>([]);
   const [roiBox, setRoiBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
+  // View configuration: use actual view keys for type-safe logging
+  const leftViewKey: ValidViewKey = 'LCC';
+  const rightViewKey: ValidViewKey = 'RCC';
+
   const images = {
-    left: leftImage || DEFAULT_IMAGES.LCC,
-    right: rightImage || DEFAULT_IMAGES.RCC,
+    [leftViewKey]: leftImage || DEFAULT_IMAGES.LCC,
+    [rightViewKey]: rightImage || DEFAULT_IMAGES.RCC,
   };
+
+  // Emit helper: constructs full ViewerInteractionEvent objects
+  const emit = useCallback((
+    eventType: ViewerInteractionEvent['eventType'],
+    details: Record<string, unknown>,
+    viewKey?: ValidViewKey
+  ) => {
+    onInteraction?.({
+      timestamp: new Date().toISOString(),
+      eventType,
+      viewKey,
+      details,
+    });
+  }, [onInteraction]);
 
   // Handle WL preset change
   const handlePresetChange = useCallback((preset: WLPresetName) => {
@@ -120,9 +127,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     const values = WL_PRESETS[preset];
     setWindowLevel(values);
     onWLPresetChange?.(preset);
-    // Emit as WINDOW_LEVEL_CHANGED (valid ViewerInteractionEvent type)
-    onInteraction?.('WINDOW_LEVEL_CHANGED', { preset, windowCenter: values.center, windowWidth: values.width });
-  }, [onWLPresetChange, onInteraction]);
+    emit('WINDOW_LEVEL_CHANGED', { preset, windowCenter: values.center, windowWidth: values.width });
+  }, [onWLPresetChange, emit]);
 
   // Handle tool change
   const handleToolChange = useCallback((tool: ToolMode) => {
@@ -141,11 +147,10 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setOverlays(prev => {
       const newState = { ...prev, [overlay]: !prev[overlay] };
       onOverlayToggle?.(overlay, newState[overlay]);
-      // Emit as AI_OVERLAY_TOGGLED (valid ViewerInteractionEvent type)
-      onInteraction?.('AI_OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
+      emit('AI_OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
       return newState;
     });
-  }, [onOverlayToggle, onInteraction]);
+  }, [onOverlayToggle, emit]);
 
   // Wheel handler for zoom
   useEffect(() => {
@@ -158,19 +163,16 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       const newZoom = Math.max(0.5, Math.min(4, zoom * (e.deltaY > 0 ? 0.9 : 1.1)));
       setZoom(newZoom);
       onZoom?.();
-      onInteraction?.('ZOOM_CHANGED', { zoom: newZoom, method: 'wheel' });
+      emit('ZOOM_CHANGED', { zoom: newZoom, method: 'wheel' });
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [zoom, onZoom, onInteraction]);
+  }, [zoom, onZoom, emit]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, viewKey: string) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, viewKey: ValidViewKey) => {
     e.preventDefault();
     setActiveView(viewKey);
-
-    // Normalize viewKey for type-safe interaction logging
-    const normalizedViewKey = normalizeViewKey(viewKey);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -199,8 +201,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setIsRightDrag(e.button === 2);
-    onInteraction?.('VIEW_FOCUSED', { view: viewKey }, normalizedViewKey);
-  }, [activeTool, measureStart, onInteraction]);
+    emit('VIEW_FOCUSED', { view: viewKey }, viewKey);
+  }, [activeTool, measureStart, emit]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Update measure preview
@@ -223,28 +225,40 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
 
+    // Get current active view as ValidViewKey for emission
+    const currentViewKey = activeView as ValidViewKey | undefined;
+
     if (isRightDrag) {
       // Right-drag: adjust window/level
-      setWindowLevel(prev => ({
-        center: Math.max(0, Math.min(1, prev.center + dy * 0.002)),
-        width: prev.width > 0
-          ? Math.max(0.1, Math.min(2, prev.width + dx * 0.002))
-          : Math.min(-0.1, Math.max(-2, prev.width + dx * 0.002)),
-      }));
-      setActivePreset('Standard'); // Custom WL - no preset
+      setWindowLevel(prev => {
+        const newWL = {
+          center: Math.max(0, Math.min(1, prev.center + dy * 0.002)),
+          width: prev.width > 0
+            ? Math.max(0.1, Math.min(2, prev.width + dx * 0.002))
+            : Math.min(-0.1, Math.max(-2, prev.width + dx * 0.002)),
+        };
+        // Emit WINDOW_LEVEL_CHANGED with actual applied values
+        emit('WINDOW_LEVEL_CHANGED', {
+          windowCenter: newWL.center,
+          windowWidth: newWL.width,
+          method: 'drag',
+        }, currentViewKey);
+        return newWL;
+      });
+      setActivePreset('Standard'); // Custom W/L via drag
     } else {
       // Left-drag: pan the view
       setPan(prev => {
         const newPan = { x: prev.x + dx, y: prev.y + dy };
         // Emit PAN_CHANGED with actual applied values
-        onInteraction?.('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' });
+        emit('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' }, currentViewKey);
         return newPan;
       });
       onPan?.();
     }
     // Update dragStart for next delta calculation
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, isRightDrag, onPan, onInteraction, zoom, activeTool, measureStart, roiBox]);
+  }, [isDragging, dragStart, isRightDrag, onPan, emit, zoom, activeTool, measureStart, roiBox, activeView]);
 
   const handleMouseUp = useCallback(() => {
     // Note: ROI_COMPLETED is not a valid ViewerInteractionEvent type - ROI state is handled locally
@@ -267,13 +281,15 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     const newZoom = Math.min(4, zoom * 1.2);
     setZoom(newZoom);
     onZoom?.();
-  }, [zoom, onZoom]);
+    emit('ZOOM_CHANGED', { zoom: newZoom, method: 'button' });
+  }, [zoom, onZoom, emit]);
 
   const handleZoomOut = useCallback(() => {
     const newZoom = Math.max(0.5, zoom * 0.8);
     setZoom(newZoom);
     onZoom?.();
-  }, [zoom, onZoom]);
+    emit('ZOOM_CHANGED', { zoom: newZoom, method: 'button' });
+  }, [zoom, onZoom, emit]);
 
   // Compute display filters
   const brightness = windowLevel.center;
@@ -281,13 +297,13 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const invert = windowLevel.width < 0;
   const showOverlay = showAI || showAIOverlay;
 
-  const renderView = (key: string, imageSrc: string, label: string) => {
-    const hasFinding = showOverlay && key === 'right';
-    
+  const renderView = (viewKey: ValidViewKey, imageSrc: string, label: string) => {
+    const hasFinding = showOverlay && viewKey === rightViewKey;
+
     return (
       <div
-        key={key}
-        onMouseDown={(e) => handleMouseDown(e, key)}
+        key={viewKey}
+        onMouseDown={(e) => handleMouseDown(e, viewKey)}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -299,7 +315,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           overflow: 'hidden',
           cursor: activeTool === 'MEASURE' ? 'crosshair' : activeTool === 'ROI' ? 'cell' : 'grab',
           aspectRatio: '3/4',
-          border: activeView === key ? '2px solid #3b82f6' : '2px solid transparent',
+          border: activeView === viewKey ? '2px solid #3b82f6' : '2px solid transparent',
         }}
       >
         {/* View label */}
@@ -519,10 +535,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 gap: 4,
               }}
             >
-              {tool === 'PAN' && 'Pan'}
-              {tool === 'MEASURE' && 'Measure'}
-              {tool === 'ROI' && '⬜'}
-              {tool}
+              {tool === 'PAN' ? 'Pan' : tool === 'MEASURE' ? 'Measure' : 'ROI'}
             </button>
           ))}
         </div>
@@ -557,7 +570,11 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           <button onClick={handleZoomIn} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 14, fontWeight: 'bold' }}>+</button>
           <div style={{ width: 1, height: 20, backgroundColor: '#4b5563', margin: '0 4px' }} />
           <button onClick={handleReset} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 11 }}>↺ Reset</button>
-          <button onClick={() => setViewsLinked(v => !v)} style={{ padding: '5px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 11 }}>
+          <button onClick={() => {
+            const newLinked = !viewsLinked;
+            setViewsLinked(newLinked);
+            emit('VIEWS_LINKED_TOGGLED', { linked: newLinked });
+          }} style={{ padding: '5px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 11 }}>
             {viewsLinked ? 'Linked' : 'Unlinked'}
           </button>
         </div>
@@ -590,10 +607,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 textTransform: 'capitalize',
               }}
             >
-              {overlay === 'box' && '⬜'}
-              {overlay === 'contour' && '◯'}
-              {overlay === 'heatmap' && 'Heatmap'}
-              {' '}{overlay}
+              {overlay === 'box' ? 'Box' : overlay === 'contour' ? 'Contour' : 'Heatmap'}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', color: '#818cf8', fontSize: 10 }}>
@@ -605,8 +619,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       {/* Viewer Area */}
       <div style={{ padding: 8, backgroundColor: '#0f172a' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {renderView('left', images.left, leftLabel)}
-          {renderView('right', images.right, rightLabel)}
+          {renderView(leftViewKey, images[leftViewKey], leftLabel)}
+          {renderView(rightViewKey, images[rightViewKey], rightLabel)}
         </div>
       </div>
       
