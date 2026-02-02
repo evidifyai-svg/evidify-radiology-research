@@ -1,14 +1,18 @@
 /**
- * MammogramDualViewSimple.tsx - RADIOLOGY EDITOR GRADE
+ * MammogramDualViewSimple.tsx - RADIOLOGY RESEARCH VIEWER
  *
  * Enhanced to meet journal reviewer requirements:
  * 1. Window/Level presets (Standard, High Contrast, Soft Tissue, Inverted)
- * 2. ROI/Measurement tool with distance display
+ * 2. ROI/Measurement tool with distance display (px - uncalibrated demo)
  * 3. AI Overlay toggles (Box, Contour, Heatmap)
  * 4. Professional toolbar layout
  * 5. Core interaction logging (VIEW_FOCUSED, ZOOM_CHANGED, PAN_CHANGED,
- *    WINDOW_LEVEL_CHANGED, AI_OVERLAY_TOGGLED, VIEWS_LINKED_TOGGLED);
+ *    WINDOW_LEVEL_CHANGED, AI_OVERLAY_TOGGLED);
  *    measurement/ROI state stored locally
+ *
+ * NOTE: W/L uses CSS filter approximation (non-diagnostic demo).
+ * NOTE: Measurements display in px (no DICOM pixel spacing metadata).
+ * NOTE: Views share state (linked) - per-view state not yet implemented.
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -16,6 +20,9 @@ import type { ViewerInteractionEvent } from '../../types/imaging';
 
 // Valid view keys for type-safe interaction logging
 type ValidViewKey = 'LCC' | 'LMLO' | 'RCC' | 'RMLO';
+
+// Throttle interval for drag event emissions (ms)
+const DRAG_EMIT_THROTTLE_MS = 100;
 
 interface Props {
   leftImage?: string;
@@ -36,16 +43,20 @@ interface Props {
 
 type WindowLevel = { center: number; width: number };
 
-// Window/Level presets for mammography
+/**
+ * Window/Level presets for mammography (CSS filter approximation).
+ * CSS brightness(1.0) = normal; we map center via: brightness = 0.5 + center
+ * So center=0.5 → brightness=1.0 (normal), center=0.3 → brightness=0.8 (darker)
+ */
 const WL_PRESETS = {
   'Standard': { center: 0.5, width: 1.0 },
-  'High Contrast': { center: 0.45, width: 0.7 },
-  'Soft Tissue': { center: 0.55, width: 1.2 },
-  'Dense': { center: 0.4, width: 0.6 },
+  'High Contrast': { center: 0.5, width: 0.6 },
+  'Soft Tissue': { center: 0.6, width: 1.3 },
+  'Dense': { center: 0.4, width: 0.5 },
   'Inverted': { center: 0.5, width: -1.0 },
 };
 
-type WLPresetName = keyof typeof WL_PRESETS;
+type WLPresetName = keyof typeof WL_PRESETS | 'Custom';
 
 // Tool modes
 type ToolMode = 'PAN' | 'MEASURE' | 'ROI';
@@ -80,6 +91,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   onOverlayToggle,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastEmitTimeRef = useRef<number>(0); // For throttling drag events
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [windowLevel, setWindowLevel] = useState<WindowLevel>(WL_PRESETS.Standard);
@@ -88,8 +100,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isRightDrag, setIsRightDrag] = useState(false);
-  const [viewsLinked, setViewsLinked] = useState(true);
-  
+  // Note: viewsLinked toggle removed - views share state until per-view state is implemented
+
   // New state for enhanced features
   const [activeTool, setActiveTool] = useState<ToolMode>('PAN');
   const [overlays, setOverlays] = useState<OverlayState>({ box: true, contour: false, heatmap: false });
@@ -121,8 +133,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     });
   }, [onInteraction]);
 
-  // Handle WL preset change
-  const handlePresetChange = useCallback((preset: WLPresetName) => {
+  // Handle WL preset change (only for named presets, not 'Custom')
+  const handlePresetChange = useCallback((preset: keyof typeof WL_PRESETS) => {
     setActivePreset(preset);
     const values = WL_PRESETS[preset];
     setWindowLevel(values);
@@ -183,9 +195,9 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
         setMeasureStart({ x, y });
         // Note: MEASURE_STARTED is not a valid ViewerInteractionEvent type - handled locally
       } else {
-        const distance = Math.sqrt(Math.pow(x - measureStart.x, 2) + Math.pow(y - measureStart.y, 2));
-        const distanceMm = Math.round(distance * 0.26); // Approximate mm conversion
-        setMeasurements(prev => [...prev, { start: measureStart, end: { x, y }, distance: distanceMm }]);
+        // Distance in pixels (uncalibrated - no DICOM pixel spacing metadata)
+        const distancePx = Math.round(Math.sqrt(Math.pow(x - measureStart.x, 2) + Math.pow(y - measureStart.y, 2)));
+        setMeasurements(prev => [...prev, { start: measureStart, end: { x, y }, distance: distancePx }]);
         // Note: MEASURE_COMPLETED is not a valid ViewerInteractionEvent type - handled locally
         setMeasureStart(null);
         setMeasureEnd(null);
@@ -228,6 +240,10 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     // Get current active view for emission (already typed as ValidViewKey | null)
     const currentViewKey = activeView ?? undefined;
 
+    // Throttle event emissions to avoid log spam during drag
+    const now = Date.now();
+    const shouldEmit = now - lastEmitTimeRef.current >= DRAG_EMIT_THROTTLE_MS;
+
     if (isRightDrag) {
       // Right-drag: adjust window/level
       setWindowLevel(prev => {
@@ -237,21 +253,27 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
             ? Math.max(0.1, Math.min(2, prev.width + dx * 0.002))
             : Math.min(-0.1, Math.max(-2, prev.width + dx * 0.002)),
         };
-        // Emit WINDOW_LEVEL_CHANGED with actual applied values
-        emit('WINDOW_LEVEL_CHANGED', {
-          windowCenter: newWL.center,
-          windowWidth: newWL.width,
-          method: 'drag',
-        }, currentViewKey);
+        // Emit WINDOW_LEVEL_CHANGED (throttled)
+        if (shouldEmit) {
+          emit('WINDOW_LEVEL_CHANGED', {
+            windowCenter: newWL.center,
+            windowWidth: newWL.width,
+            method: 'drag',
+          }, currentViewKey);
+          lastEmitTimeRef.current = now;
+        }
         return newWL;
       });
-      setActivePreset('Standard'); // Custom W/L via drag
+      setActivePreset('Custom'); // Mark as custom W/L via drag
     } else {
       // Left-drag: pan the view
       setPan(prev => {
         const newPan = { x: prev.x + dx, y: prev.y + dy };
-        // Emit PAN_CHANGED with actual applied values
-        emit('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' }, currentViewKey);
+        // Emit PAN_CHANGED (throttled)
+        if (shouldEmit) {
+          emit('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' }, currentViewKey);
+          lastEmitTimeRef.current = now;
+        }
         return newPan;
       });
       onPan?.();
@@ -291,9 +313,11 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     emit('ZOOM_CHANGED', { zoom: newZoom, method: 'button' });
   }, [zoom, onZoom, emit]);
 
-  // Compute display filters
-  const brightness = windowLevel.center;
-  const contrast = Math.abs(windowLevel.width);
+  // Compute display filters (CSS filter approximation - non-diagnostic demo)
+  // brightness(1.0) is normal in CSS, so map center: brightness = 0.5 + center
+  // contrast: use 0.5 + abs(width) so width=1.0 → contrast=1.5
+  const brightness = 0.5 + windowLevel.center;
+  const contrast = 0.5 + Math.abs(windowLevel.width);
   const invert = windowLevel.width < 0;
   const showOverlay = showAI || showAIOverlay;
 
@@ -443,7 +467,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 fontWeight="bold"
                 textAnchor="middle"
               >
-                {m.distance}mm
+                {m.distance}px
               </text>
             </g>
           ))}
@@ -543,7 +567,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
         {/* Center: WL Presets */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ color: '#6b7280', fontSize: 10, marginRight: 4, fontWeight: 600 }}>W/L:</span>
-          {(Object.keys(WL_PRESETS) as WLPresetName[]).map(preset => (
+          {(Object.keys(WL_PRESETS) as (keyof typeof WL_PRESETS)[]).map(preset => (
             <button
               key={preset}
               onClick={() => handlePresetChange(preset)}
@@ -561,22 +585,30 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
               {preset === 'Inverted' ? '◐' : ''} {preset}
             </button>
           ))}
+          {/* Show 'Custom' indicator when W/L modified via drag */}
+          {activePreset === 'Custom' && (
+            <span style={{
+              padding: '5px 8px',
+              backgroundColor: '#6366f1',
+              borderRadius: 4,
+              color: 'white',
+              fontSize: 10,
+              fontWeight: 600,
+              fontStyle: 'italic',
+            }}>
+              Custom
+            </span>
+          )}
         </div>
         
-        {/* Right: Zoom + Reset + Link */}
+        {/* Right: Zoom + Reset */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button onClick={handleZoomOut} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 14, fontWeight: 'bold' }}>−</button>
           <span style={{ color: '#9ca3af', fontSize: 11, width: 45, textAlign: 'center', fontFamily: 'monospace' }}>{Math.round(zoom * 100)}%</span>
           <button onClick={handleZoomIn} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 14, fontWeight: 'bold' }}>+</button>
           <div style={{ width: 1, height: 20, backgroundColor: '#4b5563', margin: '0 4px' }} />
           <button onClick={handleReset} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 11 }}>↺ Reset</button>
-          <button onClick={() => {
-            const newLinked = !viewsLinked;
-            setViewsLinked(newLinked);
-            emit('VIEWS_LINKED_TOGGLED', { linked: newLinked });
-          }} style={{ padding: '5px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 11 }}>
-            {viewsLinked ? 'Linked' : 'Unlinked'}
-          </button>
+          {/* Note: viewsLinked toggle removed - views share state until per-view state is implemented */}
         </div>
       </div>
       
