@@ -10,6 +10,10 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import type { ViewerInteractionEvent } from '../../types/imaging';
+
+// Valid view keys for type-safe interaction logging
+type ValidViewKey = 'LCC' | 'LMLO' | 'RCC' | 'RMLO';
 
 interface Props {
   leftImage?: string;
@@ -19,7 +23,7 @@ interface Props {
   showAI?: boolean;
   showAIOverlay?: boolean;
   aiConfidence?: number;
-  onInteraction?: (event: string, data?: Record<string, unknown>) => void;
+  onInteraction?: (event: ViewerInteractionEvent['eventType'], data?: Record<string, unknown>, viewKey?: ValidViewKey) => void;
   onZoom?: () => void;
   onPan?: () => void;
   onToolChange?: (tool: string) => void;
@@ -55,6 +59,20 @@ const DEFAULT_IMAGES = {
   LCC: '/images/inbreast/20586934_6c613a14b80a8591_MG_L_CC_ANON.png',
   RMLO: '/images/inbreast/20586960_6c613a14b80a8591_MG_R_ML_ANON.png',
   LMLO: '/images/inbreast/20586986_6c613a14b80a8591_MG_L_ML_ANON.png',
+};
+
+// Helper to normalize view key labels to valid ViewerInteractionEvent viewKey
+const normalizeViewKey = (key: string): ValidViewKey | undefined => {
+  const normalized = key.toUpperCase().replace(/\s+/g, '');
+  if (normalized === 'LCC' || normalized === 'LMLO' || normalized === 'RCC' || normalized === 'RMLO') {
+    return normalized as ValidViewKey;
+  }
+  // Map common label patterns
+  if (normalized.includes('LCC') || normalized === 'LEFT' || normalized === 'L CC') return 'LCC';
+  if (normalized.includes('RCC') || normalized === 'RIGHT' || normalized === 'R CC') return 'RCC';
+  if (normalized.includes('LMLO') || normalized === 'L MLO') return 'LMLO';
+  if (normalized.includes('RMLO') || normalized === 'R MLO') return 'RMLO';
+  return undefined;
 };
 
 export const MammogramDualViewSimple: React.FC<Props> = ({
@@ -99,29 +117,32 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   // Handle WL preset change
   const handlePresetChange = useCallback((preset: WLPresetName) => {
     setActivePreset(preset);
-    setWindowLevel(WL_PRESETS[preset]);
+    const values = WL_PRESETS[preset];
+    setWindowLevel(values);
     onWLPresetChange?.(preset);
-    onInteraction?.('WL_PRESET_CHANGED', { preset, values: WL_PRESETS[preset] });
+    // Emit as WINDOW_LEVEL_CHANGED (valid ViewerInteractionEvent type)
+    onInteraction?.('WINDOW_LEVEL_CHANGED', { preset, windowCenter: values.center, windowWidth: values.width });
   }, [onWLPresetChange, onInteraction]);
 
   // Handle tool change
   const handleToolChange = useCallback((tool: ToolMode) => {
     setActiveTool(tool);
     onToolChange?.(tool);
-    onInteraction?.('TOOL_CHANGED', { tool });
+    // Note: TOOL_CHANGED is not a valid ViewerInteractionEvent type - use callback only
     // Clear pending measurements when switching tools
     if (tool !== 'MEASURE') {
       setMeasureStart(null);
       setMeasureEnd(null);
     }
-  }, [onToolChange, onInteraction]);
+  }, [onToolChange]);
 
   // Handle overlay toggle
   const handleOverlayToggle = useCallback((overlay: keyof OverlayState) => {
     setOverlays(prev => {
       const newState = { ...prev, [overlay]: !prev[overlay] };
       onOverlayToggle?.(overlay, newState[overlay]);
-      onInteraction?.('OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
+      // Emit as AI_OVERLAY_TOGGLED (valid ViewerInteractionEvent type)
+      onInteraction?.('AI_OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
       return newState;
     });
   }, [onOverlayToggle, onInteraction]);
@@ -147,35 +168,38 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const handleMouseDown = useCallback((e: React.MouseEvent, viewKey: string) => {
     e.preventDefault();
     setActiveView(viewKey);
-    
+
+    // Normalize viewKey for type-safe interaction logging
+    const normalizedViewKey = normalizeViewKey(viewKey);
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     if (activeTool === 'MEASURE') {
       if (!measureStart) {
         setMeasureStart({ x, y });
-        onInteraction?.('MEASURE_STARTED', { x, y, view: viewKey });
+        // Note: MEASURE_STARTED is not a valid ViewerInteractionEvent type - handled locally
       } else {
         const distance = Math.sqrt(Math.pow(x - measureStart.x, 2) + Math.pow(y - measureStart.y, 2));
         const distanceMm = Math.round(distance * 0.26); // Approximate mm conversion
         setMeasurements(prev => [...prev, { start: measureStart, end: { x, y }, distance: distanceMm }]);
-        onInteraction?.('MEASURE_COMPLETED', { start: measureStart, end: { x, y }, distanceMm });
+        // Note: MEASURE_COMPLETED is not a valid ViewerInteractionEvent type - handled locally
         setMeasureStart(null);
         setMeasureEnd(null);
       }
       return;
     }
-    
+
     if (activeTool === 'ROI') {
       setRoiBox({ x, y, w: 0, h: 0 });
-      onInteraction?.('ROI_STARTED', { x, y, view: viewKey });
+      // Note: ROI_STARTED is not a valid ViewerInteractionEvent type - handled locally
     }
-    
+
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setIsRightDrag(e.button === 2);
-    onInteraction?.('VIEW_FOCUSED', { view: viewKey });
+    onInteraction?.('VIEW_FOCUSED', { view: viewKey }, normalizedViewKey);
   }, [activeTool, measureStart, onInteraction]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -184,7 +208,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       const rect = e.currentTarget.getBoundingClientRect();
       setMeasureEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     }
-    
+
     // Update ROI preview
     if (activeTool === 'ROI' && roiBox && isDragging) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -192,38 +216,40 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       const y = e.clientY - rect.top;
       setRoiBox(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
     }
-    
+
     if (!isDragging || activeTool !== 'PAN') return;
-    
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
-    
+
+    // Compute delta from drag start
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+
     if (isRightDrag) {
+      // Right-drag: adjust window/level
       setWindowLevel(prev => ({
-        center: Math.max(0, Math.min(1, prev.center + deltaY * 0.002)),
-        width: prev.width > 0 
-          ? Math.max(0.1, Math.min(2, prev.width + deltaX * 0.002))
-          : Math.min(-0.1, Math.max(-2, prev.width + deltaX * 0.002)),
+        center: Math.max(0, Math.min(1, prev.center + dy * 0.002)),
+        width: prev.width > 0
+          ? Math.max(0.1, Math.min(2, prev.width + dx * 0.002))
+          : Math.min(-0.1, Math.max(-2, prev.width + dx * 0.002)),
       }));
-      setActivePreset('Standard'); // Custom WL
+      setActivePreset('Standard'); // Custom WL - no preset
     } else {
-      setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+      // Left-drag: pan the view
+      setPan(prev => {
+        const newPan = { x: prev.x + dx, y: prev.y + dy };
+        // Emit PAN_CHANGED with actual applied values
+        onInteraction?.('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' });
+        return newPan;
+      });
       onPan?.();
     }
+    // Update dragStart for next delta calculation
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, isRightDrag, onPan, activeTool, measureStart, roiBox]);
+  }, [isDragging, dragStart, isRightDrag, onPan, onInteraction, zoom, activeTool, measureStart, roiBox]);
 
   const handleMouseUp = useCallback(() => {
-    if (activeTool === 'ROI' && roiBox && roiBox.w !== 0) {
-      onInteraction?.('ROI_COMPLETED', { 
-        x: roiBox.x, 
-        y: roiBox.y, 
-        width: Math.abs(roiBox.w), 
-        height: Math.abs(roiBox.h) 
-      });
-    }
+    // Note: ROI_COMPLETED is not a valid ViewerInteractionEvent type - ROI state is handled locally
     setIsDragging(false);
-  }, [activeTool, roiBox, onInteraction]);
+  }, []);
 
   const handleReset = useCallback(() => {
     setZoom(1);
@@ -234,8 +260,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setRoiBox(null);
     setMeasureStart(null);
     setMeasureEnd(null);
-    onInteraction?.('VIEW_RESET', {});
-  }, [onInteraction]);
+    // Note: VIEW_RESET is not a valid ViewerInteractionEvent type - reset handled locally
+  }, []);
 
   const handleZoomIn = useCallback(() => {
     const newZoom = Math.min(4, zoom * 1.2);
