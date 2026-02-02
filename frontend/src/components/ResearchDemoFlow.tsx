@@ -45,6 +45,9 @@ import {
   X,
 } from 'lucide-react';
 import { MammogramDualViewSimple } from './research/MammogramDualViewSimple';
+import { WorkloadMonitor } from './research/WorkloadMonitor';
+import { useWorkloadMetrics } from '../hooks/useWorkloadMetrics';
+import type { ViewerInteractionEvent } from '../types/imaging';
 // import { PacketViewer } from './PacketViewer'; // Replaced by ExpertWitnessPacketViewer
 import { ExportPackZip, DerivedMetrics, ExportManifest, VerifierOutput } from '../lib/ExportPackZip';
 import { EventLogger } from '../lib/event_logger';
@@ -4563,6 +4566,23 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
+  // Workload monitoring - tracks cases/hour, fatigue index, Macknik thresholds
+  const workloadMetrics = useWorkloadMetrics({
+    onThresholdCrossed: async (metrics, previousStatus) => {
+      if (eventLoggerRef.current) {
+        await eventLoggerRef.current.addEvent('WORKLOAD_THRESHOLD_CROSSED', {
+          previousStatus,
+          newStatus: metrics.workloadStatus,
+          casesPerHour: metrics.casesPerHour,
+          casesCompleted: metrics.casesCompleted,
+          fatigueIndex: metrics.fatigueIndex,
+          sessionDurationMs: Date.now() - new Date(metrics.sessionStartTime).getTime(),
+        });
+        setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+      }
+    },
+  });
+
 // Session persistence key
 const SESSION_STORAGE_KEY = 'evidify_session_recovery';
 
@@ -4947,6 +4967,19 @@ const handleROIEnter = useCallback(async (roiId: string) => {
     }
   }, [state.currentCase]);
 
+  // Handle detailed viewer interaction events (ZOOM_CHANGED, PAN_CHANGED, VIEW_FOCUSED, WINDOW_LEVEL_CHANGED)
+  const handleViewerInteractionEvent = useCallback(async (event: ViewerInteractionEvent) => {
+    if (eventLoggerRef.current) {
+      await eventLoggerRef.current.addEvent(event.eventType, {
+        caseId: state.currentCase?.caseId,
+        viewKey: event.viewKey,
+        timestamp: event.timestamp,
+        ...event.details,
+      });
+      setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+    }
+  }, [state.currentCase]);
+
   // Start study with seeded randomization + calibration
   const startStudy = useCallback(async (conditionOverride?: RevealCondition) => {
     const seed = generateSeed();
@@ -5281,7 +5314,10 @@ setAiAgreementStreak(prev => prev + 1);
     });
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
-    
+
+    // Update workload metrics - tracks cases/hour for Macknik thresholds
+    workloadMetrics.completeCase();
+
     const completedCaseId = currentCase?.caseId ?? state.currentCase?.caseId ?? 'UNKNOWN_CASE';
     const metrics = computeDerivedMetricsFromEvents(
       exportPackRef.current?.getEvents() ?? [],
@@ -5548,9 +5584,13 @@ setAiAgreementStreak(prev => prev + 1);
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
               {isResearcher && (
-                <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
-                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
+                    <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
+                  </div>
+                  {/* Workload Monitor - Macknik threshold tracking */}
+                  <WorkloadMonitor metrics={workloadMetrics.metrics} compact={true} />
                 </div>
               )}
               {isResearcher && (
@@ -5946,17 +5986,18 @@ setAiAgreementStreak(prev => prev + 1);
                 <BookOpen size={14} />
                 <strong>Training Case:</strong> Make your assessment. You'll see ground truth feedback.
               </div>
-              <div 
-                onMouseEnter={() => handleROIEnter('mammogram')} 
-                onMouseLeave={() => handleROILeave('mammogram')} 
+              <div
+                onMouseEnter={() => handleROIEnter('mammogram')}
+                onMouseLeave={() => handleROILeave('mammogram')}
                 style={{ marginBottom: '24px', border: '2px solid #334155', borderRadius: '12px', overflow: 'hidden' }}
               >
-                <MammogramDualViewSimple 
-                  leftImage={currentCase.images?.LCC} 
-                  rightImage={currentCase.images?.RCC} 
-                  leftLabel="L CC" 
-                  rightLabel="R CC" 
+                <MammogramDualViewSimple
+                  leftImage={currentCase.images?.LCC}
+                  rightImage={currentCase.images?.RCC}
+                  leftLabel="L CC"
+                  rightLabel="R CC"
                   showAIOverlay={false}
+                  onInteraction={handleViewerInteractionEvent}
                   onZoom={() => handleViewerInteraction('zoom')}
                   onPan={() => handleViewerInteraction('pan')}
                 />
@@ -6153,31 +6194,32 @@ setAiAgreementStreak(prev => prev + 1);
                 </div>
               </div>
               
-              <div 
-                onMouseEnter={() => handleROIEnter('mammogram')} 
-                onMouseLeave={() => handleROILeave('mammogram')} 
+              <div
+                onMouseEnter={() => handleROIEnter('mammogram')}
+                onMouseLeave={() => handleROILeave('mammogram')}
                 style={{ marginBottom: '24px', border: '2px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}
               >
-                <MammogramDualViewSimple 
-                  leftImage={currentCase.images?.LCC} 
-                  rightImage={currentCase.images?.RCC} 
-                  leftLabel="L CC" 
-                  rightLabel="R CC" 
+                <MammogramDualViewSimple
+                  leftImage={currentCase.images?.LCC}
+                  rightImage={currentCase.images?.RCC}
+                  leftLabel="L CC"
+                  rightLabel="R CC"
                   showAIOverlay={false}
+                  onInteraction={handleViewerInteractionEvent}
                   onZoom={() => handleViewerInteraction('zoom')}
                   onPan={() => handleViewerInteraction('pan')}
                 />
               </div>
-              
+
               {/* Attention Metrics (Researcher Mode Only) */}
               {isResearcher && showAdvancedResearcher && (
-                <AttentionMetricsPanel 
+                <AttentionMetricsPanel
                   roiDwellTimes={state.roiDwellTimes}
                   interactionCounts={state.interactionCounts}
                   totalTimeMs={timeOnCase * 1000}
                 />
               )}
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '500px', marginTop: '24px' }}>
                 <div>
                   <label style={{ color: 'white', fontWeight: 600, display: 'block', marginBottom: '8px' }}>BI-RADS Assessment</label>
@@ -6242,21 +6284,22 @@ setAiAgreementStreak(prev => prev + 1);
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
                 {/* Viewer */}
                 <div 
-                  onMouseEnter={() => handleROIEnter('mammogram')} 
-                  onMouseLeave={() => handleROILeave('mammogram')} 
+                  onMouseEnter={() => handleROIEnter('mammogram')}
+                  onMouseLeave={() => handleROILeave('mammogram')}
                   style={{ border: '2px solid #7c3aed', borderRadius: '12px', overflow: 'hidden' }}
                 >
-                  <MammogramDualViewSimple 
-                    leftImage={currentCase.images?.LCC} 
-                    rightImage={currentCase.images?.RCC} 
-                    leftLabel="L CC" 
-                    rightLabel="R CC" 
+                  <MammogramDualViewSimple
+                    leftImage={currentCase.images?.LCC}
+                    rightImage={currentCase.images?.RCC}
+                    leftLabel="L CC"
+                    rightLabel="R CC"
                     showAIOverlay={true}
+                    onInteraction={handleViewerInteractionEvent}
                     onZoom={() => handleViewerInteraction('zoom')}
                     onPan={() => handleViewerInteraction('pan')}
                   />
                 </div>
-                
+
                 {/* AI + FDR/FOR Panel */}
                 <div>
                   {/* AI Result */}
