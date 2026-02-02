@@ -786,6 +786,7 @@ const payload: FinalAssessmentPayload = {
     payload: ErrorClassificationPayload
   ): Promise<LedgerEntry> {
     return this.exportPack.addEvent('ERROR_CLASSIFICATION', payload);
+  }
 
   // ==========================================================================
   // Workload monitoring events
