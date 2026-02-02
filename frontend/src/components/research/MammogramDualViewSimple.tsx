@@ -1,15 +1,28 @@
 /**
- * MammogramDualViewSimple.tsx - RADIOLOGY EDITOR GRADE
- * 
+ * MammogramDualViewSimple.tsx - RADIOLOGY RESEARCH VIEWER
+ *
  * Enhanced to meet journal reviewer requirements:
  * 1. Window/Level presets (Standard, High Contrast, Soft Tissue, Inverted)
- * 2. ROI/Measurement tool with distance display
+ * 2. ROI/Measurement tool with distance display (px - uncalibrated demo)
  * 3. AI Overlay toggles (Box, Contour, Heatmap)
  * 4. Professional toolbar layout
- * 5. Interaction logging for all tools
+ * 5. Core interaction logging (VIEW_FOCUSED, ZOOM_CHANGED, PAN_CHANGED,
+ *    WINDOW_LEVEL_CHANGED, AI_OVERLAY_TOGGLED);
+ *    measurement/ROI state stored locally
+ *
+ * NOTE: W/L uses CSS filter approximation (non-diagnostic demo).
+ * NOTE: Measurements display in px (no DICOM pixel spacing metadata).
+ * NOTE: Views share state (linked) - per-view state not yet implemented.
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import type { ViewerInteractionEvent } from '../../types/imaging';
+
+// Valid view keys for type-safe interaction logging
+type ValidViewKey = 'LCC' | 'LMLO' | 'RCC' | 'RMLO';
+
+// Throttle interval for drag event emissions (ms)
+const DRAG_EMIT_THROTTLE_MS = 100;
 
 interface Props {
   leftImage?: string;
@@ -19,7 +32,8 @@ interface Props {
   showAI?: boolean;
   showAIOverlay?: boolean;
   aiConfidence?: number;
-  onInteraction?: (event: string, data?: Record<string, unknown>) => void;
+  /** Callback for viewer interaction events - receives full ViewerInteractionEvent objects */
+  onInteraction?: (event: ViewerInteractionEvent) => void;
   onZoom?: () => void;
   onPan?: () => void;
   onToolChange?: (tool: string) => void;
@@ -29,16 +43,20 @@ interface Props {
 
 type WindowLevel = { center: number; width: number };
 
-// Window/Level presets for mammography
+/**
+ * Window/Level presets for mammography (CSS filter approximation).
+ * CSS brightness(1.0) = normal; we map center via: brightness = 0.5 + center
+ * So center=0.5 → brightness=1.0 (normal), center=0.3 → brightness=0.8 (darker)
+ */
 const WL_PRESETS = {
   'Standard': { center: 0.5, width: 1.0 },
-  'High Contrast': { center: 0.45, width: 0.7 },
-  'Soft Tissue': { center: 0.55, width: 1.2 },
-  'Dense': { center: 0.4, width: 0.6 },
+  'High Contrast': { center: 0.5, width: 0.6 },
+  'Soft Tissue': { center: 0.6, width: 1.3 },
+  'Dense': { center: 0.4, width: 0.5 },
   'Inverted': { center: 0.5, width: -1.0 },
 };
 
-type WLPresetName = keyof typeof WL_PRESETS;
+type WLPresetName = keyof typeof WL_PRESETS | 'Custom';
 
 // Tool modes
 type ToolMode = 'PAN' | 'MEASURE' | 'ROI';
@@ -73,16 +91,17 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   onOverlayToggle,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastEmitTimeRef = useRef<number>(0); // For throttling drag events
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [windowLevel, setWindowLevel] = useState<WindowLevel>(WL_PRESETS.Standard);
   const [activePreset, setActivePreset] = useState<WLPresetName>('Standard');
-  const [activeView, setActiveView] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<ValidViewKey | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isRightDrag, setIsRightDrag] = useState(false);
-  const [viewsLinked, setViewsLinked] = useState(true);
-  
+  // Note: viewsLinked toggle removed - views share state until per-view state is implemented
+
   // New state for enhanced features
   const [activeTool, setActiveTool] = useState<ToolMode>('PAN');
   const [overlays, setOverlays] = useState<OverlayState>({ box: true, contour: false, heatmap: false });
@@ -91,40 +110,69 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
   const [measurements, setMeasurements] = useState<Array<{ start: { x: number; y: number }; end: { x: number; y: number }; distance: number }>>([]);
   const [roiBox, setRoiBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
+  // View configuration: use actual view keys for type-safe logging
+  const leftViewKey: ValidViewKey = 'LCC';
+  const rightViewKey: ValidViewKey = 'RCC';
+
   const images = {
-    left: leftImage || DEFAULT_IMAGES.LCC,
-    right: rightImage || DEFAULT_IMAGES.RCC,
+    [leftViewKey]: leftImage || DEFAULT_IMAGES.LCC,
+    [rightViewKey]: rightImage || DEFAULT_IMAGES.RCC,
   };
 
-  // Handle WL preset change
-  const handlePresetChange = useCallback((preset: WLPresetName) => {
+  // Emit helper: constructs full ViewerInteractionEvent objects
+  const emit = useCallback((
+    eventType: ViewerInteractionEvent['eventType'],
+    details: Record<string, unknown>,
+    viewKey?: ValidViewKey
+  ) => {
+    onInteraction?.({
+      timestamp: new Date().toISOString(),
+      eventType,
+      viewKey,
+      details,
+    });
+  }, [onInteraction]);
+
+  // Convert screen coords to image coords so annotations track with zoom/pan
+  // Transform is: screen = image * zoom + pan, so inverse is: image = (screen - pan) / zoom
+  const screenToImage = useCallback((pt: { x: number; y: number }) => ({
+    x: (pt.x - pan.x) / zoom,
+    y: (pt.y - pan.y) / zoom,
+  }), [pan.x, pan.y, zoom]);
+
+  // Handle WL preset change (only for named presets, not 'Custom')
+  const handlePresetChange = useCallback((preset: keyof typeof WL_PRESETS) => {
     setActivePreset(preset);
-    setWindowLevel(WL_PRESETS[preset]);
+    const values = WL_PRESETS[preset];
+    setWindowLevel(values);
     onWLPresetChange?.(preset);
-    onInteraction?.('WL_PRESET_CHANGED', { preset, values: WL_PRESETS[preset] });
-  }, [onWLPresetChange, onInteraction]);
+    emit('WINDOW_LEVEL_CHANGED', { preset, windowCenter: values.center, windowWidth: values.width });
+  }, [onWLPresetChange, emit]);
 
   // Handle tool change
   const handleToolChange = useCallback((tool: ToolMode) => {
     setActiveTool(tool);
     onToolChange?.(tool);
-    onInteraction?.('TOOL_CHANGED', { tool });
-    // Clear pending measurements when switching tools
+    // Note: TOOL_CHANGED is not a valid ViewerInteractionEvent type - use callback only
+    // Clear pending tool state when switching tools
     if (tool !== 'MEASURE') {
       setMeasureStart(null);
       setMeasureEnd(null);
     }
-  }, [onToolChange, onInteraction]);
+    if (tool !== 'ROI') {
+      setRoiBox(null);
+    }
+  }, [onToolChange]);
 
   // Handle overlay toggle
   const handleOverlayToggle = useCallback((overlay: keyof OverlayState) => {
     setOverlays(prev => {
       const newState = { ...prev, [overlay]: !prev[overlay] };
       onOverlayToggle?.(overlay, newState[overlay]);
-      onInteraction?.('OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
+      emit('AI_OVERLAY_TOGGLED', { overlay, enabled: newState[overlay] });
       return newState;
     });
-  }, [onOverlayToggle, onInteraction]);
+  }, [onOverlayToggle, emit]);
 
   // Wheel handler for zoom
   useEffect(() => {
@@ -137,93 +185,122 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       const newZoom = Math.max(0.5, Math.min(4, zoom * (e.deltaY > 0 ? 0.9 : 1.1)));
       setZoom(newZoom);
       onZoom?.();
-      onInteraction?.('ZOOM_CHANGED', { zoom: newZoom, method: 'wheel' });
+      emit('ZOOM_CHANGED', { zoom: newZoom, method: 'wheel' });
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [zoom, onZoom, onInteraction]);
+  }, [zoom, onZoom, emit]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, viewKey: string) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, viewKey: ValidViewKey) => {
     e.preventDefault();
     setActiveView(viewKey);
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Convert to image coords so annotations track with zoom/pan
+    const imgPt = screenToImage(screenPt);
+
     if (activeTool === 'MEASURE') {
       if (!measureStart) {
-        setMeasureStart({ x, y });
-        onInteraction?.('MEASURE_STARTED', { x, y, view: viewKey });
+        setMeasureStart(imgPt);
+        // Note: MEASURE_STARTED is not a valid ViewerInteractionEvent type - handled locally
       } else {
-        const distance = Math.sqrt(Math.pow(x - measureStart.x, 2) + Math.pow(y - measureStart.y, 2));
-        const distanceMm = Math.round(distance * 0.26); // Approximate mm conversion
-        setMeasurements(prev => [...prev, { start: measureStart, end: { x, y }, distance: distanceMm }]);
-        onInteraction?.('MEASURE_COMPLETED', { start: measureStart, end: { x, y }, distanceMm });
+        // Distance in image pixels (uncalibrated - no DICOM pixel spacing metadata)
+        const dx = imgPt.x - measureStart.x;
+        const dy = imgPt.y - measureStart.y;
+        const distancePx = Math.round(Math.sqrt(dx * dx + dy * dy));
+        setMeasurements(prev => [...prev, { start: measureStart, end: imgPt, distance: distancePx }]);
+        // Note: MEASURE_COMPLETED is not a valid ViewerInteractionEvent type - handled locally
         setMeasureStart(null);
         setMeasureEnd(null);
       }
       return;
     }
-    
+
     if (activeTool === 'ROI') {
-      setRoiBox({ x, y, w: 0, h: 0 });
-      onInteraction?.('ROI_STARTED', { x, y, view: viewKey });
+      setRoiBox({ x: imgPt.x, y: imgPt.y, w: 0, h: 0 });
+      // Note: ROI_STARTED is not a valid ViewerInteractionEvent type - handled locally
     }
-    
+
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setIsRightDrag(e.button === 2);
-    onInteraction?.('VIEW_FOCUSED', { view: viewKey });
-  }, [activeTool, measureStart, onInteraction]);
+    emit('VIEW_FOCUSED', { view: viewKey }, viewKey);
+  }, [activeTool, measureStart, emit, screenToImage]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    // Update measure preview
-    if (activeTool === 'MEASURE' && measureStart) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setMeasureEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    }
-    
-    // Update ROI preview
-    if (activeTool === 'ROI' && roiBox && isDragging) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setRoiBox(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
-    }
-    
-    if (!isDragging || activeTool !== 'PAN') return;
-    
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
-    
-    if (isRightDrag) {
-      setWindowLevel(prev => ({
-        center: Math.max(0, Math.min(1, prev.center + deltaY * 0.002)),
-        width: prev.width > 0 
-          ? Math.max(0.1, Math.min(2, prev.width + deltaX * 0.002))
-          : Math.min(-0.1, Math.max(-2, prev.width + deltaX * 0.002)),
-      }));
-      setActivePreset('Standard'); // Custom WL
-    } else {
-      setPan(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
-      onPan?.();
-    }
-    setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, isRightDrag, onPan, activeTool, measureStart, roiBox]);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
-  const handleMouseUp = useCallback(() => {
-    if (activeTool === 'ROI' && roiBox && roiBox.w !== 0) {
-      onInteraction?.('ROI_COMPLETED', { 
-        x: roiBox.x, 
-        y: roiBox.y, 
-        width: Math.abs(roiBox.w), 
-        height: Math.abs(roiBox.h) 
+    // Update measure preview (in image coords)
+    if (activeTool === 'MEASURE' && measureStart) {
+      const imgPt = screenToImage(screenPt);
+      setMeasureEnd(imgPt);
+    }
+
+    // Update ROI preview (in image coords)
+    if (activeTool === 'ROI' && roiBox && isDragging) {
+      const imgPt = screenToImage(screenPt);
+      setRoiBox(prev => prev ? { ...prev, w: imgPt.x - prev.x, h: imgPt.y - prev.y } : null);
+    }
+
+    if (!isDragging || activeTool !== 'PAN') return;
+
+    // Compute delta from drag start
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+
+    // Get current active view for emission (already typed as ValidViewKey | null)
+    const currentViewKey = activeView ?? undefined;
+
+    // Throttle event emissions and callbacks to avoid log spam during drag
+    const now = Date.now();
+    const shouldEmit = now - lastEmitTimeRef.current >= DRAG_EMIT_THROTTLE_MS;
+
+    if (isRightDrag) {
+      // Right-drag: adjust window/level
+      setWindowLevel(prev => {
+        const newWL = {
+          center: Math.max(0, Math.min(1, prev.center + dy * 0.002)),
+          width: prev.width > 0
+            ? Math.max(0.1, Math.min(2, prev.width + dx * 0.002))
+            : Math.min(-0.1, Math.max(-2, prev.width + dx * 0.002)),
+        };
+        // Emit WINDOW_LEVEL_CHANGED (throttled)
+        if (shouldEmit) {
+          emit('WINDOW_LEVEL_CHANGED', {
+            windowCenter: newWL.center,
+            windowWidth: newWL.width,
+            method: 'drag',
+          }, currentViewKey);
+          lastEmitTimeRef.current = now;
+        }
+        return newWL;
+      });
+      setActivePreset('Custom'); // Mark as custom W/L via drag
+    } else {
+      // Left-drag: pan the view
+      setPan(prev => {
+        const newPan = { x: prev.x + dx, y: prev.y + dy };
+        // Emit PAN_CHANGED (throttled)
+        if (shouldEmit) {
+          emit('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' }, currentViewKey);
+          onPan?.(); // Also throttle the callback
+          lastEmitTimeRef.current = now;
+        }
+        return newPan;
       });
     }
+    // Update dragStart for next delta calculation
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }, [isDragging, dragStart, isRightDrag, onPan, emit, zoom, activeTool, measureStart, roiBox, activeView, screenToImage]);
+
+  const handleMouseUp = useCallback(() => {
+    // Note: ROI_COMPLETED is not a valid ViewerInteractionEvent type - ROI state is handled locally
     setIsDragging(false);
-  }, [activeTool, roiBox, onInteraction]);
+    lastEmitTimeRef.current = 0; // Reset throttle timer
+  }, []);
 
   const handleReset = useCallback(() => {
     setZoom(1);
@@ -234,34 +311,39 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setRoiBox(null);
     setMeasureStart(null);
     setMeasureEnd(null);
-    onInteraction?.('VIEW_RESET', {});
-  }, [onInteraction]);
+    lastEmitTimeRef.current = 0; // Reset throttle timer
+    // Note: VIEW_RESET is not a valid ViewerInteractionEvent type - reset handled locally
+  }, []);
 
   const handleZoomIn = useCallback(() => {
     const newZoom = Math.min(4, zoom * 1.2);
     setZoom(newZoom);
     onZoom?.();
-  }, [zoom, onZoom]);
+    emit('ZOOM_CHANGED', { zoom: newZoom, method: 'button' });
+  }, [zoom, onZoom, emit]);
 
   const handleZoomOut = useCallback(() => {
     const newZoom = Math.max(0.5, zoom * 0.8);
     setZoom(newZoom);
     onZoom?.();
-  }, [zoom, onZoom]);
+    emit('ZOOM_CHANGED', { zoom: newZoom, method: 'button' });
+  }, [zoom, onZoom, emit]);
 
-  // Compute display filters
-  const brightness = windowLevel.center;
-  const contrast = Math.abs(windowLevel.width);
+  // Compute display filters (CSS filter approximation - non-diagnostic demo)
+  // brightness(1.0) is normal in CSS, so map center: brightness = 0.5 + center
+  // contrast: use 0.5 + abs(width) so width=1.0 → contrast=1.5
+  const brightness = 0.5 + windowLevel.center;
+  const contrast = 0.5 + Math.abs(windowLevel.width);
   const invert = windowLevel.width < 0;
   const showOverlay = showAI || showAIOverlay;
 
-  const renderView = (key: string, imageSrc: string, label: string) => {
-    const hasFinding = showOverlay && key === 'right';
-    
+  const renderView = (viewKey: ValidViewKey, imageSrc: string, label: string) => {
+    const hasFinding = showOverlay && viewKey === rightViewKey;
+
     return (
       <div
-        key={key}
-        onMouseDown={(e) => handleMouseDown(e, key)}
+        key={viewKey}
+        onMouseDown={(e) => handleMouseDown(e, viewKey)}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -273,7 +355,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           overflow: 'hidden',
           cursor: activeTool === 'MEASURE' ? 'crosshair' : activeTool === 'ROI' ? 'cell' : 'grab',
           aspectRatio: '3/4',
-          border: activeView === key ? '2px solid #3b82f6' : '2px solid transparent',
+          border: activeView === viewKey ? '2px solid #3b82f6' : '2px solid transparent',
         }}
       >
         {/* View label */}
@@ -293,7 +375,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           {label}
         </div>
         
-        {/* Image */}
+        {/* Image + Annotations (same transform so annotations track with image) */}
         <div style={{
           position: 'absolute',
           inset: 0,
@@ -310,6 +392,61 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }}
             draggable={false}
           />
+          {/* Measurement lines (in image coords, rendered inside transform) */}
+          <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+            {measurements.map((m, i) => (
+              <g key={i}>
+                <line
+                  x1={m.start.x}
+                  y1={m.start.y}
+                  x2={m.end.x}
+                  y2={m.end.y}
+                  stroke="#fbbf24"
+                  strokeWidth={2 / zoom}
+                />
+                <circle cx={m.start.x} cy={m.start.y} r={4 / zoom} fill="#fbbf24" />
+                <circle cx={m.end.x} cy={m.end.y} r={4 / zoom} fill="#fbbf24" />
+                <text
+                  x={(m.start.x + m.end.x) / 2}
+                  y={(m.start.y + m.end.y) / 2 - 8 / zoom}
+                  fill="#fbbf24"
+                  fontSize={12 / zoom}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                >
+                  {m.distance}px
+                </text>
+              </g>
+            ))}
+            {/* Active measurement preview */}
+            {measureStart && measureEnd && (
+              <g>
+                <line
+                  x1={measureStart.x}
+                  y1={measureStart.y}
+                  x2={measureEnd.x}
+                  y2={measureEnd.y}
+                  stroke="#fbbf24"
+                  strokeWidth={2 / zoom}
+                  strokeDasharray={`${5 / zoom},${5 / zoom}`}
+                />
+                <circle cx={measureStart.x} cy={measureStart.y} r={4 / zoom} fill="#fbbf24" />
+              </g>
+            )}
+          </svg>
+          {/* ROI box (in image coords, rendered inside transform) */}
+          {roiBox && roiBox.w !== 0 && (
+            <div style={{
+              position: 'absolute',
+              left: roiBox.w > 0 ? roiBox.x : roiBox.x + roiBox.w,
+              top: roiBox.h > 0 ? roiBox.y : roiBox.y + roiBox.h,
+              width: Math.abs(roiBox.w),
+              height: Math.abs(roiBox.h),
+              border: `${2 / zoom}px dashed #22d3ee`,
+              backgroundColor: 'rgba(34, 211, 238, 0.1)',
+              pointerEvents: 'none',
+            }} />
+          )}
         </div>
         
         {/* AI Overlays */}
@@ -379,63 +516,6 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           </>
         )}
         
-        {/* Measurement lines */}
-        <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 15 }}>
-          {measurements.map((m, i) => (
-            <g key={i}>
-              <line
-                x1={m.start.x}
-                y1={m.start.y}
-                x2={m.end.x}
-                y2={m.end.y}
-                stroke="#fbbf24"
-                strokeWidth="2"
-              />
-              <circle cx={m.start.x} cy={m.start.y} r="4" fill="#fbbf24" />
-              <circle cx={m.end.x} cy={m.end.y} r="4" fill="#fbbf24" />
-              <text
-                x={(m.start.x + m.end.x) / 2}
-                y={(m.start.y + m.end.y) / 2 - 8}
-                fill="#fbbf24"
-                fontSize="12"
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                {m.distance}mm
-              </text>
-            </g>
-          ))}
-          {/* Active measurement preview */}
-          {measureStart && measureEnd && (
-            <g>
-              <line
-                x1={measureStart.x}
-                y1={measureStart.y}
-                x2={measureEnd.x}
-                y2={measureEnd.y}
-                stroke="#fbbf24"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-              />
-              <circle cx={measureStart.x} cy={measureStart.y} r="4" fill="#fbbf24" />
-            </g>
-          )}
-        </svg>
-        
-        {/* ROI box */}
-        {roiBox && roiBox.w !== 0 && (
-          <div style={{
-            position: 'absolute',
-            left: roiBox.w > 0 ? roiBox.x : roiBox.x + roiBox.w,
-            top: roiBox.h > 0 ? roiBox.y : roiBox.y + roiBox.h,
-            width: Math.abs(roiBox.w),
-            height: Math.abs(roiBox.h),
-            border: '2px dashed #22d3ee',
-            backgroundColor: 'rgba(34, 211, 238, 0.1)',
-            zIndex: 15,
-          }} />
-        )}
-        
         {/* Zoom indicator */}
         {zoom !== 1 && (
           <div style={{
@@ -493,10 +573,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 gap: 4,
               }}
             >
-              {tool === 'PAN' && 'Pan'}
-              {tool === 'MEASURE' && 'Measure'}
-              {tool === 'ROI' && '⬜'}
-              {tool}
+              {tool === 'PAN' ? 'Pan' : tool === 'MEASURE' ? 'Measure' : 'ROI'}
             </button>
           ))}
         </div>
@@ -504,7 +581,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
         {/* Center: WL Presets */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ color: '#6b7280', fontSize: 10, marginRight: 4, fontWeight: 600 }}>W/L:</span>
-          {(Object.keys(WL_PRESETS) as WLPresetName[]).map(preset => (
+          {(Object.keys(WL_PRESETS) as (keyof typeof WL_PRESETS)[]).map(preset => (
             <button
               key={preset}
               onClick={() => handlePresetChange(preset)}
@@ -522,18 +599,30 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
               {preset === 'Inverted' ? '◐' : ''} {preset}
             </button>
           ))}
+          {/* Show 'Custom' indicator when W/L modified via drag */}
+          {activePreset === 'Custom' && (
+            <span style={{
+              padding: '5px 8px',
+              backgroundColor: '#6366f1',
+              borderRadius: 4,
+              color: 'white',
+              fontSize: 10,
+              fontWeight: 600,
+              fontStyle: 'italic',
+            }}>
+              Custom
+            </span>
+          )}
         </div>
         
-        {/* Right: Zoom + Reset + Link */}
+        {/* Right: Zoom + Reset */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button onClick={handleZoomOut} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 14, fontWeight: 'bold' }}>−</button>
           <span style={{ color: '#9ca3af', fontSize: 11, width: 45, textAlign: 'center', fontFamily: 'monospace' }}>{Math.round(zoom * 100)}%</span>
           <button onClick={handleZoomIn} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 14, fontWeight: 'bold' }}>+</button>
           <div style={{ width: 1, height: 20, backgroundColor: '#4b5563', margin: '0 4px' }} />
           <button onClick={handleReset} style={{ padding: '5px 10px', backgroundColor: '#374151', border: 'none', borderRadius: 4, color: '#d1d5db', cursor: 'pointer', fontSize: 11 }}>↺ Reset</button>
-          <button onClick={() => setViewsLinked(v => !v)} style={{ padding: '5px 10px', backgroundColor: viewsLinked ? '#2563eb' : '#374151', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: 11 }}>
-            {viewsLinked ? 'Linked' : 'Unlinked'}
-          </button>
+          {/* Note: viewsLinked toggle removed - views share state until per-view state is implemented */}
         </div>
       </div>
       
@@ -564,10 +653,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 textTransform: 'capitalize',
               }}
             >
-              {overlay === 'box' && '⬜'}
-              {overlay === 'contour' && '◯'}
-              {overlay === 'heatmap' && 'Heatmap'}
-              {' '}{overlay}
+              {overlay === 'box' ? 'Box' : overlay === 'contour' ? 'Contour' : 'Heatmap'}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', color: '#818cf8', fontSize: 10 }}>
@@ -579,8 +665,8 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
       {/* Viewer Area */}
       <div style={{ padding: 8, backgroundColor: '#0f172a' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {renderView('left', images.left, leftLabel)}
-          {renderView('right', images.right, rightLabel)}
+          {renderView(leftViewKey, images[leftViewKey], leftLabel)}
+          {renderView(rightViewKey, images[rightViewKey], rightLabel)}
         </div>
       </div>
       
