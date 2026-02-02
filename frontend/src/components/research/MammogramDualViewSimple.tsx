@@ -133,6 +133,13 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     });
   }, [onInteraction]);
 
+  // Convert screen coords to image coords so annotations track with zoom/pan
+  // Transform is: screen = image * zoom + pan, so inverse is: image = (screen - pan) / zoom
+  const screenToImage = useCallback((pt: { x: number; y: number }) => ({
+    x: (pt.x - pan.x) / zoom,
+    y: (pt.y - pan.y) / zoom,
+  }), [pan.x, pan.y, zoom]);
+
   // Handle WL preset change (only for named presets, not 'Custom')
   const handlePresetChange = useCallback((preset: keyof typeof WL_PRESETS) => {
     setActivePreset(preset);
@@ -187,17 +194,20 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setActiveView(viewKey);
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Convert to image coords so annotations track with zoom/pan
+    const imgPt = screenToImage(screenPt);
 
     if (activeTool === 'MEASURE') {
       if (!measureStart) {
-        setMeasureStart({ x, y });
+        setMeasureStart(imgPt);
         // Note: MEASURE_STARTED is not a valid ViewerInteractionEvent type - handled locally
       } else {
-        // Distance in pixels (uncalibrated - no DICOM pixel spacing metadata)
-        const distancePx = Math.round(Math.sqrt(Math.pow(x - measureStart.x, 2) + Math.pow(y - measureStart.y, 2)));
-        setMeasurements(prev => [...prev, { start: measureStart, end: { x, y }, distance: distancePx }]);
+        // Distance in image pixels (uncalibrated - no DICOM pixel spacing metadata)
+        const dx = imgPt.x - measureStart.x;
+        const dy = imgPt.y - measureStart.y;
+        const distancePx = Math.round(Math.sqrt(dx * dx + dy * dy));
+        setMeasurements(prev => [...prev, { start: measureStart, end: imgPt, distance: distancePx }]);
         // Note: MEASURE_COMPLETED is not a valid ViewerInteractionEvent type - handled locally
         setMeasureStart(null);
         setMeasureEnd(null);
@@ -206,7 +216,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     }
 
     if (activeTool === 'ROI') {
-      setRoiBox({ x, y, w: 0, h: 0 });
+      setRoiBox({ x: imgPt.x, y: imgPt.y, w: 0, h: 0 });
       // Note: ROI_STARTED is not a valid ViewerInteractionEvent type - handled locally
     }
 
@@ -214,21 +224,22 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setDragStart({ x: e.clientX, y: e.clientY });
     setIsRightDrag(e.button === 2);
     emit('VIEW_FOCUSED', { view: viewKey }, viewKey);
-  }, [activeTool, measureStart, emit]);
+  }, [activeTool, measureStart, emit, screenToImage]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    // Update measure preview
+    const rect = e.currentTarget.getBoundingClientRect();
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    // Update measure preview (in image coords)
     if (activeTool === 'MEASURE' && measureStart) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setMeasureEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      const imgPt = screenToImage(screenPt);
+      setMeasureEnd(imgPt);
     }
 
-    // Update ROI preview
+    // Update ROI preview (in image coords)
     if (activeTool === 'ROI' && roiBox && isDragging) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setRoiBox(prev => prev ? { ...prev, w: x - prev.x, h: y - prev.y } : null);
+      const imgPt = screenToImage(screenPt);
+      setRoiBox(prev => prev ? { ...prev, w: imgPt.x - prev.x, h: imgPt.y - prev.y } : null);
     }
 
     if (!isDragging || activeTool !== 'PAN') return;
@@ -240,7 +251,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     // Get current active view for emission (already typed as ValidViewKey | null)
     const currentViewKey = activeView ?? undefined;
 
-    // Throttle event emissions to avoid log spam during drag
+    // Throttle event emissions and callbacks to avoid log spam during drag
     const now = Date.now();
     const shouldEmit = now - lastEmitTimeRef.current >= DRAG_EMIT_THROTTLE_MS;
 
@@ -272,19 +283,20 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
         // Emit PAN_CHANGED (throttled)
         if (shouldEmit) {
           emit('PAN_CHANGED', { panX: newPan.x, panY: newPan.y, zoom, method: 'drag' }, currentViewKey);
+          onPan?.(); // Also throttle the callback
           lastEmitTimeRef.current = now;
         }
         return newPan;
       });
-      onPan?.();
     }
     // Update dragStart for next delta calculation
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, isRightDrag, onPan, emit, zoom, activeTool, measureStart, roiBox, activeView]);
+  }, [isDragging, dragStart, isRightDrag, onPan, emit, zoom, activeTool, measureStart, roiBox, activeView, screenToImage]);
 
   const handleMouseUp = useCallback(() => {
     // Note: ROI_COMPLETED is not a valid ViewerInteractionEvent type - ROI state is handled locally
     setIsDragging(false);
+    lastEmitTimeRef.current = 0; // Reset throttle timer
   }, []);
 
   const handleReset = useCallback(() => {
@@ -296,6 +308,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setRoiBox(null);
     setMeasureStart(null);
     setMeasureEnd(null);
+    lastEmitTimeRef.current = 0; // Reset throttle timer
     // Note: VIEW_RESET is not a valid ViewerInteractionEvent type - reset handled locally
   }, []);
 
@@ -359,7 +372,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
           {label}
         </div>
         
-        {/* Image */}
+        {/* Image + Annotations (same transform so annotations track with image) */}
         <div style={{
           position: 'absolute',
           inset: 0,
@@ -376,6 +389,61 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }}
             draggable={false}
           />
+          {/* Measurement lines (in image coords, rendered inside transform) */}
+          <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
+            {measurements.map((m, i) => (
+              <g key={i}>
+                <line
+                  x1={m.start.x}
+                  y1={m.start.y}
+                  x2={m.end.x}
+                  y2={m.end.y}
+                  stroke="#fbbf24"
+                  strokeWidth={2 / zoom}
+                />
+                <circle cx={m.start.x} cy={m.start.y} r={4 / zoom} fill="#fbbf24" />
+                <circle cx={m.end.x} cy={m.end.y} r={4 / zoom} fill="#fbbf24" />
+                <text
+                  x={(m.start.x + m.end.x) / 2}
+                  y={(m.start.y + m.end.y) / 2 - 8 / zoom}
+                  fill="#fbbf24"
+                  fontSize={12 / zoom}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                >
+                  {m.distance}px
+                </text>
+              </g>
+            ))}
+            {/* Active measurement preview */}
+            {measureStart && measureEnd && (
+              <g>
+                <line
+                  x1={measureStart.x}
+                  y1={measureStart.y}
+                  x2={measureEnd.x}
+                  y2={measureEnd.y}
+                  stroke="#fbbf24"
+                  strokeWidth={2 / zoom}
+                  strokeDasharray={`${5 / zoom},${5 / zoom}`}
+                />
+                <circle cx={measureStart.x} cy={measureStart.y} r={4 / zoom} fill="#fbbf24" />
+              </g>
+            )}
+          </svg>
+          {/* ROI box (in image coords, rendered inside transform) */}
+          {roiBox && roiBox.w !== 0 && (
+            <div style={{
+              position: 'absolute',
+              left: roiBox.w > 0 ? roiBox.x : roiBox.x + roiBox.w,
+              top: roiBox.h > 0 ? roiBox.y : roiBox.y + roiBox.h,
+              width: Math.abs(roiBox.w),
+              height: Math.abs(roiBox.h),
+              border: `${2 / zoom}px dashed #22d3ee`,
+              backgroundColor: 'rgba(34, 211, 238, 0.1)',
+              pointerEvents: 'none',
+            }} />
+          )}
         </div>
         
         {/* AI Overlays */}
@@ -443,63 +511,6 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
               }} />
             )}
           </>
-        )}
-        
-        {/* Measurement lines */}
-        <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 15 }}>
-          {measurements.map((m, i) => (
-            <g key={i}>
-              <line
-                x1={m.start.x}
-                y1={m.start.y}
-                x2={m.end.x}
-                y2={m.end.y}
-                stroke="#fbbf24"
-                strokeWidth="2"
-              />
-              <circle cx={m.start.x} cy={m.start.y} r="4" fill="#fbbf24" />
-              <circle cx={m.end.x} cy={m.end.y} r="4" fill="#fbbf24" />
-              <text
-                x={(m.start.x + m.end.x) / 2}
-                y={(m.start.y + m.end.y) / 2 - 8}
-                fill="#fbbf24"
-                fontSize="12"
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                {m.distance}px
-              </text>
-            </g>
-          ))}
-          {/* Active measurement preview */}
-          {measureStart && measureEnd && (
-            <g>
-              <line
-                x1={measureStart.x}
-                y1={measureStart.y}
-                x2={measureEnd.x}
-                y2={measureEnd.y}
-                stroke="#fbbf24"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-              />
-              <circle cx={measureStart.x} cy={measureStart.y} r="4" fill="#fbbf24" />
-            </g>
-          )}
-        </svg>
-        
-        {/* ROI box */}
-        {roiBox && roiBox.w !== 0 && (
-          <div style={{
-            position: 'absolute',
-            left: roiBox.w > 0 ? roiBox.x : roiBox.x + roiBox.w,
-            top: roiBox.h > 0 ? roiBox.y : roiBox.y + roiBox.h,
-            width: Math.abs(roiBox.w),
-            height: Math.abs(roiBox.h),
-            border: '2px dashed #22d3ee',
-            backgroundColor: 'rgba(34, 211, 238, 0.1)',
-            zIndex: 15,
-          }} />
         )}
         
         {/* Zoom indicator */}
