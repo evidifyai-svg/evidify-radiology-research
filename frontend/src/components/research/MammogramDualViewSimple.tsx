@@ -154,10 +154,13 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
     setActiveTool(tool);
     onToolChange?.(tool);
     // Note: TOOL_CHANGED is not a valid ViewerInteractionEvent type - use callback only
-    // Clear pending measurements when switching tools
+    // Clear pending tool state when switching tools
     if (tool !== 'MEASURE') {
       setMeasureStart(null);
       setMeasureEnd(null);
+    }
+    if (tool !== 'ROI') {
+      setRoiBox(null);
     }
   }, [onToolChange]);
 
