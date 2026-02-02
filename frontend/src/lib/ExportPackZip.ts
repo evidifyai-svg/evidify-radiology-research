@@ -953,7 +953,58 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 - **workloadStatus**: GREEN (<30 cases/hr), YELLOW (30-40), RED (>40)
 - **timeInZones**: Milliseconds spent in each workload zone
 - **thresholdCrossings**: Count of zone transitions during session
+### Viewport Attention Tracking Events
+- **VIEWPORT_ATTENTION_START**: Case-level attention tracking initialized
+- **REGION_VIEWED**: Anatomical region entered viewport (debounced)
+- **VIEWPORT_ATTENTION_SUMMARY**: End-of-case attention coverage summary
+- **ERROR_CLASSIFICATION**: Error type classification (SEARCH/RECOGNITION/DECISION/CORRECT)
 
+## Derived Metrics
+
+### Primary Outcome: ADDA (Appropriate Deference to Decision Aid)
+- **adda**: TRUE if reader changed toward AI when initial ≠ AI suggestion
+- **adda_denominator**: TRUE if initial assessment differed from AI (eligible for ADDA)
+- **change_occurred**: TRUE if final ≠ initial assessment
+- **ai_consistent_change**: TRUE if change moved toward AI suggestion
+
+### Timing Metrics
+- **timeToLockMs**: Case load → first impression lock duration
+- **lockToRevealMs**: First impression lock → AI reveal duration
+- **revealToFinalMs**: AI reveal → final assessment duration
+- **preAiReadMs**: PRE_AI read episode duration
+- **postAiReadMs**: POST_AI read episode duration
+- **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
+- **timeRatio**: preAiReadMs / postAiReadMs (ratio of pre-AI to post-AI reading time)
+- **sessionMedianPreAITime**: Median preAiReadMs across all cases in the session
+- **preAITimeVsMedian**: This case's preAiReadMs minus the session median (positive = slower than median)
+- **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
+- **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
+- **comprehensionItemId**: Disclosure comprehension item identifier
+- **comprehensionAnswer**: Reader answer to comprehension probe
+- **comprehensionCorrect**: TRUE/FALSE/NA for comprehension probe correctness
+
+### Viewport Attention Metrics
+- **coveragePercent**: Percentage of anatomical regions viewed
+- **regionsNeverViewed**: List of anatomical regions never in viewport
+- **averageDwellTimeMs**: Mean time per viewed region
+- **hotspots**: Top regions by cumulative attention
+
+### Error Classification Types
+Error types based on visual attention research:
+- **SEARCH_ERROR**: Finding region was never viewed (incomplete systematic search)
+- **RECOGNITION_ERROR**: Region viewed but finding not detected (perceptual miss)
+- **DECISION_ERROR**: Finding recognized but incorrectly assessed (judgment error)
+- **CORRECT**: Finding correctly identified and assessed
+
+### Anatomical Regions
+Standard breast quadrant nomenclature (suffix _R or _L for laterality):
+- **UOQ**: Upper Outer Quadrant
+- **UIQ**: Upper Inner Quadrant
+- **LOQ**: Lower Outer Quadrant
+- **LIQ**: Lower Inner Quadrant
+- **AXILLA**: Axillary region
+- **NIPPLE**: Nipple/areolar complex
+- **RETRO**: Retroareolar region
 ## Hash Chain Verification
 
 Each event is linked via SHA-256 hash chain:

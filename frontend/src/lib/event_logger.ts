@@ -317,6 +317,56 @@ export interface SessionWorkloadSummaryPayload {
   };
 }
 
+// Viewport attention tracking payloads
+export interface ViewportAttentionStartPayload {
+  caseId: string;
+  timestamp: string;
+  initialViewport: {
+    zoomLevel: number;
+    panPosition: { x: number; y: number };
+  };
+}
+
+export interface RegionViewedPayload {
+  caseId: string;
+  region: string;
+  zoomLevel: number;
+  enteredAt: string;
+  dwellTimeMs?: number;
+}
+
+export interface ViewportAttentionSummaryPayload {
+  caseId: string;
+  summary: {
+    totalRegions: number;
+    regionsViewed: number;
+    coveragePercent: number;
+    regionsNeverViewed: string[];
+    averageDwellTimeMs: number;
+    hotspots: string[];
+    totalReadingTimeMs: number;
+  };
+  timestamp: string;
+}
+
+export interface ErrorClassificationPayload {
+  caseId: string;
+  analysis: {
+    totalFindings: number;
+    correctFindings: number;
+    searchErrors: number;
+    recognitionErrors: number;
+    decisionErrors: number;
+    classifications: Array<{
+      findingId: string;
+      findingRegion: string;
+      errorType: 'SEARCH_ERROR' | 'RECOGNITION_ERROR' | 'DECISION_ERROR' | 'CORRECT';
+      explanation: string;
+    }>;
+  };
+  timestamp: string;
+}
+
 // ============================================================================
 // EVENT LOGGER CLASS
 // ============================================================================
@@ -703,6 +753,39 @@ const payload: FinalAssessmentPayload = {
    */
   getExportPack(): ExportPackLike {
     return this.exportPack;
+  }
+  // ==========================================================================
+  // Viewport attention tracking events
+  // ==========================================================================
+  /**
+   * Log viewport attention tracking start
+   */
+  async logViewportAttentionStart(
+    payload: ViewportAttentionStartPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_START', payload);
+  }
+  /**
+   * Log region viewed event
+   */
+  async logRegionViewed(payload: RegionViewedPayload): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('REGION_VIEWED', payload);
+  }
+  /**
+   * Log viewport attention summary at case completion
+   */
+  async logViewportAttentionSummary(
+    payload: ViewportAttentionSummaryPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('VIEWPORT_ATTENTION_SUMMARY', payload);
+  }
+  /**
+   * Log error classification for a case
+   */
+  async logErrorClassification(
+    payload: ErrorClassificationPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('ERROR_CLASSIFICATION', payload);
   }
 
   // ==========================================================================
