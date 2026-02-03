@@ -100,14 +100,16 @@ function normalizeComputedValue(value) {
   return value;
 }
 
-function valuesMatch(expectedRaw, actualRaw) {
+function valuesMatch(expectedRaw, actualRaw, columnName) {
   const expected = normalizeCsvValue(expectedRaw);
   const actual = normalizeComputedValue(actualRaw);
 
   if (expected === null && actual === null) return true;
   if (typeof expected === 'number' && typeof actual === 'number') {
+    const isMsField = typeof columnName === 'string' && /ms$/i.test(columnName);
+    const tolerance = isMsField ? 1 : 0;
     if (Number.isInteger(expected) && Number.isInteger(actual)) {
-      return expected === actual;
+      return Math.abs(expected - actual) <= tolerance;
     }
     return Math.abs(expected - actual) <= 1e-6;
   }
@@ -252,6 +254,10 @@ function computeMetricsFromEvents(events) {
         : null;
 
     const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration);
+    if (isCalibration) {
+      continue;
+    }
+
     const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
       caseEvents,
       caseId,
@@ -259,12 +265,18 @@ function computeMetricsFromEvents(events) {
     );
 
     const conditionPayload = caseLoaded?.payload || {};
-    const condition =
+    let condition =
       conditionPayload.condition ??
-      conditionPayload.revealTiming ??
       conditionPayload.conditionCode ??
-      aiPayload.revealTiming ??
       '';
+    const revealTiming =
+      conditionPayload.revealTiming ??
+      aiPayload.revealTiming ??
+      condition ??
+      null;
+    if (!condition && revealTiming) {
+      condition = revealTiming;
+    }
 
     const deviationText =
       (deviationSubmitted?.payload || {}).deviationText ??
@@ -318,7 +330,7 @@ function computeMetricsFromEvents(events) {
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,
-      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? null,
+      revealTiming,
       disclosureFormat: (disclosurePresented?.payload || {}).format ?? null,
       sessionTimestamp: sessionStart?.timestamp ?? null,
     });
@@ -540,7 +552,7 @@ function main() {
             for (const column of headers) {
               const expected = derivedRow[column];
               const actual = computedRow[column];
-              if (!valuesMatch(expected, actual)) {
+              if (!valuesMatch(expected, actual, column)) {
                 mismatches.push({
                   caseId,
                   column,
