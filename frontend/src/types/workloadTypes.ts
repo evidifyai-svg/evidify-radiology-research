@@ -4,8 +4,9 @@
  * Type definitions for radiologist workload monitoring based on
  * research showing performance degradation with increased case volume.
  *
- * Research basis: Studies have documented accuracy decline beyond
- * certain throughput thresholds (typically 30-40 cases/hour).
+ * Note: Thresholds are configurable per institutional or study-defined
+ * standards. Published evidence-based thresholds for radiologist workload
+ * limits have not been established (Waite et al., Radiology 2022).
  */
 
 /**
@@ -33,7 +34,8 @@ export interface WorkloadThresholds {
 }
 
 /**
- * Default thresholds based on radiologist fatigue research.
+ * Default thresholds - configurable per study protocol or institutional standards.
+ * These are starting parameters and should be adjusted based on specific study requirements.
  */
 export const DEFAULT_WORKLOAD_THRESHOLDS: WorkloadThresholds = {
   casesPerHourYellow: 30,

@@ -184,10 +184,10 @@ export const WorkloadMonitor: React.FC<WorkloadMonitorProps> = ({
         </div>
       </div>
 
-      {/* Fatigue index bar */}
+      {/* Session intensity index bar */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-slate-400 text-xs">Fatigue Index</span>
+          <span className="text-slate-400 text-xs">Session Intensity Index</span>
           <span className="text-slate-300 text-xs font-medium">{metrics.fatigueIndex}%</span>
         </div>
         <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
@@ -211,6 +211,11 @@ export const WorkloadMonitor: React.FC<WorkloadMonitorProps> = ({
         <span>{metrics.thresholds.casesPerHourRed}/hr</span>
         <span></span>
       </div>
+
+      {/* Session parameter note */}
+      <p className="text-slate-600 text-xs mt-2 italic">
+        Parameters configurable per study protocol.
+      </p>
     </div>
   );
 };

@@ -15,7 +15,25 @@
 
 import React from 'react';
 import { ImpressionLedgerExport, IntegrityReport, LedgerEntry } from './ImpressionLedger';
-import { DeviationDocumentation, DEVIATION_REASON_CODES, FOLLOWUP_RECOMMENDATIONS } from './DeviationBuilder';
+import { DeviationDocumentation, DEVIATION_REASON_CODES, FOLLOWUP_RECOMMENDATIONS } from './ClinicalReasoningDocumentor';
+
+// ============================================================================
+// METHODOLOGY STATEMENT (non-removable in exports)
+// ============================================================================
+
+/**
+ * Mandatory methodology statement included in all exports.
+ * This statement cannot be removed or hidden by the user.
+ */
+const METHODOLOGY_STATEMENT =
+  'Methodology & Limitations: Session timing reflects platform-measured ' +
+  'viewer session duration and does not account for off-screen review, ' +
+  'verbal consultation, or reference to prior studies. Published normative ' +
+  'benchmarks for radiology interpretation time do not currently exist ' +
+  '(Waite et al., Radiology 2022). All comparative context in this ' +
+  'document reflects internal benchmarks only and should not be interpreted ' +
+  'as population norms. Viewer interaction data documents tool usage events ' +
+  'and does not measure visual attention or gaze direction.';
 
 // ============================================================================
 // TYPES
@@ -120,7 +138,7 @@ export function detectRubberStampIndicators(
     indicator: 'MINIMAL_PRE_AI_TIME',
     detected: preAITimeS < 15,
     severity: preAITimeS < 5 ? 'high' : preAITimeS < 15 ? 'medium' : 'low',
-    description: 'Time spent on independent assessment before AI reveal',
+    description: 'Time spent on independent assessment before AI consultation',
     value: `${preAITimeS.toFixed(1)}s`,
     threshold: '≥15s recommended',
   });
@@ -579,6 +597,16 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           </div>
         </div>
       )}
+
+      {/* Methodology Statement - NON-REMOVABLE */}
+      <div className="p-6 border-b border-slate-800 bg-slate-900/50">
+        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-4">
+          Methodology & Limitations
+        </h3>
+        <p className="text-slate-400 text-sm leading-relaxed">
+          {METHODOLOGY_STATEMENT}
+        </p>
+      </div>
 
       {/* Chain Integrity */}
       <div className="p-6">

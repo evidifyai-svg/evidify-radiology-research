@@ -1,12 +1,22 @@
 /**
  * AttentionSummary.tsx
  *
- * Display component showing attention coverage metrics for a case.
+ * Display component showing viewer interaction coverage metrics for a case.
  * Designed for the researcher sidebar to provide real-time feedback
- * on which regions have been examined.
+ * on which regions have been examined via viewport interactions.
  */
 
 import React from 'react';
+
+/**
+ * Methodology note displayed to clarify that this is interaction data, not gaze data.
+ */
+const INTERACTION_METHODOLOGY_NOTE =
+  'Viewer interaction data documents tool usage events (zoom, pan, scroll, ' +
+  'window/level adjustments) and does not measure visual attention, gaze ' +
+  'direction, or cognitive processing. Eye-tracking technology was not used ' +
+  'in this session. Mouse cursor position does not reliably indicate gaze ' +
+  'location (Huang et al., 2012).';
 import type { AttentionSummaryDisplayProps } from '../../types/viewportAttentionTypes';
 import { getRegionDisplayName } from '../../lib/anatomicalRegions';
 
@@ -89,11 +99,11 @@ export const AttentionSummary: React.FC<AttentionSummaryDisplayProps> = ({
     <div
       className={`bg-slate-800 rounded-xl p-4 border border-slate-700 ${className}`}
       role="region"
-      aria-label="Attention Coverage Summary"
+      aria-label="Viewer Interaction Summary"
     >
       {/* Header */}
       <h3 className="text-slate-300 text-sm font-medium mb-3">
-        Attention Coverage
+        Viewer Interaction Summary
       </h3>
 
       {/* Main metrics */}
@@ -207,7 +217,7 @@ export const AttentionSummary: React.FC<AttentionSummaryDisplayProps> = ({
               />
             </svg>
             <span className="text-green-400 text-xs font-medium">
-              Attention Hotspots
+              Interaction Hotspots
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -231,6 +241,13 @@ export const AttentionSummary: React.FC<AttentionSummaryDisplayProps> = ({
             {formatDuration(summary.totalReadingTimeMs)}
           </span>
         </div>
+      </div>
+
+      {/* Methodology note */}
+      <div className="mt-4 pt-3 border-t border-slate-700">
+        <p className="text-slate-500 text-xs italic leading-relaxed">
+          {INTERACTION_METHODOLOGY_NOTE}
+        </p>
       </div>
     </div>
   );

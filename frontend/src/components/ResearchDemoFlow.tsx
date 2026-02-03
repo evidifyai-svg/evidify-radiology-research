@@ -4566,7 +4566,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
-// Workload monitoring - tracks cases/hour, fatigue index, Macknik thresholds
+// Workload monitoring - tracks cases/hour, fatigue index, configurable thresholds
 const workloadMetrics = useWorkloadMetrics({
   sessionId: state.sessionId,
   onStatusChange: (previousStatus, newStatus, metrics) => {
@@ -5326,7 +5326,7 @@ setAiAgreementStreak(prev => prev + 1);
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
 
-    // Update workload metrics - tracks cases/hour for Macknik thresholds
+    // Update workload metrics - tracks cases/hour for configurable thresholds
     const completedCaseId =
         state.currentCase?.caseId ??
       workloadMetrics.currentCaseId ??
@@ -5604,7 +5604,7 @@ setAiAgreementStreak(prev => prev + 1);
                     <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
                     <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
                   </div>
-                  {/* Workload Monitor - Macknik threshold tracking */}
+                  {/* Workload Monitor - session threshold tracking */}
                   <WorkloadMonitor metrics={workloadMetrics.metrics} compact={true} />
                 </div>
               )}
@@ -6280,7 +6280,7 @@ setAiAgreementStreak(prev => prev + 1);
                 disabled={state.initialBirads === null}
                 style={{ marginTop: '24px', padding: '16px 32px', backgroundColor: state.initialBirads !== null ? '#f59e0b' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 <Lock size={16} />
-                Lock First Impression & Reveal AI
+                Complete Independent Review & View AI
                 <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Space]</span>
               </button>
             </div>
