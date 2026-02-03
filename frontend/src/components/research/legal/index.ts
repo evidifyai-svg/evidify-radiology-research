@@ -21,16 +21,17 @@ export {
   type DeviationRationale,
 } from './ImpressionLedger';
 
-// Deviation Documentation: Structured override rationale
+// Clinical Reasoning Documentation: Structured rationale for independent clinical assessment
 export {
-  DeviationBuilder,
+  ClinicalReasoningDocumentor,
+  DeviationBuilder, // Backward-compatible alias
   DeviationSummary,
   DEVIATION_REASON_CODES,
   FOLLOWUP_RECOMMENDATIONS,
   type DeviationDocumentation,
   type DeviationReasonCode,
   type FollowupRecommendation,
-} from './DeviationBuilder';
+} from './ClinicalReasoningDocumentor';
 
 // Disclosure Configuration: FDR/FOR as manipulable study factor
 export {

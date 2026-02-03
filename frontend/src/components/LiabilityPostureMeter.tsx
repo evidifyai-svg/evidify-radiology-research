@@ -70,7 +70,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
       name: 'Human-First Assessment',
       impact: 'positive',
       weight: 15,
-      description: 'Reader formed independent judgment before AI reveal',
+      description: 'Reader formed independent judgment before AI consultation',
     });
     score += 15;
   } else {
@@ -78,7 +78,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
       name: 'No Independent Assessment',
       impact: 'negative',
       weight: -10,
-      description: 'AI shown before reader locked assessment',
+      description: 'AI shown before reader recorded assessment',
     });
     score -= 10;
   }
@@ -144,11 +144,11 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
     }
   }
   
-  // Factor 4: Deviation documentation
+  // Factor 4: Clinical reasoning documentation
   if (changeOccurred) {
     if (inputs.deviationDocumented) {
       factors.push({
-        name: 'Deviation Documented',
+        name: 'Clinical Reasoning Documented',
         impact: 'positive',
         weight: 20,
         description: 'Clinical rationale for change is on record',
@@ -159,7 +159,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
         name: 'Documentation Skipped',
         impact: 'negative',
         weight: -15,
-        description: 'Safeguard available but not utilized (DEVIATION_SKIPPED flag)',
+        description: 'Safeguard available but not utilized',
       });
       score -= 15;
     } else {
@@ -220,7 +220,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
   // Generate pattern description
   const patternParts: string[] = [];
   if (inputs.humanFirstLock) patternParts.push('Human-first');
-  if (inputs.aiRevealed) patternParts.push('AI revealed');
+  if (inputs.aiRevealed) patternParts.push('AI consulted');
   if (changeOccurred) {
     patternParts.push(changedTowardAI ? 'Changed toward AI' : 'Changed away from AI');
   } else {

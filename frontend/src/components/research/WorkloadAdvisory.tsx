@@ -24,9 +24,9 @@ function getAdvisoryContent(level: WorkloadAdvisoryProps['level']): {
 } {
   if (level === 'RED') {
     return {
-      title: 'High Workload Advisory',
+      title: 'Extended Session Advisory',
       message:
-        'Research suggests diagnostic accuracy may decrease beyond 40 cases/hour. ' +
+        'You have reached the study-defined threshold for extended session duration. ' +
         'Consider taking a break to maintain optimal performance.',
       iconBg: 'bg-red-500/20',
       borderColor: 'border-red-500/50',
@@ -34,10 +34,10 @@ function getAdvisoryContent(level: WorkloadAdvisoryProps['level']): {
   }
 
   return {
-    title: 'Elevated Workload Notice',
+    title: 'Session Duration Notice',
     message:
-      'You are approaching recommended workload limits. ' +
-      'Studies indicate performance may begin to decline at this pace.',
+      'You are approaching the study-defined session parameters. ' +
+      'Consider pacing to maintain consistent performance.',
     iconBg: 'bg-amber-500/20',
     borderColor: 'border-amber-500/50',
   };
@@ -151,10 +151,10 @@ export const WorkloadAdvisory: React.FC<WorkloadAdvisoryProps> = ({
           </div>
         </div>
 
-        {/* Fatigue index indicator */}
+        {/* Session intensity indicator */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-xs">Fatigue Index</span>
+            <span className="text-slate-400 text-xs">Session Intensity Index</span>
             <span className="text-slate-300 text-xs">{metrics.fatigueIndex}%</span>
           </div>
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
@@ -195,6 +195,11 @@ export const WorkloadAdvisory: React.FC<WorkloadAdvisoryProps> = ({
         {/* Documentation notice */}
         <p className="text-slate-500 text-xs text-center mt-3">
           Your response will be documented for quality assurance purposes.
+        </p>
+
+        {/* Session parameter note */}
+        <p className="text-slate-600 text-xs text-center mt-2 italic">
+          Session parameters are configurable per study protocol or institutional standards.
         </p>
       </div>
     </div>

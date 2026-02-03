@@ -1,6 +1,6 @@
 /**
- * DeviationBuilder.tsx
- * 
+ * ClinicalReasoningDocumentor.tsx
+ *
  * Structured documentation component for when radiologist disagrees with AI.
  * Creates court-defensible rationale following defense attorney recommendations:
  * 
@@ -184,17 +184,17 @@ export interface DeviationDocumentation {
 }
 
 // ============================================================================
-// DEVIATION BUILDER COMPONENT
+// CLINICAL REASONING DOCUMENTOR COMPONENT
 // ============================================================================
 
-interface DeviationBuilderProps {
+interface ClinicalReasoningDocumentorProps {
   aiFinding: AIFindingForDeviation;
   onComplete: (documentation: DeviationDocumentation) => void;
   onCancel?: () => void;
   readerAssessment: string; // What the reader said (e.g., "BI-RADS 2")
 }
 
-export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
+export const ClinicalReasoningDocumentor: React.FC<ClinicalReasoningDocumentorProps> = ({
   aiFinding,
   onComplete,
   onCancel,
@@ -303,7 +303,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
       <div className="bg-orange-500/10 px-4 py-3 border-b border-orange-500/30">
         <div className="flex items-center gap-2">
           <span className="text-orange-400 text-lg">Warning</span>
-          <h3 className="font-semibold text-white">Deviation Documentation Required</h3>
+          <h3 className="font-semibold text-white">Clinical Reasoning Documentation Required</h3>
         </div>
         <p className="text-sm text-slate-300 mt-1">
           Your assessment differs from AI. Document your clinical reasoning.
@@ -363,7 +363,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
         {currentStep === 1 && (
           <div className="space-y-4">
             <div className="text-sm text-slate-300 mb-4">
-              Confirm that you have reviewed the AI finding before documenting your deviation.
+              Confirm that you have reviewed the AI finding before documenting your clinical reasoning.
             </div>
 
             <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-700 hover:border-purple-500/50 cursor-pointer transition-colors">
@@ -618,7 +618,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
 };
 
 // ============================================================================
-// COMPACT DEVIATION SUMMARY (for display after completion)
+// COMPACT CLINICAL REASONING SUMMARY (for display after completion)
 // ============================================================================
 
 interface DeviationSummaryProps {
@@ -636,7 +636,7 @@ export const DeviationSummary: React.FC<DeviationSummaryProps> = ({ documentatio
     <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-orange-400">Warning</span>
-        <span className="font-medium text-white">Deviation Documented</span>
+        <span className="font-medium text-white">Clinical Reasoning Documented</span>
         <span className="text-xs text-slate-400 ml-auto">
           {new Date(documentation.completedAt).toLocaleTimeString()}
         </span>
@@ -672,4 +672,6 @@ export const DeviationSummary: React.FC<DeviationSummaryProps> = ({ documentatio
   );
 };
 
-export default DeviationBuilder;
+// Also export as DeviationBuilder for backward compatibility with existing imports
+export { ClinicalReasoningDocumentor as DeviationBuilder };
+export default ClinicalReasoningDocumentor;
