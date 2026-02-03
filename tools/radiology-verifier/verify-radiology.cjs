@@ -191,7 +191,11 @@ function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) 
   const totalReadMs =
     typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number'
       ? preAiReadMs + postAiReadMs
-      : null;
+      : typeof preAiReadMs === 'number'
+        ? preAiReadMs
+        : typeof postAiReadMs === 'number'
+          ? postAiReadMs
+          : null;
 
   return { preAiReadMs, postAiReadMs, totalReadMs };
 }
@@ -202,9 +206,13 @@ function getSessionId(events) {
   return payload.sessionId || payload.sessionID || payload.session_id || null;
 }
 
-function computeMetricsFromEvents(events) {
+function computeMetricsFromEvents(packDir, events) {
   const groupedEvents = groupEventsByCase(events);
-  const sessionId = getSessionId(events);
+  const trialManifestPath = path.join(packDir, 'trial_manifest.json');
+  const trialManifest = exists(trialManifestPath) ? readJson(trialManifestPath) : null;
+  const sessionId = trialManifest?.sessionId ?? getSessionId(events);
+  const manifestRevealTiming = trialManifest?.condition?.revealTiming ?? null;
+  const manifestDisclosureFormat = trialManifest?.condition?.disclosureFormat ?? null;
   const metricsByCase = new Map();
 
   for (const [caseId, caseEvents] of groupedEvents.entries()) {
@@ -212,6 +220,8 @@ function computeMetricsFromEvents(events) {
     const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
     const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
+    const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
+    const riskSnapshot = caseEvents.find(event => event.type === 'RISK_METER_SNAPSHOT');
     const deviationSubmitted = caseEvents.find(event => event.type === 'DEVIATION_SUBMITTED');
     const deviationSkipped = caseEvents.find(event => event.type === 'DEVIATION_SKIPPED');
     const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
@@ -242,13 +252,12 @@ function computeMetricsFromEvents(events) {
     const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
     const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
     const comprehensionCorrect = comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
-    const comprehensionResponseMs =
-      comprehensionEvent && disclosurePresented
-        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
-        : null;
+    const rawComprehensionResponseMs = comprehensionPayload.responseTimeMs;
     const normalizedComprehensionResponseMs =
-      typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
-        ? comprehensionResponseMs
+      typeof rawComprehensionResponseMs === 'number' &&
+      Number.isFinite(rawComprehensionResponseMs) &&
+      rawComprehensionResponseMs >= 0
+        ? rawComprehensionResponseMs
         : null;
 
     const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration);
@@ -264,6 +273,7 @@ function computeMetricsFromEvents(events) {
       conditionPayload.revealTiming ??
       conditionPayload.conditionCode ??
       aiPayload.revealTiming ??
+      manifestRevealTiming ??
       '';
 
     const deviationText =
@@ -277,15 +287,31 @@ function computeMetricsFromEvents(events) {
     const revealTime = aiRevealed ? new Date(aiRevealed.timestamp).getTime() : lockTime;
     const finalTime = finalAssessment ? new Date(finalAssessment.timestamp).getTime() : revealTime;
     const caseStartTime = caseLoaded ? new Date(caseLoaded.timestamp).getTime() : null;
+    const timestamp =
+      finalAssessment?.timestamp ??
+      caseCompleted?.timestamp ??
+      aiRevealed?.timestamp ??
+      firstImpression?.timestamp ??
+      caseLoaded?.timestamp ??
+      null;
     const totalTimeMs =
       caseStartTime !== null && finalTime !== null ? finalTime - caseStartTime : null;
     const lockToRevealMs =
       lockTime !== null && revealTime !== null ? revealTime - lockTime : null;
     const revealToFinalMs =
       revealTime !== null && finalTime !== null ? finalTime - revealTime : null;
+    const riskSnapshotTimeToLock = (riskSnapshot?.payload || {}).timeToLockMs;
+    const firstImpressionTimeToLock = (firstImpression?.payload || {}).timeToLockMs;
+    const timeToLockMs =
+      typeof riskSnapshotTimeToLock === 'number' && Number.isFinite(riskSnapshotTimeToLock)
+        ? riskSnapshotTimeToLock
+        : typeof firstImpressionTimeToLock === 'number' && Number.isFinite(firstImpressionTimeToLock)
+          ? firstImpressionTimeToLock
+          : null;
 
     metricsByCase.set(caseId, {
       sessionId,
+      timestamp,
       caseId,
       condition,
       initialBirads,
@@ -304,6 +330,7 @@ function computeMetricsFromEvents(events) {
       comprehensionItemId,
       comprehensionAnswer,
       comprehensionCorrect,
+      comprehensionResponseMs: normalizedComprehensionResponseMs,
       comprehension_question_id: comprehensionQuestionId,
       comprehension_answer: comprehensionAnswer,
       comprehension_correct: comprehensionCorrect,
@@ -315,13 +342,36 @@ function computeMetricsFromEvents(events) {
       preAiReadMs,
       postAiReadMs,
       totalReadMs,
+      aiExposureMs: postAiReadMs,
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,
-      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? null,
-      disclosureFormat: (disclosurePresented?.payload || {}).format ?? null,
+      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? manifestRevealTiming ?? null,
+      disclosureFormat:
+        (disclosurePresented?.payload || {}).format ??
+        (caseLoaded?.payload || {}).disclosureFormat ??
+        manifestDisclosureFormat ??
+        null,
+      timeToLockMs,
       sessionTimestamp: sessionStart?.timestamp ?? null,
     });
+
+    if (process.env.DEBUG_METRICS === '1' && caseId === 'BRPLL-001') {
+      const debugSubset = metricsByCase.get(caseId);
+      console.log('DEBUG_METRICS BRPLL-001', {
+        sessionId: debugSubset.sessionId,
+        timestamp: debugSubset.timestamp,
+        condition: debugSubset.condition,
+        revealTiming: debugSubset.revealTiming,
+        disclosureFormat: debugSubset.disclosureFormat,
+        comprehensionResponseMs: debugSubset.comprehensionResponseMs,
+        preAiReadMs: debugSubset.preAiReadMs,
+        postAiReadMs: debugSubset.postAiReadMs,
+        totalReadMs: debugSubset.totalReadMs,
+        aiExposureMs: debugSubset.aiExposureMs,
+        timeToLockMs: debugSubset.timeToLockMs,
+      });
+    }
   }
 
   return metricsByCase;
@@ -506,7 +556,7 @@ function main() {
             }
           }
 
-          const computedByCase = computeMetricsFromEvents(events);
+          const computedByCase = computeMetricsFromEvents(pack, events);
           const allCaseIds = new Set([
             ...Array.from(derivedByCase.keys()),
             ...Array.from(computedByCase.keys()),
