@@ -76,7 +76,7 @@ export type AIDisplayMode =
   | 'GLOBAL_ONLY'    // Just case-level score + suggested BI-RADS
   | 'BOX'            // Bounding box around finding
   | 'CONTOUR'        // Polygon contour outline
-  | 'HEATMAP'        // Attention/probability heatmap
+  | 'HEATMAP'        // Interaction timeline overlay
   | 'SCALED_MARK';   // Size proportional to suspicion (like Hologic)
 
 export interface AIPresentation {

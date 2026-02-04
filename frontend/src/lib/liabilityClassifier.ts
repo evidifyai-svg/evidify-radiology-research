@@ -275,7 +275,7 @@ export function analyzeCrossExamination(
   defenseStrengths.push({
     type: 'DEFENSE',
     severity: 'HIGH',
-    text: 'Initial assessment was locked before AI reveal - proves independent first read',
+    text: 'Initial assessment was locked before AI consultation - proves independent first read',
     metric: 'Protocol: HUMAN_FIRST',
   });
 

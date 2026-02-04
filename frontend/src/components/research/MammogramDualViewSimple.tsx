@@ -4,7 +4,7 @@
  * Enhanced to meet journal reviewer requirements:
  * 1. Window/Level presets (Standard, High Contrast, Soft Tissue, Inverted)
  * 2. ROI/Measurement tool with distance display (px - uncalibrated demo)
- * 3. AI Overlay toggles (Box, Contour, Heatmap)
+ * 3. AI Overlay toggles (Box, Contour, Interaction Timeline)
  * 4. Professional toolbar layout
  * 5. Core interaction logging (VIEW_FOCUSED, ZOOM_CHANGED, PAN_CHANGED,
  *    WINDOW_LEVEL_CHANGED, AI_OVERLAY_TOGGLED);
@@ -499,7 +499,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
               </svg>
             )}
             
-            {/* Heatmap Overlay */}
+            {/* Interaction Timeline Overlay */}
             {overlays.heatmap && (
               <div style={{
                 position: 'absolute',
@@ -653,7 +653,7 @@ export const MammogramDualViewSimple: React.FC<Props> = ({
                 textTransform: 'capitalize',
               }}
             >
-              {overlay === 'box' ? 'Box' : overlay === 'contour' ? 'Contour' : 'Heatmap'}
+              {overlay === 'box' ? 'Box' : overlay === 'contour' ? 'Contour' : 'Interaction Timeline'}
             </button>
           ))}
           <div style={{ marginLeft: 'auto', color: '#818cf8', fontSize: 10 }}>

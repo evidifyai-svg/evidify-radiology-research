@@ -570,7 +570,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
         </div>
       )}
       
-      {/* STEP 2: AI Revealed with FDR/FOR Disclosure */}
+      {/* STEP 2: AI Consultation with FDR/FOR Disclosure */}
       {state.step === 'ai_revealed' && (
         <div style={{ 
           backgroundColor: 'white', 

@@ -39,7 +39,7 @@ interface DemoState {
   // AI
   aiBirads: number;
   aiConfidence: number;
-  aiRevealTime: Date | null;
+  aiConsultationTime: Date | null;
   
   // Disclosure (P0: FDR/FOR)
   disclosurePresented: boolean;
@@ -99,7 +99,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
     
     aiBirads: 4,
     aiConfidence: 87,
-    aiRevealTime: null,
+    aiConsultationTime: null,
     
     disclosurePresented: false,
     fdr: 4,   // 4 false alarms per 100
@@ -197,7 +197,7 @@ const SimpleDemoFlowHardened: React.FC = () => {
       
       setState(s => ({
         ...s,
-        aiRevealTime: new Date(),
+        aiConsultationTime: new Date(),
         disclosurePresented: true,
         events: [...s.events, aiEvent, disclosureEvent],
       }));
@@ -565,7 +565,7 @@ const generateExport = useCallback(async () => {
         </div>
       )}
       
-      {/* STEP 2: AI Revealed with FDR/FOR Disclosure */}
+      {/* STEP 2: AI Consultation with FDR/FOR Disclosure */}
       {state.step === 'ai_revealed' && (
         <div style={{ 
           backgroundColor: 'white', 
@@ -1027,7 +1027,7 @@ const generateExport = useCallback(async () => {
             <div style={{ padding: '12px', backgroundColor: '#f7fafc', borderRadius: '8px' }}>
               <div style={{ fontSize: '12px', color: '#718096' }}>Post-AI Time</div>
               <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                {((state.submitTime!.getTime() - state.aiRevealTime!.getTime()) / 1000).toFixed(1)}s
+                {((state.submitTime!.getTime() - state.aiConsultationTime!.getTime()) / 1000).toFixed(1)}s
               </div>
             </div>
             <div style={{ padding: '12px', backgroundColor: '#f7fafc', borderRadius: '8px' }}>

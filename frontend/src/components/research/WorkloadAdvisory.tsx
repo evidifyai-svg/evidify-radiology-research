@@ -151,22 +151,22 @@ export const WorkloadAdvisory: React.FC<WorkloadAdvisoryProps> = ({
           </div>
         </div>
 
-        {/* Fatigue index indicator */}
+        {/* Session duration index indicator */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-xs">Fatigue Index</span>
-            <span className="text-slate-300 text-xs">{metrics.fatigueIndex}%</span>
+            <span className="text-slate-400 text-xs">Session Duration Index</span>
+            <span className="text-slate-300 text-xs">{metrics.sessionDurationIndex}%</span>
           </div>
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-300 ${
-                metrics.fatigueIndex >= 70
+                metrics.sessionDurationIndex >= 70
                   ? 'bg-red-500'
-                  : metrics.fatigueIndex >= 40
+                  : metrics.sessionDurationIndex >= 40
                     ? 'bg-amber-500'
                     : 'bg-green-500'
               }`}
-              style={{ width: `${Math.min(metrics.fatigueIndex, 100)}%` }}
+              style={{ width: `${Math.min(metrics.sessionDurationIndex, 100)}%` }}
             />
           </div>
         </div>

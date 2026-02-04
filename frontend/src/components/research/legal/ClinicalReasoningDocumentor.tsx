@@ -1,6 +1,6 @@
 /**
- * DeviationBuilder.tsx
- * 
+ * ClinicalReasoningDocumentor.tsx
+ *
  * Structured documentation component for when radiologist disagrees with AI.
  * Creates court-defensible rationale following defense attorney recommendations:
  * 

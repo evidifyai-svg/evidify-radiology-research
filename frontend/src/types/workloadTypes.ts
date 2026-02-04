@@ -33,7 +33,7 @@ export interface WorkloadThresholds {
 }
 
 /**
- * Default thresholds based on radiologist fatigue research.
+ * Default thresholds based on radiologist workload duration research.
  */
 export const DEFAULT_WORKLOAD_THRESHOLDS: WorkloadThresholds = {
   casesPerHourYellow: 30,
@@ -61,12 +61,12 @@ export interface WorkloadMetrics {
   /** Current workload status based on thresholds */
   workloadStatus: WorkloadStatus;
   /**
-   * Fatigue index from 0-100 based on combined factors:
+   * Session duration index from 0-100 based on combined factors:
    * - Session duration relative to max
    * - Cases completed relative to max
    * - Current throughput rate
    */
-  fatigueIndex: number;
+  sessionDurationIndex: number;
   /** Active threshold configuration */
   thresholds: WorkloadThresholds;
 }
@@ -87,7 +87,7 @@ export interface WorkloadThresholdCrossedPayload {
     casesCompleted: number;
     casesPerHour: number;
     sessionDurationMinutes: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   /** ISO 8601 timestamp */
   timestamp: string;
@@ -107,7 +107,7 @@ export interface WorkloadAdvisoryShownPayload {
     casesCompleted: number;
     casesPerHour: number;
     sessionDurationMinutes: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   /** ISO 8601 timestamp */
   timestamp: string;
@@ -126,7 +126,7 @@ export interface WorkloadAdvisoryResponsePayload {
   metrics: {
     casesCompleted: number;
     casesPerHour: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   /** ISO 8601 timestamp */
   timestamp: string;
@@ -145,8 +145,8 @@ export interface SessionWorkloadSummary {
   overallAverageTimePerCaseMs: number;
   /** Peak cases per hour achieved */
   peakCasesPerHour: number;
-  /** Final fatigue index at session end */
-  finalFatigueIndex: number;
+  /** Final session duration index at session end */
+  finalSessionDurationIndex: number;
   /** Time spent in each workload zone (ms) */
   timeInZones: {
     green: number;
