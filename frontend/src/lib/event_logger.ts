@@ -73,7 +73,7 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
-// Workload monitoring events (fatigue tracking)
+// Workload monitoring events (session duration tracking)
 export type WorkloadEventType =
   | 'WORKLOAD_THRESHOLD_CROSSED'
   | 'WORKLOAD_ADVISORY_SHOWN'
@@ -267,7 +267,7 @@ export interface WorkloadThresholdCrossedPayload {
     casesCompleted: number;
     casesPerHour: number;
     sessionDurationMinutes: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   timestamp: string;
 }
@@ -279,7 +279,7 @@ export interface WorkloadAdvisoryShownPayload {
     casesCompleted: number;
     casesPerHour: number;
     sessionDurationMinutes: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   timestamp: string;
 }
@@ -290,7 +290,7 @@ export interface WorkloadAdvisoryResponsePayload {
   metrics: {
     casesCompleted: number;
     casesPerHour: number;
-    fatigueIndex: number;
+    sessionDurationIndex: number;
   };
   timestamp: string;
 }
@@ -300,7 +300,7 @@ export interface SessionWorkloadSummaryPayload {
   totalCasesCompleted: number;
   overallAverageTimePerCaseMs: number;
   peakCasesPerHour: number;
-  finalFatigueIndex: number;
+  finalSessionDurationIndex: number;
   timeInZones: {
     green: number;
     yellow: number;
@@ -384,7 +384,7 @@ export class EventLogger {
     viewsFocused: Set<string>;
   };
   private caseStartTime: number = 0;
-  private aiRevealTime: number = 0;
+  private aiConsultationTime: number = 0;
   private currentCaseId: string | null = null;
   
   // P1-3: ROI tracking
@@ -415,7 +415,7 @@ export class EventLogger {
     this.roiDwellTimes.clear();
     this.currentROI = null;
     this.caseStartTime = Date.now();
-    this.aiRevealTime = 0;
+    this.aiConsultationTime = 0;
     this.currentCaseId = caseId ?? null;
   }
 
@@ -517,10 +517,10 @@ export class EventLogger {
   }
 
   /**
-   * Log AI reveal
+   * Log AI consultation
    */
   async logAIRevealed(payload: AIRevealedPayload): Promise<LedgerEntry> {
-    this.aiRevealTime = Date.now();
+    this.aiConsultationTime = Date.now();
     return this.exportPack.addEvent('AI_REVEALED', {
       ...payload,
       caseId: this.currentCaseId ?? payload.caseId ?? 'UNKNOWN_CASE',
@@ -596,7 +596,7 @@ const payload: FinalAssessmentPayload = {
       confidence,
       changeFromInitial,
       changeDirection,
-      postAiTimeMs: this.aiRevealTime > 0 ? Date.now() - this.aiRevealTime : 0,
+      postAiTimeMs: this.aiConsultationTime > 0 ? Date.now() - this.aiConsultationTime : 0,
     };
     
     return this.exportPack.addEvent('FINAL_ASSESSMENT', payload);

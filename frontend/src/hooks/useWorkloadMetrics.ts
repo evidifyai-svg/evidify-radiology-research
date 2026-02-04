@@ -2,9 +2,9 @@
  * useWorkloadMetrics.ts
  *
  * React hook for tracking radiologist workload metrics during reading sessions.
- * Provides real-time calculation of throughput, fatigue index, and status.
+ * Provides real-time calculation of throughput, session duration index, and status.
  *
- * Research basis: Radiologist fatigue research demonstrates performance
+ * Research basis: Radiologist workload duration research demonstrates performance
  * degradation correlates with case volume and session duration.
  */
 
@@ -81,10 +81,10 @@ function calculateStatus(
 }
 
 /**
- * Calculate fatigue index (0-100) based on multiple factors.
+ * Calculate session duration index (0-100) based on multiple factors.
  * Combines session duration, case count, and throughput rate.
  */
-function calculateFatigueIndex(
+function calculateSessionDurationIndex(
   sessionDurationMinutes: number,
   casesCompleted: number,
   casesPerHour: number,
@@ -109,9 +109,9 @@ function calculateFatigueIndex(
   );
 
   // Weighted combination (duration and case count weighted higher)
-  const fatigue = durationFactor * 0.35 + caseCountFactor * 0.35 + rateFactor * 0.3;
+  const index = durationFactor * 0.35 + caseCountFactor * 0.35 + rateFactor * 0.3;
 
-  return Math.round(fatigue * 100);
+  return Math.round(index * 100);
 }
 
 /**
@@ -181,7 +181,7 @@ export function useWorkloadMetrics(
 
     // Calculate fatigue index
     const sessionDurationMinutes = sessionDurationMs / (1000 * 60);
-    const fatigueIndex = calculateFatigueIndex(
+    const sessionDurationIndex = calculateSessionDurationIndex(
       sessionDurationMinutes,
       casesCompleted,
       casesPerHour,
@@ -213,7 +213,7 @@ export function useWorkloadMetrics(
       averageTimePerCaseMs,
       casesPerHour,
       workloadStatus: status,
-      fatigueIndex,
+      sessionDurationIndex,
       thresholds,
     };
   }, [sessionId, sessionStartTime, casesCompleted, thresholds]);
@@ -276,7 +276,7 @@ export function useWorkloadMetrics(
               casesCompleted: newCaseCount,
               casesPerHour: newCasesPerHour,
               sessionDurationMinutes: sessionDurationMs / (1000 * 60),
-              fatigueIndex: calculateFatigueIndex(
+              sessionDurationIndex: calculateSessionDurationIndex(
                 sessionDurationMs / (1000 * 60),
                 newCaseCount,
                 newCasesPerHour,
@@ -334,7 +334,7 @@ export function useWorkloadMetrics(
       totalCasesCompleted: casesCompleted,
       overallAverageTimePerCaseMs: currentMetrics.averageTimePerCaseMs,
       peakCasesPerHour: peakCasesPerHourRef.current,
-      finalFatigueIndex: currentMetrics.fatigueIndex,
+      finalSessionDurationIndex: currentMetrics.sessionDurationIndex,
       timeInZones: { ...zoneTimeRef.current },
       thresholdCrossings: { ...thresholdCrossingsRef.current },
       advisoriesShown: advisoriesShownRef.current,
@@ -360,7 +360,7 @@ export function useWorkloadMetrics(
             casesPerHour: currentMetrics.casesPerHour,
             sessionDurationMinutes:
               (Date.now() - sessionStartMs.current) / (1000 * 60),
-            fatigueIndex: currentMetrics.fatigueIndex,
+            sessionDurationIndex: currentMetrics.sessionDurationIndex,
           },
           timestamp: new Date().toISOString(),
         };
@@ -390,7 +390,7 @@ export function useWorkloadMetrics(
           metrics: {
             casesCompleted: currentMetrics.casesCompleted,
             casesPerHour: currentMetrics.casesPerHour,
-            fatigueIndex: currentMetrics.fatigueIndex,
+            sessionDurationIndex: currentMetrics.sessionDurationIndex,
           },
           timestamp: new Date().toISOString(),
         };

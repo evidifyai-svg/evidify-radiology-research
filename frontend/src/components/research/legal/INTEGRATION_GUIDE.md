@@ -17,7 +17,7 @@ src/components/research/
 ├── legal/                    # NEW FOLDER
 │   ├── index.ts
 │   ├── ImpressionLedger.tsx
-│   ├── DeviationBuilder.tsx
+│   ├── ClinicalReasoningDocumentor.tsx
 │   ├── DisclosureConfig.tsx
 │   ├── ExpertWitnessExport.tsx
 │   └── StudyProtocol.tsx
@@ -75,8 +75,8 @@ const DemoFlowInner: React.FC<DemoFlowProps> = ({ ... }) => {
     // Then reveal AI...
   };
 
-  // --- AI REVEAL: Record exposure ---
-  const handleAIReveal = async () => {
+  // --- AI CONSULTATION: Record exposure ---
+  const handleAIConsultation = async () => {
     const aiFindings = [{
       id: 'finding_1',
       score: currentCase.aiScore,
@@ -319,7 +319,7 @@ The key architectural change is that **ImpressionLedger replaces your manual pha
 
 ```tsx
 // BEFORE (manual tracking)
-const [phase, setPhase] = useState<'phase1' | 'ai_reveal' | 'phase2'>('phase1');
+const [phase, setPhase] = useState<'phase1' | 'ai_consultation' | 'phase2'>('phase1');
 const [phase1Assessment, setPhase1Assessment] = useState(null);
 const [phase2Assessment, setPhase2Assessment] = useState(null);
 
@@ -328,7 +328,7 @@ const { state, computed } = useImpressionLedger();
 
 // Phase is derived from ledger state
 const currentPhase = computed.canRecordFirstImpression ? 'phase1' :
-                     computed.canRecordAIExposure ? 'ai_reveal' :
+                     computed.canRecordAIExposure ? 'ai_consultation' :
                      computed.canRecordReconciliation ? 'phase2' : 'complete';
 
 // Assessments are in the ledger
@@ -347,7 +347,7 @@ const finalAssessment = computed.reconciliation?.assessment;
 
 2. **Complete a full session**
    - Submit Phase 1 assessment
-   - View AI reveal
+   - View AI consultation
    - Submit Phase 2 (try one that disagrees with AI)
    - Complete deviation documentation
    - Export Expert Witness Packet

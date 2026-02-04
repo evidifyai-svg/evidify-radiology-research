@@ -919,7 +919,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
 ### Workload Monitoring Events
 - **WORKLOAD_THRESHOLD_CROSSED**: Reader workload status changed (GREEN→YELLOW→RED)
-- **WORKLOAD_ADVISORY_SHOWN**: Fatigue warning displayed to reader
+- **WORKLOAD_ADVISORY_SHOWN**: Workload advisory displayed to reader
 - **WORKLOAD_ADVISORY_RESPONSE**: Reader response to advisory (CONTINUE/TAKE_BREAK)
 - **SESSION_WORKLOAD_SUMMARY**: End-of-session workload metrics summary
 
@@ -933,15 +933,15 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
 ### Timing Metrics
 - **timeToLockMs**: Case load → first impression lock duration
-- **lockToRevealMs**: First impression lock → AI reveal duration
-- **revealToFinalMs**: AI reveal → final assessment duration
+- **lockToRevealMs**: First impression lock → AI consultation duration
+- **revealToFinalMs**: AI consultation → final assessment duration
 - **preAiReadMs**: PRE_AI read episode duration
 - **postAiReadMs**: POST_AI read episode duration
 - **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
 - **timeRatio**: preAiReadMs / postAiReadMs (ratio of pre-AI to post-AI reading time)
 - **sessionMedianPreAITime**: Median preAiReadMs across all cases in the session
 - **preAITimeVsMedian**: This case's preAiReadMs minus the session median (positive = slower than median)
-- **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
+- **aiExposureMs**: AI consultation → final assessment duration (AI_FIRST/concurrent)
 - **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe
@@ -949,7 +949,7 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
 ### Workload Metrics
 - **casesPerHour**: Current throughput rate (cases/hour)
-- **fatigueIndex**: Combined fatigue score (0-100) based on time, cases, and rate
+- **sessionDurationIndex**: Combined session duration score (0-100) based on time, cases, and rate
 - **workloadStatus**: GREEN (<30 cases/hr), YELLOW (30-40), RED (>40)
 - **timeInZones**: Milliseconds spent in each workload zone
 - **thresholdCrossings**: Count of zone transitions during session
@@ -969,15 +969,15 @@ async addEvent(type: string, payload: Record<string, unknown>): Promise<LedgerEn
 
 ### Timing Metrics
 - **timeToLockMs**: Case load → first impression lock duration
-- **lockToRevealMs**: First impression lock → AI reveal duration
-- **revealToFinalMs**: AI reveal → final assessment duration
+- **lockToRevealMs**: First impression lock → AI consultation duration
+- **revealToFinalMs**: AI consultation → final assessment duration
 - **preAiReadMs**: PRE_AI read episode duration
 - **postAiReadMs**: POST_AI read episode duration
 - **totalReadMs**: PRE_AI + POST_AI durations (missing parts treated as 0)
 - **timeRatio**: preAiReadMs / postAiReadMs (ratio of pre-AI to post-AI reading time)
 - **sessionMedianPreAITime**: Median preAiReadMs across all cases in the session
 - **preAITimeVsMedian**: This case's preAiReadMs minus the session median (positive = slower than median)
-- **aiExposureMs**: AI reveal → final assessment duration (AI_FIRST/concurrent)
+- **aiExposureMs**: AI consultation → final assessment duration (AI_FIRST/concurrent)
 - **totalTimeMs**: CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED)
 - **comprehensionItemId**: Disclosure comprehension item identifier
 - **comprehensionAnswer**: Reader answer to comprehension probe

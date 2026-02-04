@@ -93,7 +93,7 @@ interface DemoState {
   startTime: Date;
   caseStartTime: Date | null;
   lockTime: Date | null;
-  aiRevealTime: Date | null;
+  aiConsultationTime: Date | null;
   interactionCounts: { zooms: number; pans: number; };
   roiDwellTimes: Map<string, number>;
   caseResults: DerivedMetrics[];
@@ -193,7 +193,7 @@ const computeReadEpisodeMetrics = (
     });
 
     const pickFallbackEnd = (): any | undefined => {
-      // PRE_AI should end at first lock (or AI reveal if you skip lock)
+      // PRE_AI should end at first lock (or AI consultation if you skip lock)
       if (episodeType === 'PRE_AI') return firstLock ?? aiRevealed ?? completed;
       // POST_AI should end at final/completed
       return final ?? completed;
@@ -1500,7 +1500,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                     value: validityIndicators.avgPreAITime,
                     unit: 'seconds',
                     status: validityIndicators.avgPreAITime >= 10 ? 'good' : validityIndicators.avgPreAITime >= 5 ? 'warn' : 'bad',
-                    detail: 'Time spent on independent assessment before AI reveal',
+                    detail: 'Time spent on independent assessment before AI consultation',
                   },
                   {
                     label: 'Chain Integrity',
@@ -2068,7 +2068,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
       sections.push('');
       sections.push('## Study Design');
       sections.push('- Type: Multi-reader Multi-case (MRMC)');
-      sections.push('- Factors: AI Reveal Timing x Disclosure Format x Case Difficulty');
+      sections.push('- Factors: AI Consultation Timing x Disclosure Format x Case Difficulty');
       sections.push('- Counterbalancing: Latin Square 4x4');
       sections.push('');
       sections.push('## Primary Outcomes');
@@ -2125,7 +2125,7 @@ const StudyPackModal: React.FC<StudyPackModalProps> = ({ isVisible, onClose, ses
       sections.push('|-------|-------------|');
       sections.push('| SESSION_STARTED | Study session initiated |');
       sections.push('| FIRST_IMPRESSION_LOCKED | Pre-AI assessment locked |');
-      sections.push('| AI_REVEALED | AI suggestion shown |');
+      sections.push('| AI_REVEALED | AI consultation presented |');
       sections.push('| DISCLOSURE_PRESENTED | FDR/FOR shown |');
       sections.push('| FINAL_ASSESSMENT | Post-AI assessment |');
       sections.push('| DEVIATION_SUBMITTED | Rationale documented |');
@@ -4514,7 +4514,7 @@ export const ResearchDemoFlow: React.FC = () => {
     startTime: new Date(),
     caseStartTime: null,
     lockTime: null,
-    aiRevealTime: null,
+    aiConsultationTime: null,
     interactionCounts: { zooms: 0, pans: 0 },
     roiDwellTimes: new Map(),
     caseResults: [],
@@ -4566,7 +4566,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const eventLoggerRef = useRef<EventLogger | null>(null);
   const roiEnterTimeRef = useRef<number>(0);
 
-// Workload monitoring - tracks cases/hour, fatigue index, Macknik thresholds
+// Workload monitoring - tracks cases/hour, session duration index, throughput thresholds
 const workloadMetrics = useWorkloadMetrics({
   sessionId: state.sessionId,
   onStatusChange: (previousStatus, newStatus, metrics) => {
@@ -4579,7 +4579,7 @@ const workloadMetrics = useWorkloadMetrics({
         newStatus,
         casesPerHour: metrics.casesPerHour,
         casesCompleted: metrics.casesCompleted,
-        fatigueIndex: metrics.fatigueIndex,
+        sessionDurationIndex: metrics.sessionDurationIndex,
         sessionDurationMs: Date.now() - new Date(metrics.sessionStartTime).getTime(),
       })
       .then(() => {
@@ -4780,7 +4780,7 @@ useEffect(() => {
         }
       }
       
-      // Final BI-RADS selection after AI reveal
+      // Final BI-RADS selection after AI consultation
       if (state.step === 'AI_REVEALED') {
         const biradMap: Record<string, number> = {
           '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
@@ -5199,7 +5199,7 @@ await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
   lockTimestamp: lockTime.toISOString(),
 });
 
-    const aiRevealTime = new Date();
+    const aiConsultationTime = new Date();
 
     const aiSuggestedBirads =
       (state.currentCase as any)?.aiResult?.birads ??
@@ -5238,7 +5238,7 @@ await eventLoggerRef.current!.logAIRevealed({
     });
     
     setState(s => ({
-      ...s, step: 'AI_REVEALED', lockTime, aiRevealTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
+      ...s, step: 'AI_REVEALED', lockTime, aiConsultationTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
   }, [state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy]);
@@ -5247,8 +5247,8 @@ await eventLoggerRef.current!.logAIRevealed({
   const handleComprehension = useCallback(async (answer: string) => {
     const correct = answer === 'missed_cancer';
     if (eventLoggerRef.current && state.currentCase) {
-      const responseTimeMs = state.aiRevealTime
-        ? Date.now() - state.aiRevealTime.getTime()
+      const responseTimeMs = state.aiConsultationTime
+        ? Date.now() - state.aiConsultationTime.getTime()
         : null;
       await eventLoggerRef.current!.logComprehensionResponse({
         caseId: state.currentCase.caseId,
@@ -5262,7 +5262,7 @@ await eventLoggerRef.current!.logAIRevealed({
       });
     }
     setState(s => ({ ...s, comprehensionAnswer: answer, comprehensionCorrect: correct, eventCount: exportPackRef.current?.getEvents().length || 0 }));
-  }, [state.aiRevealTime, state.currentCase]);
+  }, [state.aiConsultationTime, state.currentCase]);
   // Submit final assessment
   const submitFinalAssessment = useCallback(async (skipDeviation = false) => {
     if (!eventLoggerRef.current || !state.currentCase) return;
@@ -5326,7 +5326,7 @@ setAiAgreementStreak(prev => prev + 1);
     
     await eventLoggerRef.current!.addEvent('CASE_COMPLETED', { caseId: state.currentCase.caseId });
 
-    // Update workload metrics - tracks cases/hour for Macknik thresholds
+    // Update workload metrics - tracks cases/hour for throughput thresholds
     const completedCaseId =
         state.currentCase?.caseId ??
       workloadMetrics.currentCaseId ??
@@ -5411,7 +5411,7 @@ setAiAgreementStreak(prev => prev + 1);
       ...s, caseQueue: newQueue, currentCase: nextCaseDef, step: 'INITIAL',
       initialBirads: null, initialConfidence: 70, preTrust: 50, finalBirads: null, finalConfidence: 70, postTrust: 50,
       deviationRationale: '', comprehensionAnswer: null, comprehensionCorrect: null,
-      caseStartTime: new Date(), lockTime: null, aiRevealTime: null,
+      caseStartTime: new Date(), lockTime: null, aiConsultationTime: null,
       eventCount: exportPackRef.current?.getEvents().length || 0,
       roiDwellTimes: new Map(),
       interactionCounts: { zooms: 0, pans: 0 },
@@ -5604,7 +5604,7 @@ setAiAgreementStreak(prev => prev + 1);
                     <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
                     <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
                   </div>
-                  {/* Workload Monitor - Macknik threshold tracking */}
+                  {/* Workload Monitor - Throughput threshold tracking */}
                   <WorkloadMonitor metrics={workloadMetrics.metrics} compact={true} />
                 </div>
               )}
@@ -6280,19 +6280,19 @@ setAiAgreementStreak(prev => prev + 1);
                 disabled={state.initialBirads === null}
                 style={{ marginTop: '24px', padding: '16px 32px', backgroundColor: state.initialBirads !== null ? '#f59e0b' : '#475569', color: 'white', border: 'none', borderRadius: '8px', cursor: state.initialBirads !== null ? 'pointer' : 'not-allowed', fontSize: '16px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 <Lock size={16} />
-                Lock First Impression & Reveal AI
+                Lock First Impression & Show AI Consultation
                 <span style={{ marginLeft: '8px', opacity: 0.7, fontSize: '12px' }}>[Space]</span>
               </button>
             </div>
           )}
 
-          {/* AI REVEALED */}
+          {/* AI CONSULTATION */}
           {state.step === 'AI_REVEALED' && currentCase && (
             <div>
               <div style={{ backgroundColor: '#7c3aed', color: 'white', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
                 <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Brain size={16} />
-                  AI Assessment Revealed:
+                  AI Consultation Presented:
                 </strong> Review AI opinion and FDR/FOR disclosure. You may update your assessment.
               </div>
               
@@ -6632,7 +6632,7 @@ setAiAgreementStreak(prev => prev + 1);
                   interactionCounts={state.interactionCounts}
                   roiDwellTimes={state.roiDwellTimes}
                   currentPreAiTimeMs={state.lockTime && state.caseStartTime ? state.lockTime.getTime() - state.caseStartTime.getTime() : 0}
-                  currentPostAiTimeMs={state.aiRevealTime ? Date.now() - state.aiRevealTime.getTime() : 0}
+                  currentPostAiTimeMs={state.aiConsultationTime ? Date.now() - state.aiConsultationTime.getTime() : 0}
                   sessionMedianPreAiMs={sessionMedianPreAiMs}
                   caseResults={state.caseResults}
                   isLive={true}

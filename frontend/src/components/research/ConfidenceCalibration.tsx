@@ -1,7 +1,7 @@
 /**
  * ConfidenceCalibration.tsx
  * 
- * P1-2: Capture confidence BEFORE and AFTER AI reveal
+ * P1-2: Capture confidence BEFORE and AFTER AI consultation
  * Computes confidence shift as a key behavioral metric
  */
 

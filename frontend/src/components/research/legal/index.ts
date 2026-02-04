@@ -30,7 +30,7 @@ export {
   type DeviationDocumentation,
   type DeviationReasonCode,
   type FollowupRecommendation,
-} from './DeviationBuilder';
+} from './ClinicalReasoningDocumentor';
 
 // Disclosure Configuration: FDR/FOR as manipulable study factor
 export {

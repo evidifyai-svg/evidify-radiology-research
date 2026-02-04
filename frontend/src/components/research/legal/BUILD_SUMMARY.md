@@ -181,7 +181,7 @@ const packet = generateExpertWitnessPacket(ledger, deviation);
 
 1. **Impression Ledger in action**
    - Show Phase 1 assessment being locked
-   - Show AI reveal with timestamp
+   - Show AI consultation with timestamp
    - Show how first impression is immutable
 
 2. **Deviation Builder**

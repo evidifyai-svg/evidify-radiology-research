@@ -788,8 +788,8 @@ async addEvent(type: string, payload: unknown): Promise<LedgerEntry> {
 | comprehensionAnswer | string/null | Reader answer to comprehension probe |
 | comprehensionItemId | string/null | Comprehension item identifier |
 | totalTimeMs | int | CASE_COMPLETED − CASE_LOADED (fallback: FINAL_ASSESSMENT − CASE_LOADED) |
-| lockToRevealMs | int | Time from lock to AI reveal |
-| revealToFinalMs | int | Time from AI reveal to final |
+| lockToRevealMs | int | Time from lock to AI consultation |
+| revealToFinalMs | int | Time from AI consultation to final |
 | revealTiming | string | human_first / concurrent / ai_first |
 | disclosureFormat | string | fdr_for / natural_frequency / none |
 

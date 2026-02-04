@@ -74,7 +74,7 @@ export interface EyeTrackingConfig {
   fixationRadiusPx: number;    // Max dispersion for fixation
   calibrationPoints: number;   // Number of calibration points
   enableRecording: boolean;
-  enableHeatmap: boolean;
+  enableInteractionTimeline: boolean;
 }
 
 export const DEFAULT_CONFIG: EyeTrackingConfig = {
@@ -84,7 +84,7 @@ export const DEFAULT_CONFIG: EyeTrackingConfig = {
   fixationRadiusPx: 50,
   calibrationPoints: 9,
   enableRecording: true,
-  enableHeatmap: true,
+  enableInteractionTimeline: true,
 };
 
 // ============================================================================

@@ -2,7 +2,7 @@
  * WorkloadMonitor.tsx
  *
  * Real-time display of radiologist workload metrics.
- * Shows case count, session time, throughput rate, and fatigue status.
+ * Shows case count, session time, throughput rate, and session duration status.
  *
  * Designed for placement in header bar with compact mode option.
  */
@@ -70,17 +70,17 @@ function getStatusIndicator(status: WorkloadMetrics['workloadStatus']): {
 }
 
 /**
- * Calculate progress bar width based on fatigue index.
+ * Calculate progress bar width based on session duration index.
  */
-function getFatigueBarStyle(fatigueIndex: number): {
+function getSessionDurationBarStyle(sessionDurationIndex: number): {
   width: string;
   colorClass: string;
 } {
-  const width = `${Math.min(fatigueIndex, 100)}%`;
+  const width = `${Math.min(sessionDurationIndex, 100)}%`;
   let colorClass = 'bg-green-500';
-  if (fatigueIndex >= 70) {
+  if (sessionDurationIndex >= 70) {
     colorClass = 'bg-red-500';
-  } else if (fatigueIndex >= 40) {
+  } else if (sessionDurationIndex >= 40) {
     colorClass = 'bg-amber-500';
   }
   return { width, colorClass };
@@ -108,7 +108,7 @@ export const WorkloadMonitor: React.FC<WorkloadMonitorProps> = ({
   }
 
   const status = getStatusIndicator(metrics.workloadStatus);
-  const fatigueBar = getFatigueBarStyle(metrics.fatigueIndex);
+  const sessionDurationBar = getSessionDurationBarStyle(metrics.sessionDurationIndex);
 
   // Compact mode for header bar
   if (compact) {
@@ -184,16 +184,16 @@ export const WorkloadMonitor: React.FC<WorkloadMonitorProps> = ({
         </div>
       </div>
 
-      {/* Fatigue index bar */}
+      {/* Session duration index bar */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-slate-400 text-xs">Fatigue Index</span>
-          <span className="text-slate-300 text-xs font-medium">{metrics.fatigueIndex}%</span>
+          <span className="text-slate-400 text-xs">Session Duration Index</span>
+          <span className="text-slate-300 text-xs font-medium">{metrics.sessionDurationIndex}%</span>
         </div>
         <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
           <div
-            className={`h-full ${fatigueBar.colorClass} transition-all duration-300`}
-            style={{ width: fatigueBar.width }}
+            className={`h-full ${sessionDurationBar.colorClass} transition-all duration-300`}
+            style={{ width: sessionDurationBar.width }}
           />
         </div>
       </div>

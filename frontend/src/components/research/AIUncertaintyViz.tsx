@@ -469,7 +469,7 @@ interface GradientBoundingBoxProps {
   left: string;
   width: string;
   height: string;
-  showHeatmap?: boolean;
+  showInteractionTimeline?: boolean;
 }
 
 export const GradientBoundingBox: React.FC<GradientBoundingBoxProps> = ({
@@ -478,7 +478,7 @@ export const GradientBoundingBox: React.FC<GradientBoundingBoxProps> = ({
   left,
   width,
   height,
-  showHeatmap = false,
+  showInteractionTimeline = false,
 }) => {
   // Color based on confidence
   const hue = (confidence / 100) * 120; // 0 = red, 120 = green
@@ -494,7 +494,7 @@ export const GradientBoundingBox: React.FC<GradientBoundingBoxProps> = ({
         width,
         height,
         border: `3px solid ${borderColor}`,
-        backgroundColor: showHeatmap ? bgColor : 'transparent',
+        backgroundColor: showInteractionTimeline ? bgColor : 'transparent',
         borderRadius: '4px',
         boxShadow: `0 0 20px ${bgColor}`,
         transition: 'all 0.3s ease',

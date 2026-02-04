@@ -70,7 +70,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
       name: 'Human-First Assessment',
       impact: 'positive',
       weight: 15,
-      description: 'Reader formed independent judgment before AI reveal',
+      description: 'Reader formed independent judgment before AI consultation',
     });
     score += 15;
   } else {
@@ -220,7 +220,7 @@ export function calculateLiabilityPosture(inputs: LiabilityInputs): LiabilityPos
   // Generate pattern description
   const patternParts: string[] = [];
   if (inputs.humanFirstLock) patternParts.push('Human-first');
-  if (inputs.aiRevealed) patternParts.push('AI revealed');
+  if (inputs.aiRevealed) patternParts.push('AI consulted');
   if (changeOccurred) {
     patternParts.push(changedTowardAI ? 'Changed toward AI' : 'Changed away from AI');
   } else {
