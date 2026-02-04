@@ -6,7 +6,7 @@
  * 
  * 1. Reader formed independent opinion BEFORE AI exposure
  * 2. AI findings were explicitly reviewed and acknowledged
- * 3. Any deviation is documented with clinical rationale
+ * 3. Any deviation is documented with professional rationale
  * 4. Complete chain of custody with cryptographic verification
  * 
  * Key insight from liability research: "what matters to defense is 
@@ -549,7 +549,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           </h3>
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
             <div className="mb-3">
-              <div className="text-sm text-slate-400">Clinical Rationale</div>
+              <div className="text-sm text-slate-400">Professional Rationale</div>
               <div className="text-white">
                 {packet.deviation.selectedReasonCodes
                   .map(code => DEVIATION_REASON_CODES.find(r => r.code === code)?.label)
@@ -617,7 +617,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           </p>
           <p>
             Hash chain verification confirms the temporal ordering and integrity of recorded events.
-            It does not validate the clinical accuracy of any assessment. All timing thresholds
+            It does not validate the accuracy or correctness of any assessment. All timing thresholds
             referenced in this report are internal benchmarks derived from research literature and
             do not represent regulatory standards or standards of care.
           </p>

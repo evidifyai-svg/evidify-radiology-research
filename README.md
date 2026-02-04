@@ -1,10 +1,10 @@
-# Evidify v4 - Local-First Clinical Documentation Platform
+# Evidify v4 - Local-First Research Documentation Platform
 
 ## Security Architecture (v4 - Contradictions Resolved)
 
 **Single Source of Truth:** All security claims are in `SPEC-v4.md`. No separate security documents.
 
-This is a security-hardened clinical documentation platform that addresses all issues from enterprise security reviews:
+This is a security-hardened research documentation platform that addresses all issues from enterprise security reviews:
 
 | Issue | v4 Resolution |
 |-------|---------------|

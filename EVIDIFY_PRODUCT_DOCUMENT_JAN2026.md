@@ -1,5 +1,5 @@
 # Evidify Product Document
-## Local-First Clinical Documentation Platform for Behavioral Health
+## Local-First Research Documentation Platform for Behavioral Health
 
 **Version:** 4.1.2-hotfix2-hotfix2 Beta  
 **Date:** January 8, 2026  
@@ -35,7 +35,7 @@ Mental health clinicians spend 2-3 hours daily on documentation—time that coul
 
 ## The Solution
 
-Evidify is a **local-first clinical documentation platform** where AI processing happens entirely on the clinician's device. No PHI leaves the laptop. The AI model runs locally via Ollama, voice transcription processes on-device, and all clinical data remains encrypted in a local vault. Clinicians can verify this claim by disconnecting from the internet and confirming the application works identically.
+Evidify is a **local-first research documentation platform** where AI processing happens entirely on the user's device. No PHI leaves the laptop. The AI model runs locally via Ollama, voice transcription processes on-device, and all data remains encrypted in a local vault. Users can verify this claim by disconnecting from the internet and confirming the application works identically.
 
 ## Current State
 
@@ -62,7 +62,7 @@ The full production release will add:
 
 ## Key Differentiator
 
-Evidify is the only clinical documentation platform that combines AI-powered efficiency with **mathematically provable privacy**: if the network cable is unplugged, the application functions identically, because no PHI ever needs to leave the device.
+Evidify is the only research documentation platform that combines AI-assisted efficiency with **mathematically provable privacy**: if the network cable is unplugged, the application functions identically, because no PHI ever needs to leave the device.
 
 ---
 
@@ -125,13 +125,13 @@ Evidify exists to **eliminate the false choice between AI efficiency and patient
 ## Core Principles
 
 ### 1. Local-First by Design
-PHI never leaves the clinician's device. This is not a configuration option or a compliance mode—it is the fundamental architecture. The application cannot transmit PHI because it lacks the capability to do so.
+PHI never leaves the user's device. This is not a configuration option or a compliance mode—it is the fundamental architecture. The application cannot transmit PHI because it lacks the capability to do so.
 
 ### 2. Verifiable Privacy
-Claims about privacy should be testable. Clinicians can disconnect from the internet and verify that Evidify works identically. Network monitoring tools show no PHI egress. The security model is auditable, not trust-based.
+Claims about privacy should be testable. Users can disconnect from the internet and verify that Evidify works identically. Network monitoring tools show no PHI egress. The security model is auditable, not trust-based.
 
-### 3. Clinician Control
-AI assists but does not decide. Every AI-generated suggestion requires clinician review and attestation. The system flags concerns but the clinician determines how to address them. Documentation reflects clinical judgment, not algorithmic output.
+### 3. Reader Control
+AI assists but does not decide. Every AI-generated suggestion requires reader review and attestation. The system flags concerns but the reader determines how to address them. Documentation reflects professional judgment, not algorithmic output.
 
 ### 4. Audit Defensibility
 Every action is logged in a hash-chained audit trail. Notes are cryptographically signed upon finalization. The system can demonstrate what was documented, when, and that it has not been altered—critical for malpractice defense and licensing board inquiries.
@@ -1076,7 +1076,7 @@ Australian clinicians in rural areas can use peer consultation to access special
 | **TherapyNotes** | Cloud EHR for mental health | Insurance integration | Cloud storage, no AI features |
 | **Jane App** | Cloud practice management | Modern UX | Cloud storage, limited behavioral health |
 
-**Evidify Differentiation:** AI-powered efficiency + local-first privacy
+**Evidify Differentiation:** AI-assisted efficiency + local-first privacy
 
 ### Peer Consultation Platforms
 

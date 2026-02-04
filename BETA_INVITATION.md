@@ -1,6 +1,6 @@
-# Evidify Beta — Clinical Documentation That Stays on Your Device
+# Evidify Beta — Research Documentation That Stays on Your Device
 
-**Looking for:** Psychologists, psychiatrists, therapists, and other mental health clinicians willing to test a new documentation tool.
+**Looking for:** Psychologists, psychiatrists, therapists, and other mental health practitioners willing to test a new documentation tool.
 
 ---
 
@@ -14,7 +14,7 @@ You know the drill: finish a session, spend 15+ minutes writing notes, repeat al
 
 ## What Evidify Is
 
-Evidify is a clinical documentation app where **all AI processing happens locally on your Mac**. No cloud. No uploads. No "trust us, we anonymize it." The model runs in your computer's memory, and your notes never leave your device.
+Evidify is a research documentation app where **all AI processing happens locally on your Mac**. No cloud. No uploads. No "trust us, we anonymize it." The model runs in your computer's memory, and your notes never leave your device.
 
 ### What It Does
 
@@ -28,7 +28,7 @@ Evidify is a clinical documentation app where **all AI processing happens locall
 ### What It Doesn't Do
 
 - Send data anywhere
-- Make clinical decisions for you
+- Make decisions for you
 - Add information you didn't write
 - Replace your judgment
 
@@ -63,7 +63,7 @@ This is a **working beta**, not a mockup. Core features are functional:
 
 - ✅ Encrypted vault with passphrase protection
 - ✅ Client management and note creation
-- ✅ AI-powered note structuring (requires ~5GB model download, one time)
+- ✅ AI-assisted note structuring (requires ~5GB model download, one time)
 - ✅ Risk detection and attestation workflow
 - ✅ Longitudinal analysis (patterns across sessions)
 - ⚡ Voice transcription (functional, being refined)
@@ -85,7 +85,7 @@ Windows version coming, but Mac is the focus for this beta.
 
 ## Who's Building This
 
-This is being developed by a clinical psychologist (PhD, Fordham) who conducts 200+ evaluations annually and got tired of the documentation-vs-privacy tradeoff. Built for clinicians, by a clinician.
+This is being developed by a clinical psychologist (PhD, Fordham) who conducts 200+ evaluations annually and got tired of the documentation-vs-privacy tradeoff. Built for practitioners, by a practitioner.
 
 ---
 

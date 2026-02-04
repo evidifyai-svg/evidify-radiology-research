@@ -6,10 +6,10 @@
  * 
  * 1. Acknowledge AI finding (shows awareness)
  * 2. Document independent review
- * 3. Provide specific clinical rationale
+ * 3. Provide specific professional rationale
  * 4. State professional conclusion
  * 
- * Key insight from liability research: "document that the clinician in his or her 
+ * Key insight from liability research: "document that the reader in his or her
  * professional judgment disagrees with the AI analysis due to X, Y, and Z reasons"
  */
 
@@ -130,7 +130,7 @@ export const DEVIATION_REASON_CODES: DeviationReasonCode[] = [
   },
   {
     code: 'OTHER',
-    label: 'Other clinical reasoning',
+    label: 'Other professional reasoning',
     description: 'See supporting evidence for detailed explanation',
     category: 'interpretive',
   },
@@ -143,14 +143,14 @@ export interface FollowupRecommendation {
 }
 
 export const FOLLOWUP_RECOMMENDATIONS: FollowupRecommendation[] = [
-  { code: 'ROUTINE', label: 'Routine screening interval', timeframe: '12 months' },
+  { code: 'ROUTINE', label: 'Routine follow-up interval', timeframe: '12 months' },
   { code: 'SHORT_6MO', label: 'Short-interval follow-up', timeframe: '6 months' },
   { code: 'SHORT_3MO', label: 'Short-interval follow-up', timeframe: '3 months' },
   { code: 'ADDITIONAL_VIEWS', label: 'Additional mammographic views', timeframe: 'Immediate' },
   { code: 'ULTRASOUND', label: 'Diagnostic ultrasound', timeframe: 'Immediate' },
   { code: 'MRI', label: 'Breast MRI recommended', timeframe: 'As scheduled' },
   { code: 'BIOPSY', label: 'Biopsy recommended', timeframe: 'As scheduled' },
-  { code: 'CLINICAL_EXAM', label: 'Clinical breast examination', timeframe: 'As indicated' },
+  { code: 'CLINICAL_EXAM', label: 'Physical breast examination', timeframe: 'As indicated' },
   { code: 'OTHER', label: 'Other (specify)', timeframe: undefined },
 ];
 
@@ -306,7 +306,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
           <h3 className="font-semibold text-white">Deviation Documentation Required</h3>
         </div>
         <p className="text-sm text-slate-300 mt-1">
-          Your assessment differs from AI. Document your clinical reasoning.
+          Your assessment differs from AI. Document your professional reasoning.
         </p>
       </div>
 
@@ -426,7 +426,7 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
         {currentStep === 2 && (
           <div className="space-y-4">
             <div className="text-sm text-slate-300 mb-4">
-              Select all reasons that support your clinical judgment:
+              Select all reasons that support your professional judgment:
             </div>
 
             {Object.entries(reasonsByCategory).map(([category, codes]) => (
@@ -500,12 +500,12 @@ export const DeviationBuilder: React.FC<DeviationBuilderProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-2">
-                Supporting Evidence / Clinical Reasoning
+                Supporting Evidence / Professional Reasoning
               </label>
               <textarea
                 value={supportingEvidence}
                 onChange={(e) => setSupportingEvidence(e.target.value)}
-                placeholder="Describe specific findings, clinical correlations, or other evidence supporting your assessment..."
+                placeholder="Describe specific findings, imaging correlations, or other evidence supporting your assessment..."
                 rows={5}
                 className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none resize-none"
               />

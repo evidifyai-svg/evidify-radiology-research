@@ -136,7 +136,7 @@ function FeatureCard({ icon, title, description, badge, badgeColor = 'bg-blue-50
 }
 
 function BetaShowcase({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<'privacy' | 'ai' | 'clinical' | 'productivity'>('privacy');
+  const [activeTab, setActiveTab] = useState<'privacy' | 'ai' | 'research' | 'productivity'>('privacy');
   const [animateIn, setAnimateIn] = useState(false);
   
   useEffect(() => {
@@ -146,7 +146,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
   const tabs = [
     { id: 'privacy', label: 'Privacy & Security', icon: <Shield className="w-4 h-4" /> },
     { id: 'ai', label: 'AI Features', icon: <Brain className="w-4 h-4" /> },
-    { id: 'clinical', label: 'Clinical Tools', icon: <Heart className="w-4 h-4" /> },
+    { id: 'research', label: 'Research Tools', icon: <Heart className="w-4 h-4" /> },
     { id: 'productivity', label: 'Productivity', icon: <Zap className="w-4 h-4" /> },
   ];
 
@@ -174,7 +174,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                   Welcome to Evidify Beta
                 </h2>
                 <p className="text-slate-400 mt-1">
-                  The future of clinical documentation is local-first, AI-powered, and defensible
+                  The future of research documentation is local-first, AI-assisted, and defensible
                 </p>
               </div>
             </div>
@@ -261,7 +261,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                 title="Export Attestation"
                 badge="Compliance"
                 badgeColor="bg-emerald-500/80"
-                description="Before any data leaves the app, you must attest to risk flags and safety items. Creates audit record of clinical review."
+                description="Before any data leaves the app, you must attest to risk flags and safety items. Creates audit record of independent review."
               />
             </div>
           )}
@@ -315,7 +315,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                 title="RAG Search"
                 badge="Semantic"
                 badgeColor="bg-green-500/80"
-                description="Ask questions about your clinical records in natural language. 'What interventions worked for this client's anxiety?' Find relevant excerpts across all notes."
+                description="Ask questions about your records in natural language. 'What interventions worked for this client's anxiety?' Find relevant excerpts across all notes."
               />
               <FeatureCard
                 icon={<TrendingUp className="w-6 h-6 text-amber-400" />}
@@ -329,12 +329,12 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                 title="Smart Risk Detection"
                 badge="Safety"
                 badgeColor="bg-pink-500/80"
-                description="Automatic flagging of safety keywords (SI, HI, abuse). Ensures you document risk assessments when clinical content warrants it."
+                description="Automatic flagging of safety keywords (SI, HI, abuse). Ensures you document risk assessments when relevant content warrants it."
               />
             </div>
           )}
           
-          {activeTab === 'clinical' && (
+          {activeTab === 'research' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FeatureCard
                 icon={<ClipboardList className="w-6 h-6 text-blue-400" />}
@@ -432,7 +432,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
                 title="Formatted Export"
                 badge="New"
                 badgeColor="bg-amber-500/80"
-                description="One-click export to clipboard with professional formatting—practice name, client info, note content, and clinician signature. Ready to paste into any EHR."
+                description="One-click export to clipboard with professional formatting—practice name, client info, note content, and reader signature. Ready to paste into any EHR."
                 demo={
                   <div className="text-xs font-mono text-slate-400 space-y-1">
                     <div>─────────────────────</div>
@@ -447,7 +447,7 @@ function BetaShowcase({ onClose }: { onClose: () => void }) {
               />
               <FeatureCard
                 icon={<User className="w-6 h-6 text-emerald-400" />}
-                title="Clinician Profile"
+                title="Reader Profile"
                 badge="New"
                 badgeColor="bg-emerald-500/80"
                 description="Set your name, credentials, license number, practice name, and default note footer. Auto-populated in all exports and signatures."
@@ -1188,11 +1188,11 @@ function SettingsPanel({
         </div>
         
         <div className="p-6 space-y-6">
-          {/* Clinician Profile (#18 - Profile editing improvements) */}
+          {/* Reader Profile (#18 - Profile editing improvements) */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium flex items-center gap-2">
               <User className="w-5 h-5 text-emerald-400" />
-              Clinician Profile
+              Reader Profile
             </h3>
             
             <div className="bg-slate-700/50 rounded-lg p-4 space-y-4">
@@ -1388,7 +1388,7 @@ function SettingsPanel({
               <ol className="list-decimal list-inside space-y-2 text-sm text-slate-400">
                 <li>Open a note and click "Create Consultation Draft"</li>
                 <li>Review the de-identified content (all PHI removed)</li>
-                <li>Add your clinical question and select specialties</li>
+                <li>Add your consultation question and select specialties</li>
                 <li>Export the de-identified case with audit certificate</li>
                 <li>Share via secure channel (the export includes no PHI)</li>
               </ol>
@@ -3291,7 +3291,7 @@ function DoneScreen({
                   type="text"
                   value={amendmentReason}
                   onChange={(e) => setAmendmentReason(e.target.value)}
-                  placeholder="e.g., Additional clinical information, Correction of error..."
+                  placeholder="e.g., Additional information, Correction of error..."
                   className="w-full bg-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                 />
               </div>
@@ -6765,7 +6765,7 @@ export function ConsultationDraftPanel({
 
   async function handleCreate() {
     if (!title.trim() || !question.trim()) {
-      alert('Please provide a title and clinical question');
+      alert('Please provide a title and consultation question');
       return;
     }
     
@@ -6866,7 +6866,7 @@ export function ConsultationDraftPanel({
               </div>
               
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Clinical Question</label>
+                <label className="block text-xs text-slate-400 mb-1">Consultation Question</label>
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
