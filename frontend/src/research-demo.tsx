@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { ResearchDemoFlow } from './components/ResearchDemoFlow';
 import StudySelector from './components/research/StudySelector';
 import TheContrast from './components/research/legal/TheContrast';
+import HashChainDemo from './components/research/HashChainDemo';
 import { DEMO_CASE_ID, DEMO_EVENTS, DEMO_DERIVED_METRICS } from './data/contrastDemoData';
+import { DEMO_HASH_TIMELINE, DEMO_CHAIN_VALID, DEMO_HASH_SESSION_ID } from './data/hashChainDemoData';
 import { ArrowLeft } from 'lucide-react';
 
 const ResearchDemoShell: React.FC = () => {
@@ -11,6 +13,27 @@ const ResearchDemoShell: React.FC = () => {
 
   if (activeStudy === 'fullsession') {
     return <ResearchDemoFlow />;
+  }
+
+  if (activeStudy === 'hashchain') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>Hash Chain Verification Study</h2>
+          <button
+            onClick={() => setActiveStudy(null)}
+            style={{ padding: '8px 16px', backgroundColor: '#334155', border: '1px solid #475569', borderRadius: '8px', color: '#f8fafc', cursor: 'pointer', fontSize: '13px' }}
+          >
+            ← Back to Studies
+          </button>
+        </div>
+        <HashChainDemo
+          timeline={DEMO_HASH_TIMELINE}
+          chainValid={DEMO_CHAIN_VALID}
+          sessionId={DEMO_HASH_SESSION_ID}
+        />
+      </div>
+    );
   }
 
   if (activeStudy === 'contrast') {
