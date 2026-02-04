@@ -107,7 +107,7 @@ function getViewCount(events: TrialEvent[]): number {
     if (typeof p.viewCount === 'number') return p.viewCount;
     if (typeof p.views === 'number') return p.views;
   }
-  return 4; // standard bilateral mammogram: 4 views
+  return 4;
 }
 
 function countAcknowledgedFindings(ledgerEntries: LedgerEntry[] | undefined): number {
@@ -134,6 +134,19 @@ function assessmentChangeDescription(
 }
 
 // ============================================================================
+// HIGHLIGHT STYLE HELPER
+// ============================================================================
+
+function highlightStyle(active: boolean): React.CSSProperties {
+  if (!active) return {};
+  return {
+    backgroundColor: 'rgba(250, 204, 21, 0.12)',
+    borderBottom: '2px solid rgba(250, 204, 21, 0.5)',
+    paddingBottom: '1px',
+  };
+}
+
+// ============================================================================
 // SUB-COMPONENTS
 // ============================================================================
 
@@ -149,7 +162,8 @@ const StructuredLogPanel: React.FC<{
       || findEventByType(events, 'PRE_AI_ASSESSMENT_LOCKED');
     const aiRevealed = findEventByType(events, 'AI_REVEALED')
       || findEventByType(events, 'AI_OUTPUT_SHOWN');
-    const finalSubmit = findEventByType(events, 'FINAL_ASSESSMENT_SUBMITTED')
+    const finalSubmit = findEventByType(events, 'FINAL_ASSESSMENT')
+      || findEventByType(events, 'FINAL_ASSESSMENT_SUBMITTED')
       || findEventByType(events, 'RECONCILIATION_COMPLETE');
 
     return [
@@ -180,43 +194,63 @@ const StructuredLogPanel: React.FC<{
     ];
   }, [events, derivedMetrics]);
 
-  const highlightClass = highlightMode
-    ? 'underline decoration-yellow-400/60 decoration-2 underline-offset-2'
-    : '';
-
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-700/60">
-        <h3 className="text-slate-200 text-lg font-semibold tracking-tight">
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(239, 68, 68, 0.15)' }}>
+        <h3 style={{
+          color: '#e2e8f0',
+          fontSize: '18px',
+          fontWeight: 700,
+          margin: 0,
+          letterSpacing: '-0.01em',
+        }}>
           Structured Activity Log
         </h3>
-        <p className="text-slate-500 text-xs mt-1">
+        <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', margin: '4px 0 0 0' }}>
           Raw temporal record — no interpretive context
         </p>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto px-5 py-4">
-        <table className="w-full text-sm font-mono">
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+        <table style={{ width: '100%', fontSize: '13px', fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace', borderCollapse: 'collapse' }}>
           <thead>
-            <tr className="text-slate-500 text-xs uppercase tracking-wider">
-              <th className="text-left pb-3 pr-4 font-medium">Event</th>
-              <th className="text-left pb-3 pr-4 font-medium">Timestamp</th>
-              <th className="text-left pb-3 font-medium">Duration</th>
+            <tr>
+              <th style={{ textAlign: 'left', paddingBottom: '14px', paddingRight: '16px', fontWeight: 600, color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Event</th>
+              <th style={{ textAlign: 'left', paddingBottom: '14px', paddingRight: '16px', fontWeight: 600, color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Timestamp</th>
+              <th style={{ textAlign: 'left', paddingBottom: '14px', fontWeight: 600, color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Duration</th>
             </tr>
           </thead>
-          <tbody className="text-slate-400">
+          <tbody>
             {rows.map((row, i) => (
-              <tr
-                key={i}
-                className={`border-t border-slate-800 ${row.isTotal ? 'font-bold text-slate-200' : ''}`}
-              >
-                <td className="py-3 pr-4 whitespace-nowrap">{row.label}</td>
-                <td className={`py-3 pr-4 whitespace-nowrap ${highlightClass}`}>
+              <tr key={i} style={{ borderTop: '1px solid rgba(148, 163, 184, 0.08)' }}>
+                <td style={{
+                  padding: '14px 16px 14px 0',
+                  whiteSpace: 'nowrap',
+                  color: row.isTotal ? '#f1f5f9' : '#cbd5e1',
+                  fontWeight: row.isTotal ? 700 : 400,
+                  fontSize: row.isTotal ? '14px' : '13px',
+                }}>
+                  {row.label}
+                </td>
+                <td style={{
+                  padding: '14px 16px 14px 0',
+                  whiteSpace: 'nowrap',
+                  color: row.isTotal ? '#f1f5f9' : '#cbd5e1',
+                  fontWeight: row.isTotal ? 700 : 400,
+                  ...highlightStyle(highlightMode && !!row.timestamp),
+                }}>
                   {row.timestamp}
                 </td>
-                <td className={`py-3 whitespace-nowrap ${highlightClass}`}>
+                <td style={{
+                  padding: '14px 0',
+                  whiteSpace: 'nowrap',
+                  color: row.isTotal ? '#f87171' : '#cbd5e1',
+                  fontWeight: row.isTotal ? 700 : 400,
+                  fontSize: row.isTotal ? '14px' : '13px',
+                  ...highlightStyle(highlightMode && !!row.duration),
+                }}>
                   {row.duration || ''}
                 </td>
               </tr>
@@ -225,11 +259,21 @@ const StructuredLogPanel: React.FC<{
         </table>
       </div>
 
-      {/* Footer total */}
-      <div className="px-5 py-4 border-t border-slate-700/60 bg-slate-800/30">
-        <p className="text-slate-300 text-sm font-bold font-mono">
+      {/* Footer */}
+      <div style={{
+        padding: '16px 24px',
+        borderTop: '1px solid rgba(239, 68, 68, 0.15)',
+        backgroundColor: 'rgba(239, 68, 68, 0.04)',
+      }}>
+        <p style={{
+          margin: 0,
+          color: '#f87171',
+          fontSize: '15px',
+          fontWeight: 700,
+          fontFamily: 'JetBrains Mono, Consolas, Monaco, monospace',
+        }}>
           Total time on case:{' '}
-          <span className={highlightClass}>
+          <span style={{ fontSize: '18px', ...highlightStyle(highlightMode) }}>
             {formatMsShort(derivedMetrics.totalTimeMs)}
           </span>
         </p>
@@ -259,33 +303,37 @@ const ClinicalNarrativePanel: React.FC<{
     const preAiTime = formatMs(derivedMetrics.preAiReadMs);
     const postAiTime = formatMs(derivedMetrics.postAiReadMs ?? derivedMetrics.revealToFinalMs);
 
-    const highlightSpan = highlightMode
-      ? 'underline decoration-yellow-400/60 decoration-2 underline-offset-2'
-      : '';
+    return { density, viewCount, initialConfidence, acknowledgedCount, changeDesc, startTime, preAiTime, postAiTime };
+  }, [events, derivedMetrics, ledgerEntries]);
 
-    return { density, viewCount, initialConfidence, acknowledgedCount, changeDesc, startTime, preAiTime, postAiTime, highlightSpan };
-  }, [events, derivedMetrics, ledgerEntries, highlightMode]);
+  const hl = highlightMode;
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-600/40">
-        <h3 className="text-slate-100 text-lg font-semibold tracking-tight">
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(34, 197, 94, 0.15)' }}>
+        <h3 style={{
+          color: '#e2e8f0',
+          fontSize: '18px',
+          fontWeight: 700,
+          margin: 0,
+          letterSpacing: '-0.01em',
+        }}>
           Clinical Reasoning Documentation
         </h3>
-        <p className="text-slate-400 text-xs mt-1">
+        <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', margin: '4px 0 0 0' }}>
           Contextualized decision process
         </p>
       </div>
 
       {/* Narrative */}
-      <div className="flex-1 overflow-auto px-6 py-5">
-        <div className="prose-sm text-slate-300 leading-relaxed space-y-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-          <p>
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+        <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '15px', lineHeight: '1.8', color: '#e2e8f0' }}>
+          <p style={{ marginTop: 0, marginBottom: '20px' }}>
             The reader began independent review of the bilateral mammographic study at{' '}
-            <span className={narrative.highlightSpan}>{narrative.startTime}</span>.
+            <span style={highlightStyle(hl)}>{narrative.startTime}</span>.
             During the{' '}
-            <span className={narrative.highlightSpan}>{narrative.preAiTime}</span>{' '}
+            <span style={highlightStyle(hl)}>{narrative.preAiTime}</span>{' '}
             pre-consultation period, the reader assessed {narrative.density} breast tissue,
             examined {narrative.viewCount} standard views, and formed an initial clinical
             impression of {biradsLabel(derivedMetrics.initialBirads)} with a confidence
@@ -293,10 +341,10 @@ const ClinicalNarrativePanel: React.FC<{
             cryptographically locked before any AI output was visible to the reader.
           </p>
 
-          <p>
+          <p style={{ marginTop: 0, marginBottom: '20px' }}>
             Following the independent assessment lock, the AI consultation system presented
             its analysis. The reader spent{' '}
-            <span className={narrative.highlightSpan}>{narrative.postAiTime}</span>{' '}
+            <span style={highlightStyle(hl)}>{narrative.postAiTime}</span>{' '}
             reviewing the AI&rsquo;s findings
             {narrative.acknowledgedCount > 0
               ? `, reviewed all ${narrative.acknowledgedCount} flagged region${narrative.acknowledgedCount !== 1 ? 's' : ''}`
@@ -304,11 +352,11 @@ const ClinicalNarrativePanel: React.FC<{
             }, and {narrative.changeDesc}.
           </p>
 
-          <p>
+          <p style={{ marginTop: 0, marginBottom: '20px' }}>
             The complete decision chain — from independent read through AI consultation to
             final determination — is hash-linked and independently verifiable. Total session
             duration:{' '}
-            <span className={narrative.highlightSpan}>
+            <span style={highlightStyle(hl)}>
               {formatMs(derivedMetrics.totalTimeMs)}
             </span>.
           </p>
@@ -316,8 +364,17 @@ const ClinicalNarrativePanel: React.FC<{
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-600/40 bg-slate-700/20">
-        <p className="text-slate-400 text-xs italic">
+      <div style={{
+        padding: '16px 24px',
+        borderTop: '1px solid rgba(34, 197, 94, 0.15)',
+        backgroundColor: 'rgba(34, 197, 94, 0.04)',
+      }}>
+        <p style={{
+          margin: 0,
+          color: '#64748b',
+          fontSize: '12px',
+          fontStyle: 'italic',
+        }}>
           Case {caseId} — Documented reasoning framework per Evidify protocol
         </p>
       </div>
@@ -330,29 +387,47 @@ const ResearchContextSection: React.FC = () => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border border-slate-700 rounded-lg overflow-hidden">
+    <div style={{
+      border: '1px solid #334155',
+      borderRadius: '12px',
+      overflow: 'hidden',
+    }}>
       <button
         onClick={() => setExpanded(prev => !prev)}
-        className="w-full flex items-center justify-between px-5 py-3 bg-slate-800/50 hover:bg-slate-800 transition-colors text-left"
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 20px',
+          backgroundColor: expanded ? '#1e293b' : 'rgba(30, 41, 59, 0.5)',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
       >
-        <span className="text-slate-300 text-sm font-medium">
+        <span style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 600 }}>
           Why This Matters: Spontaneous Trait Inference
         </span>
-        <svg
-          className={`w-4 h-4 text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <span style={{
+          color: '#64748b',
+          fontSize: '18px',
+          transition: 'transform 0.2s',
+          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          display: 'inline-block',
+        }}>
+          ▾
+        </span>
       </button>
 
       {expanded && (
-        <div className="px-5 py-4 bg-slate-900/50 border-t border-slate-700/60">
-          <div className="text-slate-400 text-sm leading-relaxed space-y-3">
-            <p>
+        <div style={{
+          padding: '20px 24px',
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          borderTop: '1px solid rgba(51, 65, 85, 0.6)',
+        }}>
+          <div style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7' }}>
+            <p style={{ marginTop: 0, marginBottom: '16px' }}>
               Research on spontaneous trait inference (STI) demonstrates that observers
               automatically infer character traits from behavioral descriptions. A bare time
               record of &ldquo;2 minutes, 14 seconds&rdquo; activates trait inference — the
@@ -360,16 +435,16 @@ const ResearchContextSection: React.FC = () => {
               Narrative documentation that contextualizes the same temporal data within a
               clinical reasoning framework disrupts this inference pathway.
             </p>
-            <p>
+            <p style={{ marginTop: 0, marginBottom: '16px' }}>
               The left panel recreates what a plaintiff&rsquo;s attorney would present to a
               jury: raw numbers stripped of context, designed to invite snap judgments about the
               radiologist&rsquo;s character. The right panel demonstrates how the same data,
               embedded in a reasoning narrative, prevents those inferences by providing the
               &ldquo;story&rdquo; that jurors need to evaluate behavior fairly.
             </p>
-            <div className="pt-2 border-t border-slate-800">
-              <p className="text-slate-500 text-xs">
-                <span className="font-medium text-slate-400">References:</span>{' '}
+            <div style={{ paddingTop: '12px', borderTop: '1px solid rgba(51, 65, 85, 0.5)' }}>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '12px', fontStyle: 'italic' }}>
+                <span style={{ fontWeight: 600, color: '#94a3b8' }}>References:</span>{' '}
                 Pennington &amp; Hastie (1992), &ldquo;Explaining the Evidence: Tests of the Story
                 Model for Juror Decision Making,&rdquo; <em>Journal of Personality and Social
                 Psychology</em>; Uleman, Saribay &amp; Gonzalez (2008), &ldquo;Spontaneous
@@ -401,7 +476,18 @@ const TheContrast: React.FC<TheContrastProps> = ({
   const handleHighlight = useCallback(() => setHighlightMode(prev => !prev), []);
 
   const logPanel = (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden h-full">
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: '#0a0f1a',
+      border: '1px solid rgba(239, 68, 68, 0.2)',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      minHeight: '500px',
+      display: 'flex',
+      flexDirection: 'column',
+      order: swapped ? 2 : 1,
+    }}>
       <StructuredLogPanel
         events={events}
         derivedMetrics={derivedMetrics}
@@ -411,7 +497,18 @@ const TheContrast: React.FC<TheContrastProps> = ({
   );
 
   const narrativePanel = (
-    <div className="bg-slate-800/60 border border-slate-600/50 rounded-lg overflow-hidden h-full">
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: '#111827',
+      border: '1px solid rgba(34, 197, 94, 0.2)',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      minHeight: '500px',
+      display: 'flex',
+      flexDirection: 'column',
+      order: swapped ? 1 : 2,
+    }}>
       <ClinicalNarrativePanel
         caseId={caseId}
         events={events}
@@ -422,60 +519,89 @@ const TheContrast: React.FC<TheContrastProps> = ({
     </div>
   );
 
+  const btnBase: React.CSSProperties = {
+    padding: '8px 16px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    border: '1px solid #334155',
+    backgroundColor: '#1e293b',
+    color: '#94a3b8',
+  };
+
+  const btnHighlightActive: React.CSSProperties = {
+    ...btnBase,
+    backgroundColor: 'rgba(250, 204, 21, 0.15)',
+    color: '#fbbf24',
+    border: '1px solid rgba(250, 204, 21, 0.3)',
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
+    <div style={{ padding: '32px 40px', backgroundColor: '#0f172a', minHeight: '100%' }}>
+      {/* Header + Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h2 className="text-white text-xl font-bold tracking-tight">
+          <h2 style={{ color: '#f8fafc', fontSize: '24px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
             The Contrast
           </h2>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px', margin: '4px 0 0 0' }}>
             Same data, two framings — how documentation shapes perception
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={handleHighlight}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              highlightMode
-                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-            }`}
+            style={highlightMode ? btnHighlightActive : btnBase}
           >
-            {highlightMode ? 'Highlighting On' : 'Highlight Shared Data'}
+            {highlightMode ? '● Highlighting On' : 'Highlight Shared Data'}
           </button>
-          <button
-            onClick={handleSwap}
-            className="px-3 py-1.5 rounded text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition-colors"
-          >
-            Swap Panels
+          <button onClick={handleSwap} style={btnBase}>
+            ⇄ Swap Panels
           </button>
         </div>
       </div>
 
       {/* Panel labels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={`text-center ${swapped ? 'md:order-2' : 'md:order-1'}`}>
-          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-            Prosecution Exhibit
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '12px' }}>
+        <div style={{ flex: 1, textAlign: 'center', order: swapped ? 2 : 1 }}>
+          <span style={{
+            display: 'inline-block',
+            padding: '5px 14px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            color: '#f87171',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+          }}>
+            ⚠ Prosecution Exhibit
           </span>
         </div>
-        <div className={`text-center ${swapped ? 'md:order-1' : 'md:order-2'}`}>
-          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            Defense Exhibit
+        <div style={{ flex: 1, textAlign: 'center', order: swapped ? 1 : 2 }}>
+          <span style={{
+            display: 'inline-block',
+            padding: '5px 14px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+            backgroundColor: 'rgba(34, 197, 94, 0.12)',
+            color: '#4ade80',
+            border: '1px solid rgba(34, 197, 94, 0.25)',
+          }}>
+            ✓ Defense Exhibit
           </span>
         </div>
       </div>
 
       {/* Split panels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[420px]">
-        <div className={swapped ? 'md:order-2' : 'md:order-1'}>
-          {logPanel}
-        </div>
-        <div className={swapped ? 'md:order-1' : 'md:order-2'}>
-          {narrativePanel}
-        </div>
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '28px' }}>
+        {logPanel}
+        {narrativePanel}
       </div>
 
       {/* Research context (for Grayson) */}

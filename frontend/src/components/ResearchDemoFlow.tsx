@@ -3864,7 +3864,7 @@ const HashChainVisualization: React.FC<HashChainVisualizationProps> = ({ ledger 
                 fontWeight: 600,
                 marginBottom: '4px',
               }}>
-                {block.eventType.replace(/_/g, ' ')}
+                {(block.eventType || 'UNKNOWN').replace(/_/g, ' ')}
               </div>
               <div style={{
                 fontFamily: 'monospace',
@@ -5596,23 +5596,23 @@ setAiAgreementStreak(prev => prev + 1);
                   {timeOnCase.toFixed(1)}s
                 </span>
               </div>
-            </div>
+	  </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-              {isResearcher && (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              {isResearcher && (               
+		 <>
                   <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', padding: '16px 24px', borderRadius: '12px', textAlign: 'center' }}>
                     <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{state.eventCount}</div>
                     <div style={{ fontSize: '12px', opacity: 0.9 }}>Events Logged</div>
                   </div>
-                  {/* Workload Monitor - Throughput threshold tracking */}
+                  {/* Workload Monitor - Session duration tracking */}
                   <WorkloadMonitor metrics={workloadMetrics.metrics} compact={true} />
-                </div>
+                </>
               )}
               {isResearcher && (
                 <>
                   <button
-                    onClick={() => setShowAdvancedResearcher(!showAdvancedResearcher)}
-                    style={{
+                    onClick={() => setShowAdvancedResearcher(!showAdvancedResearcher)}                    
+style={{
                       padding: '8px 16px',
                       backgroundColor: showAdvancedResearcher ? 'rgba(148, 163, 184, 0.3)' : 'rgba(51, 65, 85, 0.4)',
                       border: '1px solid rgba(148, 163, 184, 0.4)',

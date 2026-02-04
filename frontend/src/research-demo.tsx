@@ -2,51 +2,61 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ResearchDemoFlow } from './components/ResearchDemoFlow';
 import StudySelector from './components/research/StudySelector';
+import TheContrast from './components/research/legal/TheContrast';
+import { DEMO_CASE_ID, DEMO_EVENTS, DEMO_DERIVED_METRICS } from './data/contrastDemoData';
 import { ArrowLeft } from 'lucide-react';
-
-// ---------------------------------------------------------------------------
-// Root shell: routes between StudySelector and individual study views
-// ---------------------------------------------------------------------------
 
 const ResearchDemoShell: React.FC = () => {
   const [activeStudy, setActiveStudy] = useState<string | null>(null);
 
-  // Full session → render the existing ResearchDemoFlow
   if (activeStudy === 'fullsession') {
     return <ResearchDemoFlow />;
   }
 
-  // Other studies → placeholder with back navigation
+  if (activeStudy === 'contrast') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>The Contrast: STI Prevention Study</h2>
+          <button
+            onClick={() => setActiveStudy(null)}
+            style={{ padding: '8px 16px', backgroundColor: '#334155', border: '1px solid #475569', borderRadius: '8px', color: '#f8fafc', cursor: 'pointer', fontSize: '13px' }}
+          >
+            ← Back to Studies
+          </button>
+        </div>
+        <TheContrast
+          caseId={DEMO_CASE_ID}
+          events={DEMO_EVENTS}
+          derivedMetrics={DEMO_DERIVED_METRICS}
+        />
+      </div>
+    );
+  }
+
   if (activeStudy) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center px-6">
-        <div className="max-w-lg text-center">
-          <h2 className="text-2xl font-bold mb-3">
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: '500px', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
             {activeStudy.charAt(0).toUpperCase() + activeStudy.slice(1)} Study
           </h2>
-          <p className="text-slate-400 mb-8">
+          <p style={{ color: '#94a3b8', marginBottom: '32px' }}>
             This view will be connected in a follow-up integration step.
           </p>
           <button
-            type="button"
             onClick={() => setActiveStudy(null)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+            style={{ padding: '10px 20px', backgroundColor: '#334155', border: '1px solid #475569', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '14px' }}
           >
-            <ArrowLeft size={16} />
-            Back to Studies
+            ← Back to Studies
           </button>
         </div>
       </div>
     );
   }
 
-  // Default → StudySelector landing page
   return <StudySelector onLaunchStudy={(id) => setActiveStudy(id)} />;
 };
-
-// ---------------------------------------------------------------------------
-// Mount
-// ---------------------------------------------------------------------------
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
