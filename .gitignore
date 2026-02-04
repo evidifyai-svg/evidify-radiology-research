@@ -63,3 +63,8 @@ frontend/dist/
 bash
 node
 evidify-radiology-research@*
+
+# local documentation artifacts
+docs/panel_doc_metrics.json
+evidify-expert-teardown.docx
+frontend/src/data/evidify-expert-teardown.docx
