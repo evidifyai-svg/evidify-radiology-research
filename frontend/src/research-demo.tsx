@@ -4,8 +4,18 @@ import { ResearchDemoFlow } from './components/ResearchDemoFlow';
 import StudySelector from './components/research/StudySelector';
 import TheContrast from './components/research/legal/TheContrast';
 import HashChainDemo from './components/research/HashChainDemo';
+import WorkloadDashboard from './components/research/WorkloadDashboard';
+import { PacketViewer } from './components/PacketViewer';
 import { DEMO_CASE_ID, DEMO_EVENTS, DEMO_DERIVED_METRICS } from './data/contrastDemoData';
 import { DEMO_HASH_TIMELINE, DEMO_CHAIN_VALID, DEMO_HASH_SESSION_ID } from './data/hashChainDemoData';
+import { DEMO_WORKLOAD_SESSION, DEMO_COHORT_DATA } from './data/workloadDemoData';
+import {
+  DEMO_PACK_EVENTS,
+  DEMO_PACK_LEDGER,
+  DEMO_PACK_MANIFEST,
+  DEMO_PACK_METRICS,
+  DEMO_PACK_VERIFIER,
+} from './data/exportPackDemoData';
 
 const headerBarStyle: React.CSSProperties = {
   padding: '16px 24px',
@@ -13,6 +23,9 @@ const headerBarStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  position: 'relative',
+  zIndex: 1100,
+  backgroundColor: '#0f172a',
 };
 
 const backBtnStyle: React.CSSProperties = {
@@ -67,6 +80,48 @@ const ResearchDemoShell: React.FC = () => {
           timeline={DEMO_HASH_TIMELINE}
           chainValid={DEMO_CHAIN_VALID}
           sessionId={DEMO_HASH_SESSION_ID}
+        />
+      </div>
+    );
+  }
+
+  if (activeStudy === 'workload') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Workload Monitoring & Cohort Comparison
+          </h2>
+          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
+            ← Back to Studies
+          </button>
+        </div>
+        <WorkloadDashboard
+          currentSession={DEMO_WORKLOAD_SESSION}
+          cohortData={DEMO_COHORT_DATA}
+        />
+      </div>
+    );
+  }
+
+  if (activeStudy === 'inspector') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Export Pack Inspector
+          </h2>
+          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
+            ← Back to Studies
+          </button>
+        </div>
+        <PacketViewer
+          events={DEMO_PACK_EVENTS}
+          ledger={DEMO_PACK_LEDGER}
+          manifest={DEMO_PACK_MANIFEST}
+          derivedMetrics={DEMO_PACK_METRICS}
+          verifierOutput={DEMO_PACK_VERIFIER}
+          isOpen={true}
         />
       </div>
     );
