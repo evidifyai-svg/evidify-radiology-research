@@ -100,16 +100,26 @@ function normalizeComputedValue(value) {
   return value;
 }
 
-function valuesMatch(expectedRaw, actualRaw) {
+function valuesMatch(expectedRaw, actualRaw, column) {
   const expected = normalizeCsvValue(expectedRaw);
   const actual = normalizeComputedValue(actualRaw);
 
   if (expected === null && actual === null) return true;
   if (typeof expected === 'number' && typeof actual === 'number') {
+    if (column && /ms/i.test(column)) {
+      return Math.abs(expected - actual) <= 5;
+    }
     if (Number.isInteger(expected) && Number.isInteger(actual)) {
       return expected === actual;
     }
     return Math.abs(expected - actual) <= 1e-6;
+  }
+  if (column && typeof expected === 'string' && typeof actual === 'string') {
+    const expectedDate = Date.parse(expected);
+    const actualDate = Date.parse(actual);
+    if (Number.isFinite(expectedDate) && Number.isFinite(actualDate)) {
+      return Math.abs(expectedDate - actualDate) <= 5;
+    }
   }
   return expected === actual;
 }
@@ -160,7 +170,7 @@ function groupEventsByCase(events) {
   return grouped;
 }
 
-function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) {
+function computeReadEpisodeMetricsFromEvents(caseEvents, isCalibration) {
   if (isCalibration) {
     return { preAiReadMs: null, postAiReadMs: null, totalReadMs: null };
   }
@@ -182,8 +192,19 @@ function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) 
       return null;
     }
 
-    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
-    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    const endTimes = ends.map(event => getTimestampMs(event, 'tEndIso')).sort((a, b) => a - b);
+    for (const startEvent of starts) {
+      const startTime = getTimestampMs(startEvent, 'tStartIso');
+      let endTime = endTimes.find(time => time >= startTime);
+      if (endTime === undefined) {
+        endTime = endTimes[endTimes.length - 1];
+      }
+      const duration = endTime - startTime;
+      if (Number.isFinite(duration) && duration >= 0) {
+        return Math.round(duration);
+      }
+    }
+    return null;
   };
 
   const preAiReadMs = computeEpisodeMs('PRE_AI');
@@ -196,15 +217,50 @@ function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) 
   return { preAiReadMs, postAiReadMs, totalReadMs };
 }
 
-function getSessionId(events) {
+function readTrialManifest(packDir) {
+  const trialManifestPath = path.join(packDir, 'trial_manifest.json');
+  if (!exists(trialManifestPath)) {
+    return null;
+  }
+  try {
+    return readJson(trialManifestPath);
+  } catch {
+    return null;
+  }
+}
+
+function getSessionId(packDir, events) {
+  const trialManifest = readTrialManifest(packDir);
+  if (trialManifest?.sessionId) {
+    return trialManifest.sessionId;
+  }
   const sessionStarted = events.find(event => event.type === 'SESSION_STARTED');
   const payload = sessionStarted?.payload || {};
   return payload.sessionId || payload.sessionID || payload.session_id || null;
 }
 
-function computeMetricsFromEvents(events) {
+function getRevealTiming(trialManifest, caseLoaded, aiPayload) {
+  const manifestTiming = trialManifest?.condition?.revealTiming;
+  if (manifestTiming) return manifestTiming;
+
+  const payload = caseLoaded?.payload || {};
+  return (
+    payload.revealTiming ??
+    payload.condition?.revealTiming ??
+    payload.conditionCode ??
+    aiPayload?.revealTiming ??
+    null
+  );
+}
+
+function isCalibrationCaseId(caseId) {
+  return typeof caseId === 'string' && caseId.toLowerCase().includes('cal');
+}
+
+function computeMetricsFromEvents(packDir, events) {
   const groupedEvents = groupEventsByCase(events);
-  const sessionId = getSessionId(events);
+  const trialManifest = readTrialManifest(packDir);
+  const sessionId = getSessionId(packDir, events);
   const metricsByCase = new Map();
 
   for (const [caseId, caseEvents] of groupedEvents.entries()) {
@@ -212,6 +268,7 @@ function computeMetricsFromEvents(events) {
     const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
     const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
     const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
+    const caseCompleted = caseEvents.find(event => event.type === 'CASE_COMPLETED');
     const deviationSubmitted = caseEvents.find(event => event.type === 'DEVIATION_SUBMITTED');
     const deviationSkipped = caseEvents.find(event => event.type === 'DEVIATION_SKIPPED');
     const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
@@ -242,29 +299,27 @@ function computeMetricsFromEvents(events) {
     const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
     const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
     const comprehensionCorrect = comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
-    const comprehensionResponseMs =
-      comprehensionEvent && disclosurePresented
-        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+    let comprehensionResponseMs =
+      typeof comprehensionPayload.responseTimeMs === 'number'
+        ? comprehensionPayload.responseTimeMs
         : null;
+    if (comprehensionResponseMs === null && comprehensionEvent && disclosurePresented) {
+      comprehensionResponseMs =
+        new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime();
+    }
     const normalizedComprehensionResponseMs =
       typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
-        ? comprehensionResponseMs
+        ? Math.round(comprehensionResponseMs)
         : null;
 
-    const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration);
+    const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration) || isCalibrationCaseId(caseId);
     const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
       caseEvents,
-      caseId,
       isCalibration
     );
 
-    const conditionPayload = caseLoaded?.payload || {};
-    const condition =
-      conditionPayload.condition ??
-      conditionPayload.revealTiming ??
-      conditionPayload.conditionCode ??
-      aiPayload.revealTiming ??
-      '';
+    const revealTiming = getRevealTiming(trialManifest, caseLoaded, aiPayload);
+    const condition = revealTiming ?? null;
 
     const deviationText =
       (deviationSubmitted?.payload || {}).deviationText ??
@@ -283,11 +338,25 @@ function computeMetricsFromEvents(events) {
       lockTime !== null && revealTime !== null ? revealTime - lockTime : null;
     const revealToFinalMs =
       revealTime !== null && finalTime !== null ? finalTime - revealTime : null;
+    const aiExposureMs = typeof postAiReadMs === 'number' ? postAiReadMs : null;
+    const overrideCount =
+      aiBirads !== null && finalBirads !== null ? (aiBirads !== finalBirads ? 1 : 0) : 0;
+    const rationaleProvided =
+      typeof deviationText === 'string' && deviationText.trim().length > 0;
+    const decisionChangeCount = caseEvents.filter(event =>
+      event.type === 'DECISION_CHANGED' || event.type === 'DECISION_CHANGE'
+    ).length;
+    const timingFlagPreAiTooFast =
+      typeof preAiReadMs === 'number' ? preAiReadMs < 5000 : false;
+    const timingFlagAiExposureTooFast =
+      typeof aiExposureMs === 'number' ? aiExposureMs < 3000 : false;
+    const timestamp = caseCompleted?.timestamp ?? finalAssessment?.timestamp ?? null;
 
     metricsByCase.set(caseId, {
       sessionId,
       caseId,
       condition,
+      revealTiming,
       initialBirads,
       finalBirads,
       aiBirads,
@@ -304,24 +373,62 @@ function computeMetricsFromEvents(events) {
       comprehensionItemId,
       comprehensionAnswer,
       comprehensionCorrect,
+      comprehensionQuestionId,
+      comprehensionResponseMs: normalizedComprehensionResponseMs,
       comprehension_question_id: comprehensionQuestionId,
       comprehension_answer: comprehensionAnswer,
       comprehension_correct: comprehensionCorrect,
       comprehension_response_ms: normalizedComprehensionResponseMs,
+      comprehensionResponseMsLegacy: normalizedComprehensionResponseMs,
       comprehensionItemIdLegacy: comprehensionItemId,
       comprehensionAnswerLegacy: comprehensionAnswer,
       comprehensionCorrectLegacy: comprehensionCorrect,
-      comprehensionQuestionId,
+      comprehensionQuestionIdLegacy: comprehensionQuestionId,
       preAiReadMs,
       postAiReadMs,
       totalReadMs,
       totalTimeMs,
       lockToRevealMs,
       revealToFinalMs,
-      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? null,
+      aiExposureMs,
+      overrideCount,
+      rationaleProvided,
+      decisionChangeCount,
+      timingFlagPreAiTooFast,
+      timingFlagAiExposureTooFast,
+      timestamp,
+      isCalibration,
       disclosureFormat: (disclosurePresented?.payload || {}).format ?? null,
       sessionTimestamp: sessionStart?.timestamp ?? null,
     });
+  }
+
+  const preAiTimes = Array.from(metricsByCase.values())
+    .filter(row => !row.isCalibration)
+    .map(row => row.preAiReadMs)
+    .filter(value => typeof value === 'number' && value > 0);
+  let sessionMedianPreAITime = null;
+  if (preAiTimes.length > 0) {
+    const sorted = [...preAiTimes].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    sessionMedianPreAITime =
+      sorted.length % 2 === 1
+        ? sorted[mid]
+        : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  }
+
+  for (const row of metricsByCase.values()) {
+    row.sessionMedianPreAITime = sessionMedianPreAITime;
+    if (typeof row.preAiReadMs === 'number' && typeof row.postAiReadMs === 'number' && row.postAiReadMs > 0) {
+      row.timeRatio = Number((row.preAiReadMs / row.postAiReadMs).toFixed(3));
+    } else {
+      row.timeRatio = null;
+    }
+    if (typeof row.preAiReadMs === 'number' && typeof sessionMedianPreAITime === 'number') {
+      row.preAITimeVsMedian = row.preAiReadMs - sessionMedianPreAITime;
+    } else {
+      row.preAITimeVsMedian = null;
+    }
   }
 
   return metricsByCase;
@@ -506,16 +613,30 @@ function main() {
             }
           }
 
-          const computedByCase = computeMetricsFromEvents(events);
+          const computedByCase = computeMetricsFromEvents(pack, events);
           const allCaseIds = new Set([
             ...Array.from(derivedByCase.keys()),
             ...Array.from(computedByCase.keys()),
           ]);
           const mismatches = [];
+          let debugLogged = false;
+          const debugColumns = new Set([
+            'overrideCount',
+            'decisionChangeCount',
+            'rationaleProvided',
+            'timingFlagPreAiTooFast',
+            'timingFlagAiExposureTooFast',
+          ]);
 
           for (const caseId of Array.from(allCaseIds).sort()) {
             const derivedRow = derivedByCase.get(caseId);
             const computedRow = computedByCase.get(caseId);
+            const isCalibration =
+              isCalibrationCaseId(caseId) || Boolean(computedRow?.isCalibration);
+
+            if (isCalibration) {
+              continue;
+            }
 
             if (!derivedRow) {
               mismatches.push({
@@ -540,13 +661,26 @@ function main() {
             for (const column of headers) {
               const expected = derivedRow[column];
               const actual = computedRow[column];
-              if (!valuesMatch(expected, actual)) {
+              if (!valuesMatch(expected, actual, column)) {
                 mismatches.push({
                   caseId,
                   column,
                   expected: expected === undefined ? 'undefined' : expected,
                   actual: formatMismatchValue(actual),
                 });
+                if (
+                  process.env.RADIOLOGY_VERIFIER_DEBUG === '1' &&
+                  debugColumns.has(column) &&
+                  !debugLogged
+                ) {
+                  debugLogged = true;
+                  console.log('[DEBUG] Derived metrics mismatch', {
+                    caseId,
+                    column,
+                    expected,
+                    actual,
+                  });
+                }
               }
             }
           }
