@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ResearchDemoFlow } from './components/ResearchDemoFlow';
 import StudySelector from './components/research/StudySelector';
+import TheContrast from './components/research/legal/TheContrast';
+import { DEMO_CASE_ID, DEMO_EVENTS, DEMO_LEDGER_ENTRIES, DEMO_DERIVED_METRICS } from './data/contrastDemoData';
 import { ArrowLeft } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -14,6 +16,26 @@ const ResearchDemoShell: React.FC = () => {
   // Full session → render the existing ResearchDemoFlow
   if (activeStudy === 'fullsession') {
     return <ResearchDemoFlow />;
+  }
+
+  // The Contrast → side-by-side STI prevention view
+  if (activeStudy === 'contrast') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px' }}>The Contrast: STI Prevention Study</h2>
+          <button onClick={() => setActiveStudy(null)} style={{ padding: '8px 16px', backgroundColor: '#334155', border: '1px solid #475569', borderRadius: '8px', color: '#f8fafc', cursor: 'pointer', fontSize: '13px' }}>
+            ← Back to Studies
+          </button>
+        </div>
+        <TheContrast
+          caseId={DEMO_CASE_ID}
+          events={DEMO_EVENTS}
+          derivedMetrics={DEMO_DERIVED_METRICS}
+          ledgerEntries={DEMO_LEDGER_ENTRIES}
+        />
+      </div>
+    );
   }
 
   // Other studies → placeholder with back navigation
