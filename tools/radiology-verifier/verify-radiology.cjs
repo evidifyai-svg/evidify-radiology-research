@@ -17,6 +17,16 @@ const crypto = require('crypto');
 
 const VERSION = '1.0.0';
 const Z64 = '0'.repeat(64);
+const DEBUG = Boolean(process.env.RADIOLOGY_VERIFIER_DEBUG);
+const TIMING_TOLERANCE_MS = 5;
+const TOO_FAST_PRE_AI_MS = 5000;
+const TOO_FAST_AI_EXPOSURE_MS = 3000;
+
+function debugLog(...args) {
+  if (DEBUG) {
+    console.log('[radiology-verifier]', ...args);
+  }
+}
 
 function exists(fp) {
   try { fs.accessSync(fp, fs.constants.R_OK); return true; } catch { return false; }
@@ -100,16 +110,33 @@ function normalizeComputedValue(value) {
   return value;
 }
 
-function valuesMatch(expectedRaw, actualRaw) {
+function isTimingColumn(column) {
+  return /ms$/i.test(column);
+}
+
+function isTimestampColumn(column) {
+  return /timestamp/i.test(column);
+}
+
+function valuesMatch(expectedRaw, actualRaw, column) {
   const expected = normalizeCsvValue(expectedRaw);
   const actual = normalizeComputedValue(actualRaw);
 
   if (expected === null && actual === null) return true;
-  if (typeof expected === 'number' && typeof actual === 'number') {
-    if (Number.isInteger(expected) && Number.isInteger(actual)) {
-      return expected === actual;
+  if (isTimestampColumn(column)) {
+    const expectedDate = typeof expected === 'string' ? Date.parse(expected) : null;
+    const actualDate = typeof actual === 'string' ? Date.parse(actual) : null;
+    if (Number.isFinite(expectedDate) && Number.isFinite(actualDate)) {
+      return Math.abs(expectedDate - actualDate) <= TIMING_TOLERANCE_MS;
     }
-    return Math.abs(expected - actual) <= 1e-6;
+  }
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    if (isTimingColumn(column)) {
+      return Math.abs(expected - actual) <= TIMING_TOLERANCE_MS;
+    }
+    return Number.isInteger(expected) && Number.isInteger(actual)
+      ? expected === actual
+      : Math.abs(expected - actual) <= 1e-6;
   }
   return expected === actual;
 }
@@ -135,14 +162,39 @@ function parseEventsJsonl(fp) {
   });
 }
 
+function coerceJsonObject(value) {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function getPayloadObject(event) {
+  if (!event) return {};
+  const payload = coerceJsonObject(event.payload);
+  const nested = payload ? coerceJsonObject(payload.payload) : null;
+  return nested ?? payload ?? {};
+}
+
+function getCaseIdFromEvent(event) {
+  const payload = getPayloadObject(event);
+  return payload.caseId ?? payload.activeCaseId ?? null;
+}
+
 function groupEventsByCase(events) {
   const grouped = new Map();
   let activeCaseId = null;
 
   for (const event of events) {
-    const payload = event.payload || {};
-    if (event.type === 'CASE_LOADED' && payload.caseId) {
-      activeCaseId = payload.caseId;
+    const eventCaseId = getCaseIdFromEvent(event);
+    if (event.type === 'CASE_LOADED' && eventCaseId) {
+      activeCaseId = eventCaseId;
       if (!grouped.has(activeCaseId)) {
         grouped.set(activeCaseId, []);
       }
@@ -152,7 +204,7 @@ function groupEventsByCase(events) {
       grouped.get(activeCaseId).push(event);
     }
 
-    if (event.type === 'CASE_COMPLETED' && payload.caseId && payload.caseId === activeCaseId) {
+    if (event.type === 'CASE_COMPLETED' && eventCaseId && eventCaseId === activeCaseId) {
       activeCaseId = null;
     }
   }
@@ -166,24 +218,38 @@ function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) 
   }
 
   const getTimestampMs = (event, key) => {
-    const payloadValue = (event.payload || {})[key];
+    const payloadValue = getPayloadObject(event)[key];
     return new Date(payloadValue || event.timestamp).getTime();
   };
 
   const computeEpisodeMs = (episodeType) => {
     const starts = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_STARTED' && (event.payload || {}).episodeType === episodeType
+      event => event.type === 'READ_EPISODE_STARTED' && getPayloadObject(event).episodeType === episodeType
     );
     const ends = caseEvents.filter(
-      event => event.type === 'READ_EPISODE_ENDED' && (event.payload || {}).episodeType === episodeType
+      event => event.type === 'READ_EPISODE_ENDED' && getPayloadObject(event).episodeType === episodeType
     );
 
     if (starts.length === 0 || ends.length === 0) {
+      debugLog(`Missing ${episodeType} read episode boundary for case ${caseId}.`);
       return null;
     }
 
-    const duration = getTimestampMs(ends[0], 'tEndIso') - getTimestampMs(starts[0], 'tStartIso');
-    return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    const sortedStarts = [...starts].sort(
+      (a, b) => getTimestampMs(a, 'tStartIso') - getTimestampMs(b, 'tStartIso')
+    );
+    const sortedEnds = [...ends].sort(
+      (a, b) => getTimestampMs(a, 'tEndIso') - getTimestampMs(b, 'tEndIso')
+    );
+    const startEvent = sortedStarts[0];
+    const startMs = getTimestampMs(startEvent, 'tStartIso');
+    const endEvent = sortedEnds.find(event => getTimestampMs(event, 'tEndIso') >= startMs) ?? sortedEnds[sortedEnds.length - 1];
+    const duration = getTimestampMs(endEvent, 'tEndIso') - startMs;
+    if (!Number.isFinite(duration) || duration < 0) {
+      debugLog(`Negative ${episodeType} duration for case ${caseId}: ${duration}`);
+      return null;
+    }
+    return duration;
   };
 
   const preAiReadMs = computeEpisodeMs('PRE_AI');
@@ -198,28 +264,52 @@ function computeReadEpisodeMetricsFromEvents(caseEvents, caseId, isCalibration) 
 
 function getSessionId(events) {
   const sessionStarted = events.find(event => event.type === 'SESSION_STARTED');
-  const payload = sessionStarted?.payload || {};
+  const payload = getPayloadObject(sessionStarted);
   return payload.sessionId || payload.sessionID || payload.session_id || null;
 }
 
-function computeMetricsFromEvents(events) {
+function computeMedian(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  }
+  return sorted[mid];
+}
+
+function computeMetricsFromEvents(packDir, events) {
   const groupedEvents = groupEventsByCase(events);
   const sessionId = getSessionId(events);
   const metricsByCase = new Map();
+  const preAiReadValues = [];
+  const trialManifestPath = packDir ? path.join(packDir, 'trial_manifest.json') : null;
+  const trialManifest = trialManifestPath && exists(trialManifestPath) ? readJson(trialManifestPath) : null;
+  const manifestCondition = trialManifest?.condition?.revealTiming ?? null;
 
   for (const [caseId, caseEvents] of groupedEvents.entries()) {
-    const caseLoaded = caseEvents.find(event => event.type === 'CASE_LOADED');
-    const firstImpression = caseEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
-    const aiRevealed = caseEvents.find(event => event.type === 'AI_REVEALED');
-    const finalAssessment = caseEvents.find(event => event.type === 'FINAL_ASSESSMENT');
-    const deviationSubmitted = caseEvents.find(event => event.type === 'DEVIATION_SUBMITTED');
-    const deviationSkipped = caseEvents.find(event => event.type === 'DEVIATION_SKIPPED');
-    const disclosurePresented = caseEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
-    const comprehensionEvent = caseEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
+    const durationMs = (startMs, endMs) => {
+      if (startMs === null || endMs === null) return null;
+      const duration = endMs - startMs;
+      return Number.isFinite(duration) && duration >= 0 ? duration : null;
+    };
+    const sortedEvents = [...caseEvents].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    const caseLoaded = sortedEvents.find(event => event.type === 'CASE_LOADED');
+    const firstImpression = sortedEvents.find(event => event.type === 'FIRST_IMPRESSION_LOCKED');
+    const aiRevealed = sortedEvents.find(event => event.type === 'AI_REVEALED');
+    const finalAssessment = sortedEvents.find(event => event.type === 'FINAL_ASSESSMENT');
+    const caseCompleted = [...sortedEvents].reverse().find(event => event.type === 'CASE_COMPLETED');
+    const deviationSubmittedEvents = sortedEvents.filter(event => event.type === 'DEVIATION_SUBMITTED');
+    const deviationStartedEvents = sortedEvents.filter(event => event.type === 'DEVIATION_STARTED');
+    const deviationSkippedEvents = sortedEvents.filter(event => event.type === 'DEVIATION_SKIPPED');
+    const disclosurePresented = sortedEvents.find(event => event.type === 'DISCLOSURE_PRESENTED');
+    const comprehensionEvent = sortedEvents.find(event => event.type === 'DISCLOSURE_COMPREHENSION_RESPONSE');
 
-    const initialBirads = (firstImpression?.payload || {}).birads ?? null;
-    const finalBirads = (finalAssessment?.payload || {}).birads ?? initialBirads ?? null;
-    const aiPayload = aiRevealed?.payload || {};
+    const initialBirads = getPayloadObject(firstImpression).birads ?? null;
+    const finalBirads = getPayloadObject(finalAssessment).birads ?? initialBirads ?? null;
+    const aiPayload = getPayloadObject(aiRevealed);
     const aiBirads = aiPayload.suggestedBirads ?? aiPayload.aiBirads ?? null;
     const aiConfidence = aiPayload.aiConfidence ?? null;
 
@@ -236,56 +326,97 @@ function computeMetricsFromEvents(events) {
     const addaDenominator = aiBirads === null || initialBirads === null ? null : initialBirads !== aiBirads;
     const adda = addaDenominator ? aiConsistentChange : addaDenominator === null ? null : false;
 
-    const comprehensionPayload = comprehensionEvent?.payload || {};
+    const comprehensionPayload = getPayloadObject(comprehensionEvent);
     const comprehensionAnswer =
       comprehensionPayload.selectedAnswer ?? comprehensionPayload.response ?? null;
     const comprehensionQuestionId = comprehensionPayload.questionId ?? null;
     const comprehensionItemId = comprehensionPayload.itemId ?? comprehensionQuestionId ?? null;
     const comprehensionCorrect = comprehensionPayload.isCorrect ?? comprehensionPayload.correct ?? null;
+    const responseTimeMsFromPayload = comprehensionPayload.responseTimeMs;
+    const responseTimeMsNumeric =
+      typeof responseTimeMsFromPayload === 'number'
+        ? responseTimeMsFromPayload
+        : responseTimeMsFromPayload != null && !Number.isNaN(Number(responseTimeMsFromPayload))
+          ? Number(responseTimeMsFromPayload)
+          : null;
     const comprehensionResponseMs =
-      comprehensionEvent && disclosurePresented
-        ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
-        : null;
+      typeof responseTimeMsNumeric === 'number'
+        ? responseTimeMsNumeric
+        : comprehensionEvent && disclosurePresented
+          ? new Date(comprehensionEvent.timestamp).getTime() - new Date(disclosurePresented.timestamp).getTime()
+          : null;
     const normalizedComprehensionResponseMs =
       typeof comprehensionResponseMs === 'number' && Number.isFinite(comprehensionResponseMs) && comprehensionResponseMs >= 0
         ? comprehensionResponseMs
         : null;
 
-    const isCalibration = Boolean((caseLoaded?.payload || {}).isCalibration);
+    const caseLoadedPayload = getPayloadObject(caseLoaded);
+    const isCalibration = Boolean(caseLoadedPayload.isCalibration);
     const { preAiReadMs, postAiReadMs, totalReadMs } = computeReadEpisodeMetricsFromEvents(
-      caseEvents,
+      sortedEvents,
       caseId,
       isCalibration
     );
+    if (typeof preAiReadMs === 'number' && preAiReadMs > 0) {
+      preAiReadValues.push(preAiReadMs);
+    }
 
-    const conditionPayload = caseLoaded?.payload || {};
-    const condition =
-      conditionPayload.condition ??
+    const conditionPayload = caseLoadedPayload;
+    const conditionFromEvent =
       conditionPayload.revealTiming ??
-      conditionPayload.conditionCode ??
-      aiPayload.revealTiming ??
-      '';
+      conditionPayload.condition?.revealTiming ??
+      conditionPayload.conditionPayload?.revealTiming ??
+      null;
+    const condition = manifestCondition ?? conditionFromEvent ?? null;
 
     const deviationText =
-      (deviationSubmitted?.payload || {}).deviationText ??
-      (deviationSubmitted?.payload || {}).rationaleText ??
-      (deviationSubmitted?.payload || {}).rationale ??
+      getPayloadObject(deviationSubmittedEvents[0]).deviationText ??
+      getPayloadObject(deviationSubmittedEvents[0]).rationaleText ??
+      getPayloadObject(deviationSubmittedEvents[0]).rationale ??
       null;
+    const rationaleProvided = deviationSubmittedEvents.some(event => {
+      const payload = getPayloadObject(event);
+      const rationale =
+        payload.rationale ?? payload.rationaleText ?? payload.deviationText ?? payload.deviation ?? '';
+      return String(rationale).trim().length > 0;
+    });
+    const decisionChangeCount =
+      deviationStartedEvents.length > 0 ? deviationStartedEvents.length : changeOccurred ? 1 : 0;
+    const overrideCount = aiBirads != null && finalBirads !== aiBirads ? 1 : 0;
 
     const sessionStart = events.find(event => event.type === 'SESSION_STARTED');
     const lockTime = firstImpression ? new Date(firstImpression.timestamp).getTime() : null;
     const revealTime = aiRevealed ? new Date(aiRevealed.timestamp).getTime() : lockTime;
     const finalTime = finalAssessment ? new Date(finalAssessment.timestamp).getTime() : revealTime;
     const caseStartTime = caseLoaded ? new Date(caseLoaded.timestamp).getTime() : null;
-    const totalTimeMs =
-      caseStartTime !== null && finalTime !== null ? finalTime - caseStartTime : null;
-    const lockToRevealMs =
-      lockTime !== null && revealTime !== null ? revealTime - lockTime : null;
-    const revealToFinalMs =
-      revealTime !== null && finalTime !== null ? finalTime - revealTime : null;
+    const totalTimeMs = durationMs(caseStartTime, finalTime);
+    const lockToRevealMs = durationMs(lockTime, revealTime);
+    const revealToFinalMs = durationMs(revealTime, finalTime);
+    const timeToLockCandidate = getPayloadObject(firstImpression).timeToLockMs;
+    const timeToLockMs =
+      typeof timeToLockCandidate === 'number' && Number.isFinite(timeToLockCandidate) && timeToLockCandidate >= 0
+        ? timeToLockCandidate
+        : durationMs(caseStartTime, lockTime);
+    const aiExposureMs =
+      aiRevealed && (finalAssessment || caseCompleted)
+        ? durationMs(
+          new Date(aiRevealed.timestamp).getTime(),
+          new Date((finalAssessment ?? caseCompleted).timestamp).getTime()
+        )
+        : null;
+    const normalizedAiExposureMs =
+      typeof aiExposureMs === 'number' && Number.isFinite(aiExposureMs) && aiExposureMs >= 0
+        ? aiExposureMs
+        : null;
+    const computedTimestamp = caseCompleted?.timestamp ?? finalAssessment?.timestamp ?? null;
+    const timingFlagPreAiTooFast =
+      typeof preAiReadMs === 'number' && preAiReadMs < TOO_FAST_PRE_AI_MS;
+    const timingFlagAiExposureTooFast =
+      typeof normalizedAiExposureMs === 'number' && normalizedAiExposureMs > 0 && normalizedAiExposureMs < TOO_FAST_AI_EXPOSURE_MS;
 
     metricsByCase.set(caseId, {
       sessionId,
+      timestamp: computedTimestamp,
       caseId,
       condition,
       initialBirads,
@@ -297,10 +428,15 @@ function computeMetricsFromEvents(events) {
       aiInconsistentChange,
       addaDenominator,
       adda,
-      deviationDocumented: deviationSubmitted !== undefined,
-      deviationSkipped: deviationSkipped !== undefined,
+      deviationDocumented: deviationSubmittedEvents.length > 0,
+      deviationSkipped: deviationSkippedEvents.length > 0,
       deviationRequired: changeOccurred === null ? null : changeOccurred,
       deviationText,
+      decisionChangeCount,
+      overrideCount,
+      rationaleProvided,
+      timingFlagPreAiTooFast,
+      timingFlagAiExposureTooFast,
       comprehensionItemId,
       comprehensionAnswer,
       comprehensionCorrect,
@@ -315,12 +451,34 @@ function computeMetricsFromEvents(events) {
       preAiReadMs,
       postAiReadMs,
       totalReadMs,
+      aiExposureMs: normalizedAiExposureMs,
       totalTimeMs,
+      timeToLockMs,
       lockToRevealMs,
       revealToFinalMs,
-      revealTiming: aiPayload.revealTiming ?? conditionPayload.revealTiming ?? null,
-      disclosureFormat: (disclosurePresented?.payload || {}).format ?? null,
+      revealTiming: condition,
+      disclosureFormat: getPayloadObject(disclosurePresented).format ?? null,
       sessionTimestamp: sessionStart?.timestamp ?? null,
+      isCalibration,
+    });
+  }
+
+  const sessionMedianPreAITime = computeMedian(preAiReadValues);
+  for (const [caseId, metrics] of metricsByCase.entries()) {
+    const { preAiReadMs, postAiReadMs } = metrics;
+    const timeRatio =
+      typeof preAiReadMs === 'number' && typeof postAiReadMs === 'number' && postAiReadMs > 0
+        ? Math.round((preAiReadMs / postAiReadMs) * 1000) / 1000
+        : null;
+    const preAITimeVsMedian =
+      typeof preAiReadMs === 'number' && sessionMedianPreAITime !== null
+        ? Math.round((preAiReadMs - sessionMedianPreAITime) * 100) / 100
+        : null;
+    metricsByCase.set(caseId, {
+      ...metrics,
+      timeRatio,
+      sessionMedianPreAITime,
+      preAITimeVsMedian,
     });
   }
 
@@ -506,16 +664,31 @@ function main() {
             }
           }
 
-          const computedByCase = computeMetricsFromEvents(events);
+          const computedByCase = computeMetricsFromEvents(pack, events);
           const allCaseIds = new Set([
             ...Array.from(derivedByCase.keys()),
             ...Array.from(computedByCase.keys()),
           ]);
+          const calibrationCaseIds = new Set(
+            events
+              .filter(event => event.type === 'CASE_LOADED')
+              .map(event => {
+                const payload = getPayloadObject(event);
+                return payload.isCalibration ? payload.caseId : null;
+              })
+              .filter(Boolean)
+          );
           const mismatches = [];
 
           for (const caseId of Array.from(allCaseIds).sort()) {
             const derivedRow = derivedByCase.get(caseId);
             const computedRow = computedByCase.get(caseId);
+            const isCalibrationCase =
+              /CAL/i.test(caseId) || calibrationCaseIds.has(caseId) || Boolean(computedRow?.isCalibration);
+
+            if (isCalibrationCase) {
+              continue;
+            }
 
             if (!derivedRow) {
               mismatches.push({
@@ -540,7 +713,7 @@ function main() {
             for (const column of headers) {
               const expected = derivedRow[column];
               const actual = computedRow[column];
-              if (!valuesMatch(expected, actual)) {
+              if (!valuesMatch(expected, actual, column)) {
                 mismatches.push({
                   caseId,
                   column,
