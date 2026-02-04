@@ -65,7 +65,7 @@ const STUDIES: StudyCard[] = [
     description:
       'Real-time throughput tracking with session duration index. Shows individual radiologist timing in context of practice cohort median.',
     researchBasis: 'Throughput-accuracy degradation literature',
-    status: 'in-progress',
+    status: 'ready',
     icon: <Activity size={24} />,
   },
   {
@@ -127,11 +127,14 @@ const Header: React.FC = () => (
         Evidify Research Platform
       </h1>
     </div>
-    <p className="text-slate-300 text-lg mb-3">
-      BRPLL Radiology AI Governance Studies
+    <p className="text-slate-300 text-lg mb-2">
+      Radiology AI Governance Research Platform
+    </p>
+    <p className="text-slate-500 text-sm mb-3">
+      Joshua M. Henderson, PhD &mdash; Research Platform Architect
     </p>
     <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
-      Demo Build &mdash; February 2026
+      Research Preview &mdash; February 2026
     </span>
   </header>
 );
@@ -139,10 +142,13 @@ const Header: React.FC = () => (
 const Footer: React.FC = () => (
   <footer className="mt-12 pt-6 border-t border-slate-800 text-center text-sm text-slate-500 space-y-1">
     <p className="font-medium text-slate-400">
-      Evidify Research Platform v0.9.0-demo
+      Evidify Research Platform v0.9.0
     </p>
     <p>Local-first &bull; Hash-verified &bull; Daubert-ready</p>
-    <p>Built in collaboration with Brown University BRPLL</p>
+    <p>Proposed for research collaboration with Brown University BRPLL</p>
+    <p className="text-slate-600 text-xs mt-2">
+      &copy; 2026 Evidify. All rights reserved.
+    </p>
   </footer>
 );
 
