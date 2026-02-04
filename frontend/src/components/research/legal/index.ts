@@ -70,3 +70,9 @@ export {
   type ParticipantAssignment,
   type CasePoolItem,
 } from './StudyProtocol';
+
+// The Contrast: STI-aware side-by-side case documentation comparison
+export {
+  default as TheContrast,
+  type TheContrastProps,
+} from './TheContrast';
