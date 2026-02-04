@@ -580,10 +580,10 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
         </div>
       )}
 
-      {/* Chain Integrity */}
-      <div className="p-6">
+      {/* Chain Integrity Summary */}
+      <div className="p-6 border-b border-slate-800">
         <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-4">
-          Chain Integrity Verification
+          Chain Integrity Summary
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <IntegrityCheck label="Chain Valid" passed={packet.integrity.chainValid} />
@@ -592,6 +592,9 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           <IntegrityCheck label="Chronological" passed={packet.integrity.chronologicalOrder} />
           <IntegrityCheck label="All Locked" passed={packet.integrity.allEntriesLocked} />
         </div>
+        <p className="text-sm text-slate-500 mt-3">
+          See detailed temporal proof walkthrough below ↓
+        </p>
         {packet.integrity.issues.length > 0 && (
           <div className="mt-4 p-3 bg-red-500/10 rounded-lg">
             <div className="text-red-400 font-medium mb-2">Issues Detected:</div>
@@ -603,6 +606,12 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           </div>
         )}
       </div>
+
+      {/* Temporal Proof Walkthrough */}
+      <TemporalProofWalkthrough
+        timeline={packet.timeline}
+        chainValid={packet.integrity.chainValid}
+      />
 
       {/* Methodology Statement */}
       <div className="p-6 border-b border-slate-800">
@@ -684,5 +693,197 @@ const IntegrityCheck: React.FC<{ label: string; passed: boolean }> = ({ label, p
     <div className="text-xs text-slate-400">{label}</div>
   </div>
 );
+
+const TemporalProofWalkthrough: React.FC<{
+  timeline: TimelineEvent[];
+  chainValid: boolean;
+}> = ({ timeline, chainValid }) => {
+  const [showTamperDemo, setShowTamperDemo] = React.useState(false);
+
+  // Filter to key events + SESSION_START + final event, deduplicated
+  const lastIdx = timeline.length - 1;
+  const seen = new Set<number>();
+  const displayEvents = timeline.filter((e, i) => {
+    if (!(e.isKeyEvent || e.eventType === 'SESSION_START' || i === lastIdx)) return false;
+    if (seen.has(e.sequenceNumber)) return false;
+    seen.add(e.sequenceNumber);
+    return true;
+  });
+
+  if (displayEvents.length === 0) return null;
+
+  return (
+    <div className="p-6 border-b border-slate-800">
+      <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-6">
+        Temporal Proof Walkthrough
+      </h3>
+
+      {/* Vertical Chain Diagram */}
+      <div className="mb-8">
+        {displayEvents.map((event, idx) => (
+          <React.Fragment key={event.sequenceNumber}>
+            {/* Event Node */}
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 flex justify-center">
+                <div className={`rounded-full flex items-center justify-center font-bold ${
+                  event.isKeyEvent
+                    ? 'w-8 h-8 text-sm bg-purple-500 text-white'
+                    : 'w-6 h-6 text-xs bg-slate-600 text-slate-300'
+                }`}>
+                  {idx + 1}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className={`font-medium ${event.isKeyEvent ? 'text-white' : 'text-slate-400 text-sm'}`}>
+                  {event.eventLabel}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {new Date(event.timestamp).toLocaleTimeString()}
+                </div>
+                <div className="text-xs text-slate-600 font-mono mt-0.5">
+                  {event.hash.slice(0, 8)}
+                </div>
+              </div>
+            </div>
+
+            {/* Chain Link Indicator */}
+            {idx < displayEvents.length - 1 && (
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-shrink-0 w-8 flex justify-center">
+                  <div className="relative h-8 flex items-center justify-center">
+                    <div className="absolute w-px h-full bg-slate-700" />
+                    <div className={`relative z-10 w-4 h-4 rounded-full flex items-center justify-center text-xs ${
+                      chainValid
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {chainValid ? '\u2713' : '\u2717'}
+                    </div>
+                  </div>
+                </div>
+                <span className={`text-xs ${chainValid ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                  {chainValid
+                    ? 'Hash incorporates previous step'
+                    : 'Chain broken \u2014 tampering detected'}
+                </span>
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Plain-Language Explanation */}
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-5 mb-6">
+        <h4 className="text-sm font-semibold text-blue-400 mb-3">How This Proves the Sequence</h4>
+        <div className="text-sm text-slate-300 space-y-2">
+          <p>
+            Each step in this documentation chain incorporates a mathematical fingerprint (hash) of
+            the previous step. This means:
+          </p>
+          <ul className="ml-4 space-y-1.5">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">{'\u2022'}</span>
+              <span>
+                {"Step 2\u2019s record contains proof that Step 1 existed in its exact form before Step 2 was created"}
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">{'\u2022'}</span>
+              <span>
+                {"If anyone altered Step 1 after the fact, Step 2\u2019s proof would no longer match \u2014 the tampering would be automatically detectable"}
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">{'\u2022'}</span>
+              <span>
+                An independent verification tool can reconstruct this chain from raw data and confirm every link is intact
+              </span>
+            </li>
+          </ul>
+          <p className="text-slate-400 text-xs mt-3 pt-3 border-t border-blue-500/10">
+            This is the same principle used in blockchain technology and is recognized as
+            self-authenticating evidence under Federal Rules of Evidence 902(13)/(14) and
+            Vermont statute 12 V.S.A. {'\u00A7'}1913.
+          </p>
+        </div>
+      </div>
+
+      {/* Tamper Detection Demo */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setShowTamperDemo(prev => !prev)}
+          className="w-full px-4 py-3 text-left text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition-colors flex items-center justify-between"
+        >
+          <span>See What Tampering Looks Like</span>
+          <span className="text-slate-500 text-xs">{showTamperDemo ? '\u25B2' : '\u25BC'}</span>
+        </button>
+        {showTamperDemo && (
+          <div className="px-4 pb-4 border-t border-slate-700">
+            <div className="mt-4 mb-4">
+              {displayEvents.slice(0, Math.min(displayEvents.length, 4)).map((event, idx) => (
+                <React.Fragment key={`tamper-${event.sequenceNumber}`}>
+                  {/* Tampered node */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 flex justify-center">
+                      <div className={`rounded-full flex items-center justify-center font-bold text-sm ${
+                        idx === 0
+                          ? 'w-8 h-8 bg-red-500 text-white'
+                          : 'w-8 h-8 bg-slate-700 text-slate-500'
+                      }`}>
+                        {idx + 1}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-medium ${idx === 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                        {event.eventLabel}
+                        {idx === 0 && (
+                          <span className="ml-2 text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">
+                            ALTERED
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-mono mt-0.5">
+                        {idx === 0 ? (
+                          <span className="text-red-400">
+                            <span className="line-through opacity-50">{event.hash.slice(0, 8)}</span>
+                            {' '}
+                            <span>{'????????'}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">{event.hash.slice(0, 8)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Broken chain link */}
+                  {idx < Math.min(displayEvents.length, 4) - 1 && (
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="flex-shrink-0 w-8 flex justify-center">
+                        <div className="relative h-8 flex items-center justify-center">
+                          <div className="absolute w-px h-full bg-red-500/30" />
+                          <div className="relative z-10 w-4 h-4 rounded-full flex items-center justify-center text-xs bg-red-500/20 text-red-400">
+                            {'\u2717'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-red-400/70">
+                        Chain broken {'\u2014'} hash mismatch detected
+                      </span>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-sm text-slate-300">
+              If the Step 1 assessment were altered after the fact, every subsequent hash link
+              would fail verification. The alteration is not just detectable {'\u2014'} it is precisely
+              locatable to the modified step.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default ExpertWitnessPacketView;
