@@ -1456,8 +1456,8 @@ def create_document():
 if __name__ == '__main__':
     doc = create_document()
 
-    primary = "/home/claude/evidify-panel-review.docx"
-    secondary = "/mnt/user-data/outputs/evidify-panel-review.docx"
+    primary = "./evidify-panel-review.docx"
+    secondary = "./evidify-panel-review.docx"
 
     # Save primary
     os.makedirs(os.path.dirname(primary), exist_ok=True)

@@ -145,6 +145,7 @@ const Footer: React.FC = () => (
       Evidify Research Platform v0.9.0
     </p>
     <p>Local-first &bull; Hash-verified &bull; Daubert-ready</p>
+    <p><a href="./docs/irb-tech-description.docx" download className="text-blue-400 hover:text-blue-300 underline">IRB Technology Description</a> &bull; <a href="./docs/proof-of-concept-draft.docx" download className="text-blue-400 hover:text-blue-300 underline">Proof-of-Concept Paper Draft</a></p>
     <p>Proposed for research collaboration with Brown University BRPLL</p>
     <p className="text-slate-600 text-xs mt-2">
       &copy; 2026 Evidify. All rights reserved.
