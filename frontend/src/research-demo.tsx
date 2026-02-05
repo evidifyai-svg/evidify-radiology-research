@@ -40,6 +40,18 @@ const backBtnStyle: React.CSSProperties = {
 
 const ResearchDemoShell: React.FC = () => {
   const [activeStudy, setActiveStudy] = useState<string | null>(null);
+  const [guidedStep, setGuidedStep] = useState<number | null>(null);
+
+  // When in guided mode, backing out of a study advances to the next transition
+  // screen instead of returning to the study selector grid.
+  const handleBack = () => {
+    if (guidedStep !== null) {
+      setGuidedStep(guidedStep + 1);
+    }
+    setActiveStudy(null);
+  };
+
+  const backLabel = guidedStep !== null ? 'Continue Demo →' : '← Back to Studies';
 
   if (activeStudy === 'fullsession') {
     return (
@@ -48,8 +60,8 @@ const ResearchDemoShell: React.FC = () => {
           <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
             Full Reading Session Demo
           </h2>
-          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
-            ← Back to Studies
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
           </button>
         </div>
         <ResearchDemoFlow />
@@ -64,8 +76,8 @@ const ResearchDemoShell: React.FC = () => {
           <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
             The Contrast: STI Prevention Study
           </h2>
-          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
-            ← Back to Studies
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
           </button>
         </div>
         <TheContrast
@@ -84,8 +96,8 @@ const ResearchDemoShell: React.FC = () => {
           <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
             Hash Chain Verification Study
           </h2>
-          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
-            ← Back to Studies
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
           </button>
         </div>
         <HashChainDemo
@@ -104,8 +116,8 @@ const ResearchDemoShell: React.FC = () => {
           <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
             Workload Monitoring & Cohort Comparison
           </h2>
-          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
-            ← Back to Studies
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
           </button>
         </div>
         <WorkloadDashboard
@@ -123,8 +135,8 @@ const ResearchDemoShell: React.FC = () => {
           <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
             Export Pack Inspector
           </h2>
-          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
-            ← Back to Studies
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
           </button>
         </div>
         <PacketViewer
@@ -150,17 +162,23 @@ const ResearchDemoShell: React.FC = () => {
             This view will be connected in a follow-up integration step.
           </p>
           <button
-            onClick={() => setActiveStudy(null)}
+            onClick={handleBack}
             style={{ padding: '10px 20px', backgroundColor: '#334155', border: '1px solid #475569', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '14px' }}
           >
-            ← Back to Studies
+            {backLabel}
           </button>
         </div>
       </div>
     );
   }
 
-  return <StudySelector onLaunchStudy={(id) => setActiveStudy(id)} />;
+  return (
+    <StudySelector
+      onLaunchStudy={(id) => setActiveStudy(id)}
+      guidedStep={guidedStep}
+      onGuidedStepChange={setGuidedStep}
+    />
+  );
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
