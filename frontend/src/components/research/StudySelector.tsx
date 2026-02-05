@@ -6,6 +6,7 @@ import {
   Activity,
   Brain,
   FileCheck,
+  GitBranch,
   ArrowLeft,
   ArrowRight,
   RotateCcw,
@@ -79,6 +80,15 @@ const STUDIES: StudyCard[] = [
     researchBasis: 'Throughput\u2013accuracy / fatigue / vigilance literature (see Methods)',
     status: 'ready',
     icon: <Activity size={24} />,
+  },
+  {
+    id: 'counterfactual',
+    title: 'Counterfactual Simulator',
+    description:
+      'Reconstruct alternative decision pathways: what if AI was/wasn\'t consulted?',
+    researchBasis: 'T.J. Hooper doctrine; failure-to-utilize analysis',
+    status: 'ready',
+    icon: <GitBranch size={24} />,
   },
   {
     id: 'aiassistant',
