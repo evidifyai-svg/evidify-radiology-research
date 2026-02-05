@@ -271,32 +271,32 @@ export const DataExport: React.FC<DataExportProps> = ({ ledger, deviation, ... }
 
 ---
 
-## Step 5: Update ResearcherDashboard.tsx (Add Rubber-Stamp Alerts)
+## Step 5: Update ResearcherDashboard.tsx (Add Behavioral Pattern Alerts)
 
 ```tsx
 // src/components/research/ResearcherDashboard.tsx
 
 // ADD imports
 import {
-  detectRubberStampIndicators,
-  calculateRubberStampRiskLevel,
-  type RubberStampIndicator,
+  detectBehavioralPatternIndicators,
+  calculatePatternSummaryLevel,
+  type BehavioralPatternIndicator,
 } from './legal';
 
-// In your dashboard, add a risk indicator panel
-const RubberStampPanel: React.FC<{ ledger: ImpressionLedgerExport }> = ({ ledger }) => {
-  const indicators = detectRubberStampIndicators(ledger, null);
-  const riskLevel = calculateRubberStampRiskLevel(indicators);
-  
+// In your dashboard, add a pattern indicator panel
+const PatternIndicatorPanel: React.FC<{ ledger: ImpressionLedgerExport }> = ({ ledger }) => {
+  const indicators = detectBehavioralPatternIndicators(ledger, null);
+  const summaryLevel = calculatePatternSummaryLevel(indicators);
+
   const flaggedIndicators = indicators.filter(i => i.detected);
-  
+
   return (
     <div className={`p-4 rounded-lg ${
-      riskLevel === 'high' ? 'bg-red-500/20 border-red-500' :
-      riskLevel === 'medium' ? 'bg-yellow-500/20 border-yellow-500' :
+      summaryLevel === 'high' ? 'bg-red-500/20 border-red-500' :
+      summaryLevel === 'medium' ? 'bg-yellow-500/20 border-yellow-500' :
       'bg-green-500/20 border-green-500'
     } border`}>
-      <h4 className="font-medium">Rubber-Stamp Risk: {riskLevel.toUpperCase()}</h4>
+      <h4 className="font-medium">Pattern Summary (Descriptive): {summaryLevel.toUpperCase()}</h4>
       {flaggedIndicators.length > 0 && (
         <ul className="mt-2 text-sm">
           {flaggedIndicators.map(ind => (
@@ -356,7 +356,7 @@ const finalAssessment = computed.reconciliation?.assessment;
    - Three ledger entries with valid hashes
    - Timeline with timestamps
    - Deviation rationale (if applicable)
-   - Rubber-stamp indicators
+   - Behavioral pattern indicators
 
 ---
 
