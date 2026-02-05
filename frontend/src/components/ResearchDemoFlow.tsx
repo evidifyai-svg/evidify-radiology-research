@@ -5526,10 +5526,10 @@ setAiAgreementStreak(prev => prev + 1);
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginLeft: state.condition && showControlSurface && isResearcher ? '360px' : 'auto' }}>
         {/* Header */}
         {isSetupScreen ? (
-          <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center' }}>
-            <h1 style={{ margin: 0, fontSize: '28px' }}>Evidify Research Study Launcher</h1>
+          <div style={{ background: '#1e293b', color: 'white', padding: '32px', borderRadius: '16px 16px 0 0', textAlign: 'center', borderBottom: '1px solid #334155' }}>
+            <h1 style={{ margin: 0, fontSize: '28px' }}>Full Reading Session</h1>
             <p style={{ margin: '8px 0 0', opacity: 0.9 }}>
-              Start a participant session or open the researcher console for a guided walkthrough.
+              Choose a mode to begin.
             </p>
           </div>
         ) : (

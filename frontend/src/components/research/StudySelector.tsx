@@ -136,7 +136,7 @@ const Header: React.FC = () => (
         <p className="text-slate-500 text-sm mb-3">
           Joshua M. Henderson, PhD &mdash; Research Platform Architect
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
             Research Preview &mdash; Feb 2026
           </span>
