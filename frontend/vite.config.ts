@@ -4,7 +4,21 @@ import { resolve } from 'path'
 
 export default defineConfig({
   base: './',
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'serve-docx',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.endsWith('.docx')) {
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+            res.setHeader('Content-Disposition', 'attachment');
+          }
+          next();
+        });
+      }
+    }
+  ],
   clearScreen: false,
   publicDir: resolve(__dirname, '../public'),
   server: {
