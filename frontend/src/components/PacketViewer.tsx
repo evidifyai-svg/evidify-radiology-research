@@ -1,18 +1,27 @@
 /**
  * PacketViewer.tsx
- * 
+ *
  * In-app visualization of export package contents
- * 
+ *
  * PURPOSE:
  * Make the instrument feel real in 15 seconds without unzipping.
- * 
+ *
+ * ROLES:
+ * - Legal Defense (default): Contextualized for legal proceedings.
+ *   Shows integrity walkthrough, metrics with cohort framing, session summary.
+ *   Hides raw event JSON, raw derived metrics CSV.
+ * - Clinical QA: Aggregate metrics for quality review.
+ *   Shows session summary metrics, compliance rates, aggregate timing.
+ *   Hides integrity walkthrough, raw events, deviation rationale details.
+ * - Research: Complete dataset for analysis. Shows everything.
+ *
  * TABS:
  * 1. Events - Interactive table of all logged events
  * 2. Ledger - Hash chain with verification status
  * 3. Verifier - PASS/FAIL with all 8 checks
  * 4. Metrics - Derived metrics row with ADDA calculation
  * 5. Download - Generate and download ZIP
- * 
+ *
  * GRAYSON FEEDBACK ADDRESSED:
  * - "Do not make them unzip anything live"
  * - "A one-screen 'Packet Viewer' inside the app"
@@ -20,9 +29,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import type { 
-  CanonicalEvent, 
-  CanonicalLedgerEntry 
+import type {
+  CanonicalEvent,
+  CanonicalLedgerEntry
 } from '../lib/CanonicalHash';
 
 // ============================================================================
@@ -36,6 +45,48 @@ type MetricItem = {
   highlight?: boolean;
   warn?: boolean;
 };
+
+export type ExportRole = 'legal-defense' | 'clinical-qa' | 'research';
+
+interface RoleConfig {
+  id: ExportRole;
+  label: string;
+  description: string;
+  color: string;
+}
+
+const EXPORT_ROLES: RoleConfig[] = [
+  {
+    id: 'legal-defense',
+    label: 'Legal Defense',
+    description: 'Contextualized for legal proceedings',
+    color: '#3b82f6',
+  },
+  {
+    id: 'clinical-qa',
+    label: 'Clinical QA',
+    description: 'Aggregate metrics for quality review',
+    color: '#d97706',
+  },
+  {
+    id: 'research',
+    label: 'Research Export',
+    description: 'Complete dataset for analysis',
+    color: '#16a34a',
+  },
+];
+
+type TabId = 'events' | 'ledger' | 'verifier' | 'metrics' | 'download';
+
+const TAB_VISIBILITY: Record<ExportRole, Set<TabId>> = {
+  'legal-defense': new Set(['verifier', 'metrics', 'download']),
+  'clinical-qa': new Set(['metrics', 'download']),
+  'research': new Set(['events', 'ledger', 'verifier', 'metrics', 'download']),
+};
+
+function isTabVisible(tabId: TabId, role: ExportRole): boolean {
+  return TAB_VISIBILITY[role].has(tabId);
+}
 
 export interface PacketViewerProps {
   events: CanonicalEvent[];
@@ -136,23 +187,43 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
   isOpen = true,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'events' | 'ledger' | 'verifier' | 'metrics' | 'download'>('events');
+  const [activeTab, setActiveTab] = useState<TabId>('verifier');
+  const [activeRole, setActiveRole] = useState<ExportRole>('legal-defense');
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null);
   const [expandedLedgerIndex, setExpandedLedgerIndex] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
-  const tabs = [
+  const allTabs: { id: TabId; label: string; count?: number; status?: string }[] = [
     { id: 'events', label: 'Events', count: events.length },
     { id: 'ledger', label: 'Ledger', count: ledger.length },
-    { id: 'verifier', label: 'Verifier', status: verifierOutput.result },
+    { id: 'verifier', label: activeRole === 'legal-defense' ? 'Integrity Walkthrough' : 'Verifier', status: verifierOutput.result },
     { id: 'metrics', label: 'Metrics' },
     { id: 'download', label: 'Download' },
-  ] as const;
+  ];
+
+  const visibleTabs = allTabs.filter(tab => isTabVisible(tab.id, activeRole));
+
+  const effectiveTab: TabId = isTabVisible(activeTab, activeRole)
+    ? activeTab
+    : (visibleTabs[0]?.id ?? 'metrics');
+
+  const activeRoleConfig = EXPORT_ROLES.find(r => r.id === activeRole)!;
+
+  const handleRoleChange = (role: ExportRole) => {
+    setActiveRole(role);
+    if (!TAB_VISIBILITY[role].has(activeTab)) {
+      const firstVisible = allTabs.find(t => TAB_VISIBILITY[role].has(t.id));
+      if (firstVisible) setActiveTab(firstVisible.id);
+    }
+  };
 
   return (
     <div style={styles.overlay}>
-      <div style={styles.container}>
+      <div style={{
+        ...styles.container,
+        borderLeft: `4px solid ${activeRoleConfig.color}`,
+      }}>
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
@@ -160,6 +231,14 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
             <h2 style={styles.title}>Export Package Contents</h2>
           </div>
           <div style={styles.headerRight}>
+            <span style={{
+              ...styles.roleBadge,
+              backgroundColor: activeRoleConfig.color + '18',
+              color: activeRoleConfig.color,
+              borderColor: activeRoleConfig.color + '40',
+            }}>
+              {activeRoleConfig.label}
+            </span>
             <span style={styles.schemaVersion}>Schema v{manifest.schemaVersion}</span>
             {onClose && (
               <button style={styles.closeButton} onClick={onClose}>×</button>
@@ -167,22 +246,47 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
           </div>
         </div>
 
+        {/* Role Selector */}
+        <div style={styles.roleSelectorArea}>
+          <div style={styles.roleSelector}>
+            {EXPORT_ROLES.map((role) => (
+              <button
+                key={role.id}
+                style={{
+                  ...styles.roleButton,
+                  ...(activeRole === role.id ? {
+                    backgroundColor: role.color,
+                    color: '#ffffff',
+                    borderColor: role.color,
+                  } : {}),
+                }}
+                onClick={() => handleRoleChange(role.id)}
+              >
+                {role.label}
+              </button>
+            ))}
+          </div>
+          <div style={styles.roleDescription}>
+            {activeRoleConfig.description}
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div style={styles.tabNav}>
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               style={{
                 ...styles.tab,
-                ...(activeTab === tab.id ? styles.tabActive : {}),
+                ...(effectiveTab === tab.id ? styles.tabActive : {}),
               }}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
-              {'count' in tab && tab.count !== undefined && (
+              {tab.count !== undefined && (
                 <span style={styles.tabBadge}>{tab.count}</span>
               )}
-              {'status' in tab && tab.status && (
+              {tab.status && (
                 <span style={{
                   ...styles.tabBadge,
                   backgroundColor: tab.status === 'PASS' ? '#22c55e' : '#ef4444',
@@ -196,28 +300,28 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
 
         {/* Tab Content */}
         <div style={styles.content}>
-          {activeTab === 'events' && (
-            <EventsTab 
-              events={events} 
+          {effectiveTab === 'events' && (
+            <EventsTab
+              events={events}
               selectedIndex={selectedEventIndex}
               onSelectEvent={setSelectedEventIndex}
             />
           )}
-          {activeTab === 'ledger' && (
-            <LedgerTab 
+          {effectiveTab === 'ledger' && (
+            <LedgerTab
               ledger={ledger}
               expandedIndex={expandedLedgerIndex}
               onToggleExpand={setExpandedLedgerIndex}
             />
           )}
-          {activeTab === 'verifier' && (
+          {effectiveTab === 'verifier' && (
             <VerifierTab output={verifierOutput} />
           )}
-          {activeTab === 'metrics' && (
-            <MetricsTab metrics={derivedMetrics} manifest={manifest} />
+          {effectiveTab === 'metrics' && (
+            <MetricsTab metrics={derivedMetrics} manifest={manifest} activeRole={activeRole} />
           )}
-          {activeTab === 'download' && (
-            <DownloadTab manifest={manifest} onDownload={onDownload} />
+          {effectiveTab === 'download' && (
+            <DownloadTab manifest={manifest} onDownload={onDownload} activeRole={activeRole} />
           )}
         </div>
       </div>
@@ -237,11 +341,11 @@ interface EventsTabProps {
 
 const EventsTab: React.FC<EventsTabProps> = ({ events, selectedIndex, onSelectEvent }) => {
   const [filter, setFilter] = useState('');
-  
+
   const filteredEvents = useMemo(() => {
     if (!filter) return events;
     const lower = filter.toLowerCase();
-    return events.filter(e => 
+    return events.filter(e =>
       e.type.toLowerCase().includes(lower) ||
       JSON.stringify(e.payload).toLowerCase().includes(lower)
     );
@@ -278,10 +382,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ events, selectedIndex, onSelectEv
 
       {/* Event List */}
       <div style={styles.eventList}>
-        {filteredEvents.map((event, i) => {
+        {filteredEvents.map((event) => {
           const isSelected = selectedIndex === event.seq;
           const color = eventTypeColors[event.type] || '#64748b';
-          
+
           return (
             <div
               key={event.id}
@@ -300,7 +404,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ events, selectedIndex, onSelectEv
                   {new Date(event.timestamp).toLocaleTimeString()}
                 </span>
               </div>
-              
+
               {isSelected && (
                 <div style={styles.eventDetail}>
                   <div style={styles.eventDetailRow}>
@@ -350,7 +454,7 @@ const LedgerTab: React.FC<LedgerTabProps> = ({ ledger, expandedIndex, onToggleEx
       <div style={styles.ledgerList}>
         {ledger.map((entry, i) => {
           const isExpanded = expandedIndex === entry.seq;
-          
+
           return (
             <div
               key={entry.seq}
@@ -504,6 +608,7 @@ const VerifierTab: React.FC<VerifierTabProps> = ({ output }) => {
 interface MetricsTabProps {
   metrics: DerivedMetrics;
   manifest: TrialManifest;
+  activeRole: ExportRole;
 }
 
 type MetricGroup = {
@@ -511,7 +616,7 @@ type MetricGroup = {
   items: MetricItem[];
 };
 
-const MetricsTab: React.FC<MetricsTabProps> = ({ metrics, manifest }) => {
+const MetricsTab: React.FC<MetricsTabProps> = ({ metrics, manifest, activeRole }) => {
   // ADDA display logic
   const addaDisplay = useMemo(() => {
     if (!metrics.addaDenominator) {
@@ -523,7 +628,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ metrics, manifest }) => {
     return { value: 'FALSE', label: 'Did not change toward AI', color: '#22c55e' };
   }, [metrics]);
 
-const metricGroups: MetricGroup[] = [
+  const baseGroups: MetricGroup[] = [
     {
       title: 'Assessment Values',
       items: [
@@ -548,24 +653,48 @@ const metricGroups: MetricGroup[] = [
         { label: 'ADDA', value: addaDisplay.value, color: addaDisplay.color, note: addaDisplay.label },
       ],
     },
-    {
-      title: 'Documentation',
-      items: [
-        { label: 'Deviation Required', value: metrics.deviationRequired ? 'Yes' : 'No' },
-        { label: 'Deviation Documented', value: metrics.deviationDocumented ? 'Yes' : 'No', highlight: metrics.deviationDocumented },
-        { label: 'Deviation Skipped', value: metrics.deviationSkipped ? 'Yes' : 'No', warn: metrics.deviationSkipped },
-        { label: 'Comprehension Correct', value: metrics.comprehensionCorrect === null ? 'N/A' : metrics.comprehensionCorrect ? 'Yes' : 'No' },
-      ],
-    },
-    {
-      title: 'Timing (ms)',
-      items: [
-        { label: 'Total Time', value: metrics.totalTimeMs != null ? `${metrics.totalTimeMs.toLocaleString()} ms` : 'N/A' },
-        { label: 'Lock → Reveal', value: metrics.lockToRevealMs != null ? `${metrics.lockToRevealMs.toLocaleString()} ms` : 'N/A' },
-        { label: 'Reveal → Final', value: metrics.revealToFinalMs != null ? `${metrics.revealToFinalMs.toLocaleString()} ms` : 'N/A' },
-      ],
-    },
   ];
+
+  // Documentation group varies by role
+  const documentationGroup: MetricGroup = activeRole === 'clinical-qa'
+    ? {
+        title: 'Compliance',
+        items: [
+          { label: 'Deviation Required', value: metrics.deviationRequired ? 'Yes' : 'No' },
+          {
+            label: 'Documentation Status',
+            value: metrics.deviationDocumented ? 'Documented' : metrics.deviationSkipped ? 'Skipped' : 'N/A',
+            warn: metrics.deviationSkipped,
+            highlight: metrics.deviationDocumented,
+          },
+          { label: 'Comprehension Check', value: metrics.comprehensionCorrect === null ? 'N/A' : metrics.comprehensionCorrect ? 'Pass' : 'Fail' },
+        ],
+      }
+    : {
+        title: 'Documentation',
+        items: [
+          { label: 'Deviation Required', value: metrics.deviationRequired ? 'Yes' : 'No' },
+          { label: 'Deviation Documented', value: metrics.deviationDocumented ? 'Yes' : 'No', highlight: metrics.deviationDocumented },
+          { label: 'Deviation Skipped', value: metrics.deviationSkipped ? 'Yes' : 'No', warn: metrics.deviationSkipped },
+          { label: 'Comprehension Correct', value: metrics.comprehensionCorrect === null ? 'N/A' : metrics.comprehensionCorrect ? 'Yes' : 'No' },
+        ],
+      };
+
+  // Timing group — legal-defense adds cohort context annotation
+  const timingGroup: MetricGroup = {
+    title: activeRole === 'clinical-qa' ? 'Session Timing' : 'Timing (ms)',
+    items: [
+      {
+        label: 'Total Time',
+        value: metrics.totalTimeMs != null ? `${metrics.totalTimeMs.toLocaleString()} ms` : 'N/A',
+        ...(activeRole === 'legal-defense' ? { note: 'Cohort percentiles displayed in full report' } : {}),
+      },
+      { label: 'Lock → Reveal', value: metrics.lockToRevealMs != null ? `${metrics.lockToRevealMs.toLocaleString()} ms` : 'N/A' },
+      { label: 'Reveal → Final', value: metrics.revealToFinalMs != null ? `${metrics.revealToFinalMs.toLocaleString()} ms` : 'N/A' },
+    ],
+  };
+
+  const metricGroups: MetricGroup[] = [...baseGroups, documentationGroup, timingGroup];
 
   return (
     <div style={styles.tabContent}>
@@ -597,6 +726,9 @@ const metricGroups: MetricGroup[] = [
                   ...(item.color ? { color: item.color, fontWeight: 600 } : {}),
                 }}>
                   {item.value}
+                  {item.note && (
+                    <span style={styles.metricNote}> ({item.note})</span>
+                  )}
                 </span>
               </div>
             ))}
@@ -633,23 +765,38 @@ const metricGroups: MetricGroup[] = [
 interface DownloadTabProps {
   manifest: TrialManifest;
   onDownload?: () => void;
+  activeRole: ExportRole;
 }
 
-const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload }) => {
-  const files = [
-    { name: 'trial_manifest.json', desc: 'Session metadata and integrity checksums', size: '~2 KB' },
-    { name: 'events.jsonl', desc: 'Append-only event stream (one event per line)', size: '~5 KB' },
-    { name: 'ledger.json', desc: 'Hash chain entries with cryptographic links', size: '~3 KB' },
-    { name: 'verifier_output.json', desc: 'Automated integrity check results', size: '~1 KB' },
-    { name: 'derived_metrics.csv', desc: 'Pre-computed analysis variables (single row)', size: '~500 B' },
-    { name: 'codebook.md', desc: 'Field definitions and operational definitions', size: '~4 KB' },
-  ];
+const DOWNLOAD_FILES: { name: string; desc: string; size: string; roles: ExportRole[] }[] = [
+  { name: 'trial_manifest.json', desc: 'Session metadata and integrity checksums', size: '~2 KB', roles: ['legal-defense', 'clinical-qa', 'research'] },
+  { name: 'events.jsonl', desc: 'Append-only event stream (one event per line)', size: '~5 KB', roles: ['research'] },
+  { name: 'ledger.json', desc: 'Hash chain entries with cryptographic links', size: '~3 KB', roles: ['research'] },
+  { name: 'verifier_output.json', desc: 'Automated integrity check results', size: '~1 KB', roles: ['legal-defense', 'clinical-qa', 'research'] },
+  { name: 'derived_metrics.csv', desc: 'Pre-computed analysis variables (single row)', size: '~500 B', roles: ['clinical-qa', 'research'] },
+  { name: 'codebook.md', desc: 'Field definitions and operational definitions', size: '~4 KB', roles: ['legal-defense', 'clinical-qa', 'research'] },
+];
+
+const PACKAGE_TITLES: Record<ExportRole, string> = {
+  'legal-defense': 'Legal Defense Packet',
+  'clinical-qa': 'Clinical QA Export',
+  'research': 'Research Export Package',
+};
+
+const DOWNLOAD_LABELS: Record<ExportRole, string> = {
+  'legal-defense': 'Download Legal Defense Package',
+  'clinical-qa': 'Download QA Package',
+  'research': 'Download ZIP Package',
+};
+
+const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload, activeRole }) => {
+  const visibleFiles = DOWNLOAD_FILES.filter(f => f.roles.includes(activeRole));
 
   return (
     <div style={styles.tabContent}>
       {/* Package Info */}
       <div style={styles.packageInfo}>
-        <div style={styles.packageTitle}>Expert Witness Packet</div>
+        <div style={styles.packageTitle}>{PACKAGE_TITLES[activeRole]}</div>
         <div style={styles.packageMeta}>
           <span>Session: <code>{manifest.sessionId}</code></span>
           <span>Exported: {new Date(manifest.exportTimestamp).toLocaleString()}</span>
@@ -658,7 +805,7 @@ const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload }) => {
 
       {/* File List */}
       <div style={styles.fileList}>
-        {files.map((file, i) => (
+        {visibleFiles.map((file, i) => (
           <div key={i} style={styles.fileRow}>
             <span style={styles.fileIcon}>File</span>
             <div style={styles.fileInfo}>
@@ -695,7 +842,7 @@ const DownloadTab: React.FC<DownloadTabProps> = ({ manifest, onDownload }) => {
       {/* Download Button */}
       <button style={styles.downloadButton} onClick={onDownload}>
         <span style={styles.downloadIcon}>⬇</span>
-        Download ZIP Package
+        {DOWNLOAD_LABELS[activeRole]}
       </button>
 
       {/* Verifier Instructions */}
@@ -763,7 +910,7 @@ const styles: Record<string, React.CSSProperties> = {
   headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
   },
   schemaVersion: {
     fontSize: '12px',
@@ -780,6 +927,42 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     padding: '4px 8px',
   },
+
+  // Role Selector
+  roleSelectorArea: {
+    borderBottom: '1px solid #e5e7eb',
+  },
+  roleSelector: {
+    display: 'flex',
+    gap: '4px',
+    padding: '12px 24px 8px',
+  },
+  roleButton: {
+    padding: '6px 16px',
+    borderRadius: '6px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#f9fafb',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151',
+    transition: 'all 0.15s',
+  },
+  roleDescription: {
+    fontSize: '12px',
+    color: '#6b7280',
+    padding: '0 24px 10px',
+  },
+  roleBadge: {
+    fontSize: '11px',
+    fontWeight: 600,
+    padding: '3px 10px',
+    borderRadius: '12px',
+    border: '1px solid',
+    whiteSpace: 'nowrap',
+  },
+
+  // Tab Navigation
   tabNav: {
     display: 'flex',
     padding: '0 24px',
@@ -1149,6 +1332,11 @@ const styles: Record<string, React.CSSProperties> = {
   metricValueWarn: {
     color: '#dc2626',
     fontWeight: 600,
+  },
+  metricNote: {
+    fontSize: '11px',
+    color: '#9ca3af',
+    fontWeight: 400,
   },
   provenanceCard: {
     backgroundColor: '#fefce8',
