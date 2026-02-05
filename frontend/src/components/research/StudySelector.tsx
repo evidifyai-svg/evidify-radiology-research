@@ -7,6 +7,8 @@ import {
   Brain,
   FileCheck,
   ArrowLeft,
+  ArrowRight,
+  RotateCcw,
   Rocket,
   Shield,
   Info,
@@ -87,6 +89,61 @@ const STUDIES: StudyCard[] = [
     status: 'planned',
     icon: <Brain size={24} />,
     disabled: true,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Guided Demo Flow — step definitions
+// ---------------------------------------------------------------------------
+
+interface DemoStepDef {
+  studyId: string;
+  stepNumber: string;
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+}
+
+const DEMO_STEPS: DemoStepDef[] = [
+  {
+    studyId: 'fullsession',
+    stepNumber: 'Step 1 of 5',
+    title: 'Independent Assessment Capture',
+    subtitle:
+      'The radiologist reads and locks an impression before AI is available. No self-report, no extra clicks. The system documents what\u2019s already happening.',
+    buttonLabel: 'Begin Reading Session',
+  },
+  {
+    studyId: 'hashchain',
+    stepNumber: 'Step 2 of 5',
+    title: 'Sequence Integrity Verification',
+    subtitle:
+      'Every event is cryptographically chained. If anything is altered, reordered, or removed, the chain breaks. This is how the jury trusts the sequence.',
+    buttonLabel: 'View Hash Chain',
+  },
+  {
+    studyId: 'contrast',
+    stepNumber: 'Step 3 of 5',
+    title: 'Jury Attribution: Same Data, Two Framings',
+    subtitle:
+      'Identical verified events presented as a raw log vs. a contextualized narrative. Research on Spontaneous Trait Inference predicts which framing triggers \u201Ccareless\u201D and which doesn\u2019t.',
+    buttonLabel: 'View The Contrast',
+  },
+  {
+    studyId: 'workload',
+    stepNumber: 'Step 4 of 5',
+    title: 'Timing in Context',
+    subtitle:
+      'Individual read times rendered against practice-level percentiles and medians. \u201C2 minutes\u201D alone invites attribution. \u201C2 minutes at P45 for this practice\u201D neutralizes it.',
+    buttonLabel: 'View Workload Metrics',
+  },
+  {
+    studyId: 'inspector',
+    stepNumber: 'Step 5 of 5',
+    title: 'The Research & Legal Artifact',
+    subtitle:
+      'The complete export: events, ledger, derived metrics, verification results. Three views \u2014 Legal Defense, Clinical QA, and Research \u2014 from the same underlying record.',
+    buttonLabel: 'Inspect Export Pack',
   },
 ];
 
@@ -324,15 +381,156 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) =>
 );
 
 // ---------------------------------------------------------------------------
+// Guided Demo Flow
+// ---------------------------------------------------------------------------
+
+interface GuidedDemoFlowProps {
+  step: number;
+  onLaunchStudy: (id: string) => void;
+  onStepChange: (step: number) => void;
+  onExit: () => void;
+}
+
+const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
+  step,
+  onLaunchStudy,
+  onStepChange,
+  onExit,
+}) => {
+  const isComplete = step >= DEMO_STEPS.length;
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6 relative">
+      {/* Back to Studies — top left */}
+      <button
+        type="button"
+        onClick={onExit}
+        className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+      >
+        <ArrowLeft size={14} />
+        Back to Studies
+      </button>
+
+      {isComplete ? (
+        /* ---- Completion screen ---- */
+        <div className="max-w-2xl w-full mx-auto rounded-xl bg-slate-900 border border-slate-700 p-8 text-center">
+          <div className="text-blue-400 font-mono text-sm tracking-wider uppercase mb-4">
+            Complete
+          </div>
+          <h2 className="text-2xl font-bold text-white">Demo Complete</h2>
+          <p className="text-slate-400 leading-relaxed mt-3 mb-8">
+            All five components documented a single workflow: capture &rarr;
+            verify &rarr; contextualize &rarr; export.
+          </p>
+
+          {/* Progress dots — all filled */}
+          <div className="flex items-center gap-1.5 justify-center mb-8">
+            {DEMO_STEPS.map((_, i) => (
+              <div key={i} className="h-1.5 w-10 rounded-full bg-blue-500" />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onExit}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+            >
+              <ArrowLeft size={16} />
+              Back to Studies
+            </button>
+            <button
+              type="button"
+              onClick={() => onStepChange(0)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+            >
+              <RotateCcw size={16} />
+              Restart Demo
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ---- Transition screen ---- */
+        <div className="max-w-2xl w-full mx-auto rounded-xl bg-slate-900 border border-slate-700 p-8">
+          <div className="text-blue-400 font-mono text-sm tracking-wider uppercase mb-2">
+            {DEMO_STEPS[step].stepNumber}
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            {DEMO_STEPS[step].title}
+          </h2>
+          <p className="text-slate-400 leading-relaxed mt-3 mb-8">
+            {DEMO_STEPS[step].subtitle}
+          </p>
+
+          {/* Progress bar */}
+          <div className="flex items-center gap-1.5 mb-8">
+            {DEMO_STEPS.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  i <= step ? 'bg-blue-500' : 'bg-slate-700'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Launch button */}
+          <button
+            type="button"
+            onClick={() => onLaunchStudy(DEMO_STEPS[step].studyId)}
+            className="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+          >
+            {DEMO_STEPS[step].buttonLabel}
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Demo Flow Banner (landing page button)
+// ---------------------------------------------------------------------------
+
+interface DemoFlowBannerProps {
+  onStart: () => void;
+}
+
+const DemoFlowBanner: React.FC<DemoFlowBannerProps> = ({ onStart }) => (
+  <div className="mb-6">
+    <button
+      type="button"
+      onClick={onStart}
+      className="flex items-center gap-3 px-7 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold transition-colors shadow-lg shadow-blue-500/20"
+    >
+      <Play size={22} />
+      Run BRPLL Demo Flow
+    </button>
+    <p className="text-slate-500 text-sm mt-2">
+      Guided 5-step walkthrough &mdash; ~15 minutes
+    </p>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
 export interface StudySelectorProps {
   /** Called when the user launches a study. Receives the study id string. */
   onLaunchStudy?: (studyId: string) => void;
+  /** Current guided demo step (null = not in guided mode, 0-4 = step index, 5 = complete). */
+  guidedStep?: number | null;
+  /** Callback to change the guided step (null exits guided mode). */
+  onGuidedStepChange?: (step: number | null) => void;
 }
 
-const StudySelector: React.FC<StudySelectorProps> = ({ onLaunchStudy }) => {
+const StudySelector: React.FC<StudySelectorProps> = ({
+  onLaunchStudy,
+  guidedStep,
+  onGuidedStepChange,
+}) => {
   const [selectedStudy, setSelectedStudy] = useState<string | null>(null);
 
   const selected = STUDIES.find((s) => s.id === selectedStudy) ?? null;
@@ -345,10 +543,27 @@ const StudySelector: React.FC<StudySelectorProps> = ({ onLaunchStudy }) => {
     }
   };
 
+  // Show guided demo flow when active
+  if (guidedStep !== null && guidedStep !== undefined && onGuidedStepChange) {
+    return (
+      <GuidedDemoFlow
+        step={guidedStep}
+        onLaunchStudy={handleLaunch}
+        onStepChange={onGuidedStepChange}
+        onExit={() => onGuidedStepChange(null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <Header />
+
+        {/* Guided demo banner — shown when parent supports guided mode */}
+        {onGuidedStepChange && (
+          <DemoFlowBanner onStart={() => onGuidedStepChange(0)} />
+        )}
 
         <CTARow onLaunch={handleLaunch} />
 
