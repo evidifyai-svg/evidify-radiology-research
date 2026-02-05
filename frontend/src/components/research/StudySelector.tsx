@@ -174,160 +174,272 @@ const DEMO_STEPS: DemoStepDef[] = [
 // Research Themes Data
 // ---------------------------------------------------------------------------
 
+type JournalTier = 'high' | 'specialty' | 'niche';
+
+interface JournalTarget {
+  name: string;
+  tier: JournalTier;
+  isPrimary?: boolean;
+}
+
 interface ResearchTheme {
   id: number;
   title: string;
   summary: string;
+  researchQuestion: string;
   legalContext: string;
-  hypothesis: string;
   studyDesign: string[];
   platformFeatures: string[];
-  targetPublications: string[];
-  keyCollaborator: string;
+  targetPublications: JournalTarget[];
+  keyCollaborators: string;
 }
 
 const RESEARCH_THEMES: ResearchTheme[] = [
   {
     id: 1,
-    title: 'Automation Bias & Disagreement Liability',
-    summary: 'Can AI uncertainty metrics serve as a \u201Cliability shield\u201D for radiologists?',
+    title: 'Automation Bias & Uncertainty as Liability Shield',
+    summary:
+      'Can AI uncertainty metrics reduce liability when radiologists disagree with AI?',
+    researchQuestion:
+      'Does exposing jurors to AI uncertainty metrics reduce negligence attribution when radiologists disagree with AI?',
     legalContext:
-      'Radiologists face heightened liability when they disagree with AI. Mock jury studies show jurors judge radiologists more harshly when AI catches something they missed.',
-    hypothesis:
-      'Exposing clinicians and jurors to AI uncertainty metrics (confidence levels, error rates) will mitigate automation bias and reduce liability attribution.',
+      'Bernstein et al. (2025, Nature Health) showed jurors judged radiologists liable in ~75% of cases when AI caught something the radiologist missed, vs ~56% baseline. Critically, informing jurors of AI error rates significantly reduced blame.',
     studyDesign: [
-      'Instrument reading sessions with varying AI transparency levels',
-      'Create malpractice vignettes from Evidify logs',
-      'Present to mock jurors, measure negligence attribution',
-      'Compare scenarios with/without uncertainty disclosure',
+      'Phase 1 (Behavioral): Instrument 30 radiologists reading 100 mammography cases each via Evidify. Randomize AI display: (A) binary output only, (B) confidence score + FDR/FOR. Measure automation bias via agreement rates, pre-AI assessment time, override patterns.',
+      'Phase 2 (Jury Simulation): Create vignettes from Evidify logs. Present to 400 Prolific mock jurors (between-subjects). IV: uncertainty disclosure (present/absent). DV: negligence attribution, perceived competence, liability assignment.',
+      'Power: 80% power to detect medium effect (d=0.4) with n=200/group.',
     ],
-    platformFeatures: ['Event logging', 'AI confidence capture', 'Legal Defense export', 'TheContrast visualization'],
-    targetPublications: ['NEJM AI', 'JACR', 'Journal of Law and the Biosciences'],
-    keyCollaborator: 'Grayson Baird (jury perception), Mike Bernstein (experimental design)',
+    platformFeatures: [
+      'Event logging with timestamps',
+      'AI confidence capture',
+      'WorkloadMonitor cohort percentiles',
+      'TheContrast dual-framing export',
+    ],
+    targetPublications: [
+      { name: 'Radiology', tier: 'high', isPrimary: true },
+      { name: 'NEJM AI', tier: 'high' },
+      { name: 'Journal of the American College of Radiology', tier: 'specialty' },
+    ],
+    keyCollaborators:
+      'Grayson Baird (MRMC design, jury attribution), Mike Bernstein (experimental design, replication of his Nature Health paradigm)',
   },
   {
     id: 2,
-    title: 'Failure to Utilize AI (T.J. Hooper Risk)',
-    summary: 'At what point does AI assistance become legally obligatory?',
+    title: 'Defining the AI Standard of Care (T.J. Hooper Threshold)',
+    summary:
+      'At what performance threshold does failure to use AI constitute negligence?',
+    researchQuestion:
+      'At what performance threshold does failure to use AI constitute negligence?',
     legalContext:
-      'The T.J. Hooper doctrine holds that failing to use available, beneficial technology can be negligence. AI tools now outperform humans on some tasks.',
-    hypothesis:
-      'There exists a measurable clinical threshold at which AI assistance becomes part of the standard of care.',
+      'The T.J. Hooper doctrine (1932) established that failing to use available beneficial technology can be negligence even if not yet industry custom. In radiology, AI now detects some cancers earlier than humans in research settings. The question is when "reasonable care" legally requires AI consultation.',
     studyDesign: [
-      'Multi-site comparison: outcomes with vs. without AI assistance',
-      'Quantify miss rates, time to diagnosis, patient outcomes',
-      'Identify inflection point where AI benefit is statistically significant',
-      'Survey legal experts on standard of care implications',
+      'Observational Phase: Deploy Evidify Observer Mode across 3 sites (estimated 10,000 cases over 6 months). Compare diagnostic accuracy, miss rates, time-to-diagnosis for AI-assisted vs. unassisted reads.',
+      'Threshold Analysis: Use ROC analysis to identify inflection points where AI assistance yields statistically significant outcome improvements (target: NNT < 20 for clinically significant findings).',
+      'Legal Survey: Present aggregated outcome data to panel of 20 malpractice attorneys and 20 risk managers. Structured interviews on standard-of-care implications.',
+      'Retrospective Validation: Apply Counterfactual Simulator to 50 closed malpractice claims (partnership with insurer) \u2014 reconstruct what Evidify documentation would have shown.',
     ],
-    platformFeatures: ['Observer Mode (passive capture)', 'Counterfactual Simulator', 'Outcome tracking'],
-    targetPublications: ['Radiology', 'JAMA', 'Lancet Digital Health'],
-    keyCollaborator: 'Mike Bruno (clinical workflow), Brian Shepherd (legal analysis)',
+    platformFeatures: [
+      'Observer Mode (passive PACS-adjacent capture)',
+      'Counterfactual Simulator',
+      'Outcome tracking integration',
+    ],
+    targetPublications: [
+      { name: 'Radiology', tier: 'high', isPrimary: true },
+      { name: 'JAMA Health Forum', tier: 'high' },
+      { name: 'Lancet Digital Health', tier: 'high' },
+    ],
+    keyCollaborators:
+      'Mike Bruno (clinical workflow, multi-site coordination), Brian Shepherd (legal analysis, insurer connections)',
   },
   {
     id: 3,
-    title: 'Informed Consent & Black Box Disclosure',
-    summary: 'How should AI involvement be disclosed to patients?',
+    title: 'Informed Consent for AI-Assisted Diagnosis',
+    summary:
+      'Which disclosure format maximizes patient comprehension without increasing refusal rates?',
+    researchQuestion:
+      'Which disclosure format maximizes patient comprehension without increasing refusal rates?',
     legalContext:
-      'Patient autonomy requires informed consent. AI \u201Cblack boxes\u201D complicate disclosure \u2014 if doctors can\u2019t explain AI reasoning, can consent be meaningful?',
-    hypothesis:
-      'Simplified, transparent disclosure methods yield better patient comprehension without increasing refusal rates.',
+      'AMA ethics guidance states patients should have option to receive AI-enabled care or not. However, "black box" AI complicates meaningful consent \u2014 if physicians can\u2019t explain AI reasoning, can consent be truly informed? (Does Black Box AI Compromise Informed Consent?, Springer 2025)',
     studyDesign: [
-      'A/B test different AI consent form versions',
-      'Measure comprehension scores, consent rates, patient attitudes',
-      'Track interaction with consent interface via Evidify',
-      'Compare plain language vs. technical disclosure',
+      'Randomized A/B/C trial embedded in radiology scheduling workflow.',
+      'Conditions: (A) Plain disclosure: "AI tool assists, ~90% accurate, radiologist reviews everything" (B) Technical disclosure: "Deep learning algorithm, black-box, small error chance" (C) Visual infographic with confidence intervals.',
+      'N=600 patients (200/group), stratified by age and education.',
+      'Primary outcomes: comprehension quiz score (5 items), consent rate, time spent on form.',
+      'Secondary outcomes: trust in diagnostic process (validated scale), qualitative concerns.',
+      'Evidify logs interaction with consent interface (scroll depth, time on each section, "learn more" clicks).',
     ],
-    platformFeatures: ['Consent module', 'Interaction logging', 'Comprehension tracking'],
-    targetPublications: ['Journal of Medical Ethics', 'Patient Education and Counseling', 'Lancet Digital Health'],
-    keyCollaborator: 'Mike Bernstein (experimental design)',
+    platformFeatures: [
+      'Consent module with interaction logging',
+      'Comprehension quiz integration',
+      'Demographic capture',
+    ],
+    targetPublications: [
+      { name: 'Journal of Medical Ethics', tier: 'specialty', isPrimary: true },
+      { name: 'Patient Education and Counseling', tier: 'specialty' },
+      { name: 'AJOB', tier: 'niche' },
+    ],
+    keyCollaborators: 'Mike Bernstein (experimental design), IRB liaison',
   },
   {
     id: 4,
-    title: 'Corporate Negligence & Physician Deskilling',
-    summary: 'Can periodic \u201CAI-off\u201D tests prevent skill atrophy and reduce institutional liability?',
+    title: 'Preventing Deskilling via Calibration Testing',
+    summary:
+      'Does periodic AI-free assessment maintain radiologist competency and provide liability documentation?',
+    researchQuestion:
+      'Does periodic AI-free assessment maintain radiologist competency and provide liability documentation?',
     legalContext:
-      'Over-reliance on AI may erode clinical skills. Hospitals face corporate liability if they fail to ensure staff competency when implementing AI.',
-    hypothesis:
-      'Regular calibration tests where radiologists read without AI will maintain skills and provide documentation that institutions took reasonable steps.',
+      'Colonoscopy AI studies show physician detection skills dropped when AI assistance removed (deskilling effect). Hospitals face corporate negligence liability if they fail to ensure staff competency when implementing AI. The "learned intermediary" doctrine requires physicians to actually exercise independent judgment.',
     studyDesign: [
-      'Periodic no-AI reading sessions (Evidify withholds AI output)',
-      'Compare performance with/without AI over 6\u201312 months',
-      'Track skill trajectory, provide feedback on misses',
-      'Compile competency documentation for legal defense',
+      'Longitudinal cohort: 40 radiologists across 4 institutions, 12-month follow-up.',
+      'Intervention: Monthly "calibration day" \u2014 20 cases read without AI (Evidify withholds AI output).',
+      'Control: Standard AI-assisted workflow only (matched historical cohort).',
+      'Primary outcome: Diagnostic accuracy on no-AI cases at months 1, 6, 12.',
+      'Secondary outcomes: Self-reported confidence (NASA-TLX workload), Trust Trajectory Dashboard metrics, time-to-diagnosis.',
+      'Competency documentation: Generate quarterly "competency dossier" for each radiologist showing maintained skills.',
+      'Legal validation: Mock deposition with Brian Shepherd using competency dossier as evidence.',
     ],
-    platformFeatures: ['Calibration Mode', 'Trust Trajectory Dashboard', 'Performance analytics'],
-    targetPublications: ['Academic Radiology', 'Journal of Digital Imaging', 'JAMA Network Open'],
-    keyCollaborator: 'Grayson Baird (psychometrics), Mike Bruno (clinical implementation)',
+    platformFeatures: [
+      'Calibration Mode (selective AI withholding)',
+      'Trust Trajectory Dashboard',
+      'Performance analytics',
+      'Competency report generator',
+    ],
+    targetPublications: [
+      { name: 'Academic Radiology', tier: 'specialty', isPrimary: true },
+      { name: 'Journal of Digital Imaging', tier: 'specialty' },
+      { name: 'Radiology', tier: 'high' },
+    ],
+    keyCollaborators:
+      'Grayson Baird (psychometrics, longitudinal design), Mike Bruno (clinical implementation)',
   },
   {
     id: 5,
-    title: 'Counterfactual Litigation Analysis',
-    summary: 'Reconstruct \u201Cwhat would have happened\u201D for both plaintiff and defense.',
+    title: 'Counterfactual Analysis for Litigation Support',
+    summary:
+      'Can systematic counterfactual reconstruction inform both plaintiff and defense strategies?',
+    researchQuestion:
+      'Can systematic counterfactual reconstruction inform both plaintiff and defense strategies?',
     legalContext:
-      'Litigation hinges on causation \u2014 would AI have caught the miss? Did AI also miss (supporting defense)?',
-    hypothesis:
-      'Systematic counterfactual analysis can inform both plaintiff claims and defense strategies.',
+      'Malpractice litigation hinges on causation. Plaintiffs argue "AI would have caught this"; defense argues "AI also missed" or "AI had high false positive rate." Neither side currently has tools to systematically reconstruct alternative scenarios.',
     studyDesign: [
-      'Retrospective analysis of closed malpractice cases',
-      'For each case, simulate what Evidify would have documented',
-      'Determine how many outcomes would have changed',
+      'Retrospective case series: 100 closed radiology malpractice claims (partnership with malpractice insurer).',
+      'For each case: (1) Reconstruct what Evidify would have documented (2) Run Counterfactual Simulator \u2014 what would AI have recommended? (3) Assess whether outcome documentation would have changed verdict/settlement.',
+      'Classify cases: AI-would-have-caught, AI-also-missed, AI-false-positive-risk.',
+      'Develop taxonomy of documentation gaps that Evidify addresses.',
+      'Calculate ROI: estimated settlement reduction if Evidify documentation available.',
     ],
-    platformFeatures: ['Counterfactual Simulator', 'Event reconstruction', 'Dual-framing export'],
-    targetPublications: ['Health law journals', 'JACR'],
-    keyCollaborator: 'Brian Shepherd (litigation strategy)',
+    platformFeatures: [
+      'Counterfactual Simulator',
+      'Legal Defense export',
+      'Research export (complete event stream)',
+    ],
+    targetPublications: [
+      { name: 'Journal of the American College of Radiology', tier: 'specialty', isPrimary: true },
+      { name: 'DePaul Journal of Health Care Law', tier: 'niche' },
+      { name: 'Journal of Law and the Biosciences', tier: 'niche' },
+    ],
+    keyCollaborators:
+      'Brian Shepherd (litigation expertise, insurer introductions)',
   },
   {
     id: 6,
-    title: 'Fatigue & Workload as Mitigating Factor',
-    summary: 'Can session metrics shift liability from individual to institutional negligence?',
+    title: 'Workload Documentation as Mitigating Factor',
+    summary:
+      'Can session-level fatigue metrics shift liability from individual to institutional negligence?',
+    researchQuestion:
+      'Can session-level fatigue metrics shift liability from individual to institutional negligence?',
     legalContext:
-      'Errors late in long shifts may reflect systemic understaffing, not individual carelessness.',
-    hypothesis:
-      'Documented workload metrics can serve as mitigating evidence in malpractice defense.',
+      'Human factors research shows diagnostic accuracy degrades with fatigue and case volume. If errors occur late in long shifts, institutional understaffing may be the proximate cause, not individual carelessness.',
     studyDesign: [
-      'Correlate timing metrics with error rates',
-      'Identify thresholds (hour 6? case 40?) where accuracy drops',
-      'Frame excessive workload as institutional failure',
+      'Retrospective analysis of Evidify logs from Theme 2 deployment (10,000 cases).',
+      'Model: Error rate ~ f(session hour, cumulative cases, time-of-day, case complexity).',
+      'Identify thresholds: At what point does accuracy drop significantly? (Hypothesis: >6 hours continuous, >50 cases/day).',
+      'Legal framing study: Present 200 mock jurors with identical error case, varying only workload documentation. IV: workload context (absent, present showing hour-8 of shift, present showing institutional understaffing pattern). DV: individual vs. institutional negligence attribution.',
     ],
-    platformFeatures: ['Workload Monitor', 'Session duration tracking', 'Cohort percentiles'],
-    targetPublications: ['BMJ Quality & Safety', 'Academic Radiology'],
-    keyCollaborator: 'Mike Bruno (clinical operations)',
+    platformFeatures: [
+      'WorkloadMonitor with session duration',
+      'Cases-read counter',
+      'Cohort percentile bands',
+      'Fatigue flag alerts',
+    ],
+    targetPublications: [
+      { name: 'BMJ Quality & Safety', tier: 'high', isPrimary: true },
+      { name: 'Human Factors', tier: 'high' },
+      { name: 'Academic Radiology', tier: 'specialty' },
+    ],
+    keyCollaborators:
+      'Mike Bruno (clinical operations data), Grayson Baird (attribution study design)',
   },
   {
     id: 7,
-    title: 'Trust Calibration Dynamics',
-    summary: 'How does radiologist\u2013AI trust evolve over time?',
+    title: 'Longitudinal Trust Calibration Dynamics',
+    summary:
+      'Can behavioral metrics predict automation bias onset before it causes errors?',
+    researchQuestion:
+      'Can behavioral metrics predict automation bias onset before it causes errors?',
     legalContext:
-      'Automation bias may develop gradually. Early detection enables intervention.',
-    hypothesis:
-      'Longitudinal tracking of agreement rates can predict automation bias onset.',
+      'Automation bias develops gradually. Early detection enables intervention before patient harm. The platform can serve as both measurement instrument and early warning system.',
     studyDesign: [
-      'Track individual radiologist\u2019s AI agreement rate over months',
-      'Correlate with Jian trust scale self-reports',
-      'Flag sudden shifts or concerning trends',
-      'Intervene with targeted training',
+      'Prospective cohort: All radiologists from Theme 4 (n=40), 12-month follow-up.',
+      'Weekly metrics: Agreement rate, override rate, pre-AI assessment time, AI confidence correlation.',
+      'Monthly surveys: Jian et al. (2000) Trust in Automation scale, NASA-TLX.',
+      'Define "automation bias trajectory" phenotypes: (A) Stable calibration (B) Gradual drift toward over-trust (C) Rapid onset (D) Under-utilization.',
+      'Validation: Correlate trajectories with diagnostic accuracy, error patterns.',
+      'Intervention arm (exploratory): When trajectory enters "warning zone," trigger feedback + calibration session.',
     ],
-    platformFeatures: ['Trust Trajectory Dashboard', 'Jian scale integration', 'Behavioral pattern detection'],
-    targetPublications: ['Human Factors', 'Applied Ergonomics', 'JAMIA'],
-    keyCollaborator: 'Grayson Baird (psychometrics)',
+    platformFeatures: [
+      'Trust Trajectory Dashboard',
+      'Jian scale integration',
+      'Behavioral pattern detection',
+      'Alert system',
+    ],
+    targetPublications: [
+      { name: 'Human Factors', tier: 'high', isPrimary: true },
+      { name: 'Applied Ergonomics', tier: 'specialty' },
+      { name: 'JAMIA', tier: 'specialty' },
+    ],
+    keyCollaborators: 'Grayson Baird (psychometrics, trust measurement)',
   },
   {
     id: 8,
-    title: 'Expert Witness Preparation',
-    summary: 'How should experts use Evidify data to construct testimony?',
+    title: 'Expert Witness Testimony Effectiveness',
+    summary:
+      'Does structured narrative export improve expert testimony coherence and jury comprehension?',
+    researchQuestion:
+      'Does structured narrative export improve expert testimony coherence and jury comprehension?',
     legalContext:
-      'Expert witnesses need to translate technical logs into jury-comprehensible narratives.',
-    hypothesis:
-      'Structured narrative exports improve testimony coherence and jury comprehension.',
+      'Expert witnesses must translate technical logs into jury-comprehensible narratives. Raw timestamps and event logs may trigger Spontaneous Trait Inference (Uleman et al., 1996; Pennington & Hastie Story Model, 1992). Structured narratives with cohort context may neutralize this effect.',
     studyDesign: [
-      'Give experts same case with raw logs vs. Legal Defense export',
-      'Measure testimony coherence, cross-examination survival',
-      'Jury comprehension study',
+      'Phase 1 (Expert preparation): 10 board-certified radiologists who serve as expert witnesses. Each receives same malpractice case. Randomize: (A) Raw Evidify event log (B) Legal Defense export with cohort framing. Measure: time to prepare testimony, self-rated confidence.',
+      'Phase 2 (Mock trial): Video-record expert testimony from each condition. Present to 200 mock jurors. Measure: perceived expert credibility, comprehension of timeline, verdict preference.',
+      'Phase 3 (Cross-examination): Brian Shepherd conducts mock cross-examination of each expert. Rate: testimony survival, consistency, vulnerability to impeachment.',
     ],
-    platformFeatures: ['Legal Defense export', 'Expert Witness Prep Mode (proposed)', 'TheContrast'],
-    targetPublications: ['Law journals', 'Forensic psychology outlets'],
-    keyCollaborator: 'Brian Shepherd (expert witness experience)',
+    platformFeatures: [
+      'Legal Defense export',
+      'Research export (raw)',
+      'TheContrast side-by-side visualization',
+    ],
+    targetPublications: [
+      { name: 'Journal of Forensic Sciences', tier: 'niche', isPrimary: true },
+      { name: 'Law and Human Behavior', tier: 'niche' },
+      { name: 'JACR', tier: 'specialty' },
+    ],
+    keyCollaborators:
+      'Brian Shepherd (mock cross-examination, expert witness coaching)',
   },
+];
+
+// ---------------------------------------------------------------------------
+// Key References
+// ---------------------------------------------------------------------------
+
+const KEY_REFERENCES: string[] = [
+  'Bernstein et al. (2025). AI assistance and diagnostic accuracy. Nature Health.',
+  'Jian, Bisantz & Drury (2000). Foundations for an empirically determined scale of trust in automated systems. International Journal of Cognitive Ergonomics.',
+  'Pennington & Hastie (1992). Explaining the evidence: Tests of the Story Model for juror decision making. Journal of Personality and Social Psychology.',
+  'Uleman, Newman & Moskowitz (1996). People as flexible interpreters: Evidence and issues from spontaneous trait inference. Advances in Experimental Social Psychology.',
+  'T.J. Hooper, 60 F.2d 737 (2d Cir. 1932).',
+  'AMA Council on Ethics (2024). Augmented Intelligence in Health Care.',
 ];
 
 // ---------------------------------------------------------------------------
@@ -353,6 +465,17 @@ function statusClasses(status: StudyStatus): string {
       return 'bg-amber-500/10 text-amber-400';
     case 'planned':
       return 'bg-slate-500/10 text-slate-500';
+  }
+}
+
+function journalTierClasses(tier: JournalTier): string {
+  switch (tier) {
+    case 'high':
+      return 'bg-emerald-900/30 text-emerald-300 border-emerald-800/50';
+    case 'specialty':
+      return 'bg-blue-900/30 text-blue-300 border-blue-800/50';
+    case 'niche':
+      return 'bg-slate-700/30 text-slate-400 border-slate-600/50';
   }
 }
 
@@ -717,6 +840,7 @@ interface ResearchOpportunitiesModalProps {
 
 const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({ onClose }) => {
   const [expandedThemes, setExpandedThemes] = useState<Set<number>>(new Set());
+  const [showCitations, setShowCitations] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
 
   useEffect(() => {
@@ -805,6 +929,16 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
                 {/* Expandable details */}
                 {isExpanded && (
                   <div className="px-4 pb-5 ml-7 border-t border-slate-800/50 pt-4 space-y-4">
+                    {/* Research Question */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Research Question
+                      </h4>
+                      <p className="text-sm text-blue-200 leading-relaxed italic">
+                        &ldquo;{theme.researchQuestion}&rdquo;
+                      </p>
+                    </div>
+
                     {/* Legal Context */}
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
@@ -815,26 +949,16 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
                       </p>
                     </div>
 
-                    {/* Hypothesis */}
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Hypothesis
-                      </h4>
-                      <p className="text-sm text-slate-300 leading-relaxed">
-                        {theme.hypothesis}
-                      </p>
-                    </div>
-
                     {/* Study Design */}
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                         Study Design
                       </h4>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1.5">
                         {theme.studyDesign.map((item, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                            <span className="text-blue-400 mt-1.5 flex-shrink-0 w-1 h-1 rounded-full bg-blue-400" />
-                            {item}
+                            <span className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            <span className="leading-relaxed">{item}</span>
                           </li>
                         ))}
                       </ul>
@@ -843,7 +967,7 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
                     {/* Platform Features */}
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Platform Features Used
+                        Platform Features Required
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {theme.platformFeatures.map((feature) => (
@@ -862,18 +986,46 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
                         Target Publications
                       </h4>
-                      <p className="text-sm text-slate-300">
-                        {theme.targetPublications.join(' \u2022 ')}
-                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {theme.targetPublications.map((pub) => (
+                          <span
+                            key={pub.name}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${journalTierClasses(pub.tier)}`}
+                          >
+                            {pub.isPrimary && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
+                            )}
+                            {pub.name}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-900/50 border border-emerald-800/50" />
+                          High-impact
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-900/50 border border-blue-800/50" />
+                          Specialty
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-slate-700/50 border border-slate-600/50" />
+                          Niche/Legal
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          Primary target
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Key Collaborator */}
+                    {/* Key Collaborators */}
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Key Collaborator Role
+                        Key Collaborators
                       </h4>
                       <p className="text-sm text-slate-300">
-                        {theme.keyCollaborator}
+                        {theme.keyCollaborators}
                       </p>
                     </div>
                   </div>
@@ -881,6 +1033,48 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
               </div>
             );
           })}
+
+          {/* Journal Target Summary */}
+          <div className="mt-4 p-4 rounded-xl bg-slate-800/30 border border-slate-800">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              <span className="font-semibold text-slate-300">Journal target summary:</span>{' '}
+              Primary targets include <span className="text-emerald-400">Radiology</span> (Themes 1, 2, 4),{' '}
+              <span className="text-blue-300">Academic Radiology</span> (Theme 4),{' '}
+              <span className="text-emerald-400">BMJ Quality &amp; Safety</span> (Theme 6),{' '}
+              <span className="text-emerald-400">Human Factors</span> (Theme 7), and specialty legal/ethics journals.
+              Study designs developed in consultation with Brown University BRPLL.
+            </p>
+          </div>
+
+          {/* Key References — collapsible */}
+          <div className="mt-2 border border-slate-800 rounded-xl bg-slate-900/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowCitations(!showCitations)}
+              className="w-full text-left p-4 flex items-center gap-3 hover:bg-slate-800/30 transition-colors duration-200"
+            >
+              <ChevronRightIcon
+                size={16}
+                className={`flex-shrink-0 text-slate-500 transition-transform duration-200 ${showCitations ? 'rotate-90' : ''}`}
+              />
+              <BookOpen size={16} className="flex-shrink-0 text-slate-500" />
+              <h3 className="text-sm font-semibold text-slate-300">
+                Key References
+              </h3>
+            </button>
+            {showCitations && (
+              <div className="px-4 pb-4 ml-7 border-t border-slate-800/50 pt-3">
+                <ul className="space-y-2">
+                  {KEY_REFERENCES.map((ref, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-400 leading-relaxed">
+                      <span className="mt-1.5 flex-shrink-0 w-1 h-1 rounded-full bg-slate-500" />
+                      {ref}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -888,10 +1082,10 @@ const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({
           <p className="text-sm text-slate-400">
             Interested in collaborating?{' '}
             <a
-              href="mailto:josh@evidify.ai"
+              href="mailto:evidify.ai@gmail.com"
               className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
             >
-              josh@evidify.ai
+              evidify.ai@gmail.com
             </a>
           </p>
           <button
