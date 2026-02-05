@@ -1362,7 +1362,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                     answer: legalAssessment.independentJudgment,
                     detail: legalAssessment.independentJudgment 
                       ? `Yes. Pre-AI assessment time averaged ${validityIndicators.avgPreAITime}s. AI agreement rate: ${validityIndicators.aiAgreementRate}%.`
-                      : `Concern: Fast pre-AI times or 100% AI agreement suggest possible rubber-stamping.`,
+                      : `Concern: Fast pre-AI times or 100% AI agreement suggest possible automation bias.`,
                   },
                   {
                     question: "Were disagreements with AI properly documented?",
@@ -1476,7 +1476,7 @@ const ExpertWitnessPacketViewer: React.FC<ExpertWitnessPacketProps> = ({
                     value: validityIndicators.aiAgreementRate,
                     unit: '%',
                     status: validityIndicators.aiAgreementRate < 80 ? 'good' : validityIndicators.aiAgreementRate < 100 ? 'warn' : 'bad',
-                    detail: '100% agreement may indicate rubber-stamping',
+                    detail: '100% agreement may indicate automation bias',
                   },
                   {
                     label: 'Deviation Documentation',

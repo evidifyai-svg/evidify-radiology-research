@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Rocket,
   Shield,
+  Info,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -33,50 +34,13 @@ interface StudyCard {
 
 const STUDIES: StudyCard[] = [
   {
-    id: 'contrast',
-    title: 'The Contrast: STI Prevention',
-    description:
-      'Side-by-side comparison of structured log vs. narrative documentation. Demonstrates how documentation format affects spontaneous trait inference.',
-    researchBasis: 'Pennington & Hastie (1992); Uleman STI framework',
-    status: 'ready',
-    icon: <Columns size={24} />,
-  },
-  {
-    id: 'hashchain',
-    title: 'Temporal Proof: Hash Chain Verification',
-    description:
-      "Cryptographic proof that the radiologist's independent assessment was recorded before AI consultation. Visual walkthrough of tamper-evident documentation chain.",
-    researchBasis: 'FRE 902(13)/(14); 12 V.S.A. §1913',
-    status: 'ready',
-    icon: <Link size={24} />,
-  },
-  {
     id: 'fullsession',
     title: 'Full Reading Session Demo',
     description:
-      'Complete radiology reading workflow: calibration \u2192 independent read \u2192 AI consultation \u2192 deviation documentation \u2192 export pack generation with verification.',
-    researchBasis: 'Bernstein et al. 2025 (Nature Health)',
+      'End-to-end workflow: calibration \u2192 pre-AI assessment \u2192 AI exposure \u2192 reconciliation \u2192 export pack.',
+    researchBasis: 'Human\u2013AI workflow / disclosure literature (see Methods)',
     status: 'ready',
     icon: <Play size={24} />,
-  },
-  {
-    id: 'workload',
-    title: 'Workload Monitoring & Cohort Comparison',
-    description:
-      'Real-time throughput tracking with session duration index. Shows individual radiologist timing in context of practice cohort median.',
-    researchBasis: 'Throughput-accuracy degradation literature',
-    status: 'ready',
-    icon: <Activity size={24} />,
-  },
-  {
-    id: 'aiassistant',
-    title: 'AI Research Assistant',
-    description:
-      'Literature-grounded AI consultation for clinical reasoning support. Queries are logged as part of the documentation chain.',
-    researchBasis: '',
-    status: 'planned',
-    icon: <Brain size={24} />,
-    disabled: true,
   },
   {
     id: 'inspector',
@@ -86,6 +50,43 @@ const STUDIES: StudyCard[] = [
     researchBasis: '',
     status: 'ready',
     icon: <FileCheck size={24} />,
+  },
+  {
+    id: 'hashchain',
+    title: 'Sequence Integrity: Hash Chain Verification',
+    description:
+      'Verifies recorded event ordering and detects tampering via hash chaining.',
+    researchBasis: 'Tamper-evident records; evidentiary authentication context (jurisdiction-dependent)',
+    status: 'ready',
+    icon: <Link size={24} />,
+  },
+  {
+    id: 'contrast',
+    title: 'The Contrast: STI Prevention',
+    description:
+      'Side-by-side: structured event log vs narrative summary to study attribution effects.',
+    researchBasis: 'Pennington & Hastie (1992); Uleman STI framework',
+    status: 'ready',
+    icon: <Columns size={24} />,
+  },
+  {
+    id: 'workload',
+    title: 'Workload Monitoring & Cohort Comparison',
+    description:
+      'Descriptive timing metrics with cohort context (percentiles, medians) for research analysis.',
+    researchBasis: 'Throughput\u2013accuracy / fatigue / vigilance literature (see Methods)',
+    status: 'ready',
+    icon: <Activity size={24} />,
+  },
+  {
+    id: 'aiassistant',
+    title: 'AI Research Assistant',
+    description:
+      'Research query capture and protocol notes (planned). Queries would be logged in the event record.',
+    researchBasis: '',
+    status: 'planned',
+    icon: <Brain size={24} />,
+    disabled: true,
   },
 ];
 
@@ -120,22 +121,40 @@ function statusClasses(status: StudyStatus): string {
 // ---------------------------------------------------------------------------
 
 const Header: React.FC = () => (
-  <header className="text-center mb-10">
-    <div className="flex items-center justify-center gap-3 mb-4">
-      <Shield size={32} className="text-blue-400" />
-      <h1 className="text-3xl font-bold text-white tracking-tight">
-        Evidify Research Platform
-      </h1>
+  <header className="mb-10">
+    <div className="flex items-start justify-between">
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <Shield size={32} className="text-blue-400" />
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            Evidify Research Platform
+          </h1>
+        </div>
+        <p className="text-slate-300 text-lg mb-2">
+          Research instrumentation for documenting AI-assisted radiology reading workflows.
+        </p>
+        <p className="text-slate-500 text-sm mb-3">
+          Joshua M. Henderson, PhD &mdash; Research Platform Architect
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+            Research Preview &mdash; Feb 2026
+          </span>
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+            Local-first
+          </span>
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+            Tamper-evident sequencing
+          </span>
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+            Research record (not clinical decision support)
+          </span>
+        </div>
+      </div>
+      <span className="hidden md:inline-block text-xs text-slate-500 font-mono mt-2">
+        v0.9.0
+      </span>
     </div>
-    <p className="text-slate-300 text-lg mb-2">
-      Radiology AI Governance Research Platform
-    </p>
-    <p className="text-slate-500 text-sm mb-3">
-      Joshua M. Henderson, PhD &mdash; Research Platform Architect
-    </p>
-    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
-      Research Preview &mdash; February 2026
-    </span>
   </header>
 );
 
@@ -144,13 +163,51 @@ const Footer: React.FC = () => (
     <p className="font-medium text-slate-400">
       Evidify Research Platform v0.9.0
     </p>
-    <p>Local-first &bull; Hash-verified &bull; Daubert-ready</p>
+    <p>Local-first &bull; Hash-verified &bull; Designed for evidentiary scrutiny</p>
     <p><a href="./docs/irb-tech-description.docx" download className="text-blue-400 hover:text-blue-300 underline">IRB Technology Description</a> &bull; <a href="./docs/proof-of-concept-draft.docx" download className="text-blue-400 hover:text-blue-300 underline">Proof-of-Concept Paper Draft</a></p>
     <p>Proposed for research collaboration with Brown University BRPLL</p>
     <p className="text-slate-600 text-xs mt-2">
       &copy; 2026 Evidify. All rights reserved.
     </p>
   </footer>
+);
+
+// ---------------------------------------------------------------------------
+// CTA Row
+// ---------------------------------------------------------------------------
+
+interface CTARowProps {
+  onLaunch: (id: string) => void;
+}
+
+const CTARow: React.FC<CTARowProps> = ({ onLaunch }) => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <button
+      type="button"
+      onClick={() => onLaunch('fullsession')}
+      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+    >
+      <Play size={18} />
+      Start Reading Session
+    </button>
+    <button
+      type="button"
+      onClick={() => onLaunch('inspector')}
+      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+    >
+      <FileCheck size={18} />
+      Inspect Export Pack
+    </button>
+    <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-sm text-slate-400">
+      <Info size={16} className="flex-shrink-0 mt-0.5 text-slate-500" />
+      <span>
+        <span className="font-medium text-slate-300">Methods posture:</span>{' '}
+        Records interaction events and timing in the UI. Hash chaining supports tamper-evident
+        sequencing of recorded events. This is research instrumentation and does not provide
+        diagnostic recommendations or clinical gating.
+      </span>
+    </div>
+  </div>
 );
 
 interface CardProps {
@@ -236,7 +293,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) =>
     <p className="text-slate-300 leading-relaxed mb-2">{study.description}</p>
     {study.researchBasis && (
       <p className="text-slate-500 text-sm italic mb-6">
-        Research basis: {study.researchBasis}
+        Methods context: {study.researchBasis}
       </p>
     )}
 
@@ -287,6 +344,8 @@ const StudySelector: React.FC<StudySelectorProps> = ({ onLaunchStudy }) => {
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <Header />
+
+        <CTARow onLaunch={handleLaunch} />
 
         {/* Study cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

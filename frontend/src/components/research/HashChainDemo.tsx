@@ -85,7 +85,7 @@ const HashChainDemo: React.FC<HashChainDemoProps> = ({ timeline, chainValid, ses
             letterSpacing: '0.05em',
             margin: '0 0 24px 0',
           }}>
-            Temporal Proof Walkthrough
+            Sequence Integrity Walkthrough
           </h3>
 
           <div style={{ marginBottom: '8px' }}>
