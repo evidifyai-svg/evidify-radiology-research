@@ -300,6 +300,11 @@ export const PacketViewer: React.FC<PacketViewerProps> = ({
 
         {/* Tab Content */}
         <div style={styles.content}>
+          {activeRole === 'legal-defense' && (
+            <div style={styles.defenseDisclaimer}>
+              This view is a contextualized presentation of the same underlying event record. The complete event stream is available in the Research view.
+            </div>
+          )}
           {effectiveTab === 'events' && (
             <EventsTab
               events={events}
@@ -997,6 +1002,12 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     overflow: 'auto',
     padding: '24px',
+  },
+  defenseDisclaimer: {
+    fontSize: '12px',
+    color: '#64748b',
+    fontStyle: 'italic',
+    marginBottom: '16px',
   },
   tabContent: {
     display: 'flex',
