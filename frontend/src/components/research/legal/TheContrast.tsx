@@ -452,6 +452,31 @@ const ResearchContextSection: React.FC = () => {
                 <em>Annual Review of Psychology</em>.
               </p>
             </div>
+
+            {/* Why Default Format Matters — plaintiff's weapon framing */}
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(51, 65, 85, 0.5)' }}>
+              <h4 style={{
+                color: '#e2e8f0',
+                fontSize: '14px',
+                fontWeight: 700,
+                margin: '0 0 12px 0',
+                letterSpacing: '-0.01em',
+              }}>
+                Why Default Format Matters
+              </h4>
+              <p style={{ marginTop: 0, marginBottom: '0' }}>
+                The same verified event data supports both the prosecution and defense narratives
+                shown above. Without a documentation system that generates contextualized
+                narratives, the default discovery output is the raw event log — timestamps and
+                classifications without cohort context, deviation rationale, or workflow norms.
+                Research on Spontaneous Trait Inference (Uleman et al., 1996; Winter &amp; Uleman,
+                1984) suggests that decontextualized behavioral data systematically triggers
+                dispositional attributions: &ldquo;careless,&rdquo; &ldquo;rushed,&rdquo;
+                &ldquo;negligent.&rdquo; The platform&rsquo;s architectural role is to ensure the
+                defense-grade contextual narrative is available by default — not merely the raw log
+                that invites STI-driven attribution.
+              </p>
+            </div>
           </div>
         </div>
       )}
