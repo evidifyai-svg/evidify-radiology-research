@@ -6,6 +6,7 @@ import {
   Activity,
   Brain,
   FileCheck,
+  GitBranch,
   ArrowLeft,
   ArrowRight,
   RotateCcw,
@@ -89,6 +90,15 @@ const STUDIES: StudyCard[] = [
     researchBasis: 'Jian et al. (2000) trust scale; automation bias literature',
     status: 'ready',
     icon: <TrendingUp size={24} />,
+  },
+  {
+    id: 'counterfactual',
+    title: 'Counterfactual Simulator',
+    description:
+      'Reconstruct alternative decision pathways: what if AI was/wasn\'t consulted?',
+    researchBasis: 'T.J. Hooper doctrine; failure-to-utilize analysis',
+    status: 'ready',
+    icon: <GitBranch size={24} />,
   },
   {
     id: 'aiassistant',

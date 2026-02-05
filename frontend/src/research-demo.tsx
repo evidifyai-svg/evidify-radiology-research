@@ -12,6 +12,8 @@ import { DEMO_HASH_TIMELINE, DEMO_CHAIN_VALID, DEMO_HASH_SESSION_ID } from './da
 import { DEMO_WORKLOAD_SESSION, DEMO_COHORT_DATA } from './data/workloadDemoData';
 import TrustTrajectoryDashboard from './components/research/TrustTrajectoryDashboard';
 import { DEMO_TRUST_DATA } from './data/trustTrajectoryDemoData';
+import CounterfactualSimulator from './components/research/CounterfactualSimulator';
+import { DEMO_COUNTERFACTUAL_CASE } from './data/counterfactualDemoData';
 import {
   DEMO_PACK_EVENTS,
   DEMO_PACK_LEDGER,
@@ -130,8 +132,7 @@ const ResearchDemoShell: React.FC = () => {
       </div>
     );
   }
-
-  if (activeStudy === 'trust-trajectory') {
+if (activeStudy === 'trust-trajectory') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
         <div style={headerBarStyle}>
@@ -147,6 +148,21 @@ const ResearchDemoShell: React.FC = () => {
     );
   }
 
+  if (activeStudy === 'counterfactual') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Counterfactual Analysis Engine
+          </h2>
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
+          </button>
+        </div>
+        <CounterfactualSimulator caseData={DEMO_COUNTERFACTUAL_CASE} />
+      </div>
+    );
+  }
   if (activeStudy === 'inspector') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
