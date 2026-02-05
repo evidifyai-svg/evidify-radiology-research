@@ -1,3 +1,4 @@
+import './index.css';
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ResearchDemoFlow } from './components/ResearchDemoFlow';

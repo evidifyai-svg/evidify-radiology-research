@@ -300,7 +300,7 @@ const Card: React.FC<CardProps> = ({ study, onSelect }) => {
           {study.icon}
         </div>
         <span
-          className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusClasses(study.status)}`}
+        className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusClasses(study.status)}`}
         >
           {statusLabel(study.status)}
         </span>
