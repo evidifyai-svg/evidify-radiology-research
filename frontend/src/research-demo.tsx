@@ -10,6 +10,8 @@ import { PacketViewer } from './components/PacketViewer';
 import { DEMO_CASE_ID, DEMO_EVENTS, DEMO_DERIVED_METRICS } from './data/contrastDemoData';
 import { DEMO_HASH_TIMELINE, DEMO_CHAIN_VALID, DEMO_HASH_SESSION_ID } from './data/hashChainDemoData';
 import { DEMO_WORKLOAD_SESSION, DEMO_COHORT_DATA } from './data/workloadDemoData';
+import CounterfactualSimulator from './components/research/CounterfactualSimulator';
+import { DEMO_COUNTERFACTUAL_CASE } from './data/counterfactualDemoData';
 import {
   DEMO_PACK_EVENTS,
   DEMO_PACK_LEDGER,
@@ -125,6 +127,22 @@ const ResearchDemoShell: React.FC = () => {
           currentSession={DEMO_WORKLOAD_SESSION}
           cohortData={DEMO_COHORT_DATA}
         />
+      </div>
+    );
+  }
+
+  if (activeStudy === 'counterfactual') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Counterfactual Analysis Engine
+          </h2>
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
+          </button>
+        </div>
+        <CounterfactualSimulator caseData={DEMO_COUNTERFACTUAL_CASE} />
       </div>
     );
   }
