@@ -12,6 +12,7 @@ import {
   Rocket,
   Shield,
   Info,
+  TrendingUp,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -79,6 +80,15 @@ const STUDIES: StudyCard[] = [
     researchBasis: 'Throughput\u2013accuracy / fatigue / vigilance literature (see Methods)',
     status: 'ready',
     icon: <Activity size={24} />,
+  },
+  {
+    id: 'trust-trajectory',
+    title: 'Trust Trajectory Dashboard',
+    description:
+      'Longitudinal measurement of human-AI trust calibration and behavioral patterns.',
+    researchBasis: 'Jian et al. (2000) trust scale; automation bias literature',
+    status: 'ready',
+    icon: <TrendingUp size={24} />,
   },
   {
     id: 'aiassistant',
