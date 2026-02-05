@@ -165,11 +165,11 @@ function statusLabel(status: StudyStatus): string {
 function statusClasses(status: StudyStatus): string {
   switch (status) {
     case 'ready':
-      return 'bg-green-500/20 text-green-400';
+      return 'bg-emerald-500/10 text-emerald-400';
     case 'in-progress':
-      return 'bg-amber-500/20 text-amber-400';
+      return 'bg-amber-500/10 text-amber-400';
     case 'planned':
-      return 'bg-slate-500/20 text-slate-400';
+      return 'bg-slate-500/10 text-slate-500';
   }
 }
 
@@ -178,37 +178,37 @@ function statusClasses(status: StudyStatus): string {
 // ---------------------------------------------------------------------------
 
 const Header: React.FC = () => (
-  <header className="mb-10">
+  <header className="mb-12">
     <div className="flex items-start justify-between">
       <div>
         <div className="flex items-center gap-3 mb-4">
           <Shield size={32} className="text-blue-400" />
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-4xl font-semibold text-white tracking-tight">
             Evidify Research Platform
           </h1>
         </div>
-        <p className="text-slate-300 text-lg mb-2">
+        <p className="text-slate-400 text-lg mb-2 max-w-2xl leading-relaxed">
           Research instrumentation for documenting AI-assisted radiology reading workflows.
         </p>
         <p className="text-slate-500 text-sm mb-3">
           Joshua M. Henderson, PhD &mdash; Research Platform Architect
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-900/50 text-blue-300 border border-blue-700">
             Research Preview &mdash; Feb 2026
           </span>
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
             Local-first
           </span>
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
             Tamper-evident sequencing
           </span>
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
             Research record (not clinical decision support)
           </span>
         </div>
       </div>
-      <span className="hidden md:inline-block text-xs text-slate-500 font-mono mt-2">
+      <span className="hidden md:inline-block text-xs text-slate-600 font-mono mt-2">
         v0.9.0
       </span>
     </div>
@@ -216,19 +216,19 @@ const Header: React.FC = () => (
 );
 
 const Footer: React.FC = () => (
-  <footer className="mt-12 pt-6 border-t border-slate-800 text-center text-sm text-slate-500 space-y-1">
+  <footer className="mt-16 pt-8 border-t border-slate-800 text-center text-sm text-slate-500 space-y-2">
     <p className="font-medium text-slate-400">
       Evidify Research Platform v0.9.0
     </p>
     <p>Local-first &bull; Hash-verified &bull; Designed for evidentiary scrutiny</p>
-    <p className="flex flex-wrap justify-center gap-x-1">
-      <a href="./docs/irb-tech-description.docx" download className="text-blue-400 hover:text-blue-300 underline">IRB Technology Description</a> <span>&bull;</span>
-      <a href="./docs/proof-of-concept-draft.docx" download className="text-blue-400 hover:text-blue-300 underline">Proof-of-Concept Paper Draft</a> <span>&bull;</span>
-      <a href="./docs/observer-mode-spec.docx" download className="text-blue-400 hover:text-blue-300 underline">Observer Mode Spec</a> <span>&bull;</span>
-      <a href="./docs/construct-model.docx" download className="text-blue-400 hover:text-blue-300 underline">Construct Model</a>
+    <p className="flex flex-wrap justify-center gap-x-1.5">
+      <a href="./docs/irb-tech-description.docx" download className="text-blue-400 hover:text-blue-300 underline underline-offset-2">IRB Technology Description</a> <span className="text-slate-600">&bull;</span>
+      <a href="./docs/proof-of-concept-draft.docx" download className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Proof-of-Concept Paper Draft</a> <span className="text-slate-600">&bull;</span>
+      <a href="./docs/observer-mode-spec.docx" download className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Observer Mode Spec</a> <span className="text-slate-600">&bull;</span>
+      <a href="./docs/construct-model.docx" download className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Construct Model</a>
     </p>
     <p>Proposed for research collaboration with Brown University BRPLL</p>
-    <p className="text-slate-600 text-xs mt-2">
+    <p className="text-slate-600 text-xs mt-3">
       &copy; 2026 Evidify. All rights reserved.
     </p>
   </footer>
@@ -243,11 +243,11 @@ interface CTARowProps {
 }
 
 const CTARow: React.FC<CTARowProps> = ({ onLaunch }) => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
     <button
       type="button"
       onClick={() => onLaunch('fullsession')}
-      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+      className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold transition-all duration-200"
     >
       <Play size={18} />
       Start Reading Session
@@ -255,12 +255,12 @@ const CTARow: React.FC<CTARowProps> = ({ onLaunch }) => (
     <button
       type="button"
       onClick={() => onLaunch('inspector')}
-      className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+      className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold transition-all duration-200"
     >
       <FileCheck size={18} />
       Inspect Export Pack
     </button>
-    <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-sm text-slate-400">
+    <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-slate-900/50 border border-slate-800 text-sm text-slate-400">
       <Info size={16} className="flex-shrink-0 mt-0.5 text-slate-500" />
       <span>
         <span className="font-medium text-slate-300">Methods posture:</span>{' '}
@@ -286,17 +286,17 @@ const Card: React.FC<CardProps> = ({ study, onSelect }) => {
       onClick={() => !disabled && onSelect(study.id)}
       disabled={disabled}
       className={`
-        text-left w-full rounded-xl p-5 border transition-all duration-200
+        text-left w-full rounded-xl p-6 border transition-all duration-200
         ${
           disabled
-            ? 'bg-slate-800/40 border-slate-700/50 cursor-not-allowed opacity-60'
-            : 'bg-slate-800/80 border-slate-700 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 hover:scale-[1.02] cursor-pointer'
+            ? 'bg-slate-900/30 border-slate-800/50 cursor-not-allowed opacity-50'
+            : 'bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 hover:shadow-lg hover:shadow-slate-900/50 hover:-translate-y-0.5 cursor-pointer'
         }
       `}
     >
       {/* Icon + status row */}
       <div className="flex items-start justify-between mb-3">
-        <div className="p-2 rounded-lg bg-slate-700/60 text-blue-400">
+        <div className="p-2 rounded-lg bg-slate-800/80 text-slate-400">
           {study.icon}
         </div>
         <span
@@ -307,18 +307,18 @@ const Card: React.FC<CardProps> = ({ study, onSelect }) => {
       </div>
 
       {/* Title */}
-      <h3 className="text-white font-semibold mb-2 leading-snug">
+      <h3 className="text-lg font-semibold text-white mb-2 leading-snug">
         {study.title}
       </h3>
 
       {/* Description */}
-      <p className="text-slate-400 text-sm leading-relaxed mb-3">
+      <p className="text-sm text-slate-400 leading-relaxed mb-3">
         {study.description}
       </p>
 
       {/* Research basis */}
       {study.researchBasis && (
-        <p className="text-slate-500 text-xs italic">
+        <p className="text-xs text-slate-500 italic mt-2">
           {study.researchBasis}
         </p>
       )}
@@ -337,9 +337,9 @@ interface DetailPanelProps {
 }
 
 const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) => (
-  <div className="mt-8 rounded-xl border border-slate-700 bg-slate-800/60 p-8">
+  <div className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
     <div className="flex items-start gap-4 mb-6">
-      <div className="p-3 rounded-lg bg-slate-700/60 text-blue-400">
+      <div className="p-3 rounded-lg bg-slate-800/80 text-slate-400">
         {study.icon}
       </div>
       <div className="flex-1">
@@ -363,7 +363,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) =>
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white transition-all duration-200"
       >
         <ArrowLeft size={16} />
         Back to Studies
@@ -371,7 +371,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) =>
       <button
         type="button"
         onClick={() => onLaunch(study.id)}
-        className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+        className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold shadow-lg shadow-blue-600/20 transition-all duration-200"
       >
         <Rocket size={16} />
         Launch Study
@@ -400,12 +400,12 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
   const isComplete = step >= DEMO_STEPS.length;
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6 relative">
+    <div className="min-h-screen bg-slate-950/95 backdrop-blur-sm flex items-center justify-center px-6 relative">
       {/* Back to Studies — top left */}
       <button
         type="button"
         onClick={onExit}
-        className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-all duration-200"
       >
         <ArrowLeft size={14} />
         Back to Studies
@@ -413,7 +413,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
 
       {isComplete ? (
         /* ---- Completion screen ---- */
-        <div className="max-w-2xl w-full mx-auto rounded-xl bg-slate-900 border border-slate-700 p-8 text-center">
+        <div className="max-w-xl w-full mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-8 text-center">
           <div className="text-blue-400 font-mono text-sm tracking-wider uppercase mb-4">
             Complete
           </div>
@@ -426,7 +426,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
           {/* Progress dots — all filled */}
           <div className="flex items-center gap-1.5 justify-center mb-8">
             {DEMO_STEPS.map((_, i) => (
-              <div key={i} className="h-1.5 w-10 rounded-full bg-blue-500" />
+              <div key={i} className="h-1 w-10 rounded-full bg-blue-500" />
             ))}
           </div>
 
@@ -434,7 +434,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
             <button
               type="button"
               onClick={onExit}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium transition-all duration-200"
             >
               <ArrowLeft size={16} />
               Back to Studies
@@ -442,7 +442,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
             <button
               type="button"
               onClick={() => onStepChange(0)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold shadow-lg shadow-blue-600/20 transition-all duration-200"
             >
               <RotateCcw size={16} />
               Restart Demo
@@ -451,7 +451,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
         </div>
       ) : (
         /* ---- Transition screen ---- */
-        <div className="max-w-2xl w-full mx-auto rounded-xl bg-slate-900 border border-slate-700 p-8">
+        <div className="max-w-xl w-full mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-8">
           <div className="text-blue-400 font-mono text-sm tracking-wider uppercase mb-2">
             {DEMO_STEPS[step].stepNumber}
           </div>
@@ -467,8 +467,8 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
             {DEMO_STEPS.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i <= step ? 'bg-blue-500' : 'bg-slate-700'
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  i <= step ? 'bg-blue-500' : 'bg-slate-800'
                 }`}
               />
             ))}
@@ -478,7 +478,7 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
           <button
             type="button"
             onClick={() => onLaunchStudy(DEMO_STEPS[step].studyId)}
-            className="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold shadow-lg shadow-blue-600/20 transition-all duration-200"
           >
             {DEMO_STEPS[step].buttonLabel}
             <ArrowRight size={16} />
@@ -498,16 +498,16 @@ interface DemoFlowBannerProps {
 }
 
 const DemoFlowBanner: React.FC<DemoFlowBannerProps> = ({ onStart }) => (
-  <div className="mb-6">
+  <div className="mb-8">
     <button
       type="button"
       onClick={onStart}
-      className="flex items-center gap-3 px-7 py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold transition-colors shadow-lg shadow-blue-500/20"
+      className="flex items-center gap-3 px-8 py-4 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-lg font-semibold transition-all duration-200 shadow-lg shadow-blue-600/25"
     >
       <Play size={22} />
       Run BRPLL Demo Flow
     </button>
-    <p className="text-slate-500 text-sm mt-2">
+    <p className="text-slate-500 text-sm mt-2.5">
       Guided 5-step walkthrough &mdash; ~15 minutes
     </p>
   </div>
@@ -557,7 +557,7 @@ const StudySelector: React.FC<StudySelectorProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-5xl mx-auto px-6 py-12">
+      <div className="max-w-5xl mx-auto px-6 py-16">
         <Header />
 
         {/* Guided demo banner — shown when parent supports guided mode */}
