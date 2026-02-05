@@ -1,15 +1,15 @@
 /**
  * ExpertWitnessExport.tsx
- * 
- * Generates court-ready documentation for expert witness testimony.
- * Designed to survive deposition cross-examination by proving:
- * 
- * 1. Reader formed independent opinion BEFORE AI exposure
- * 2. AI findings were explicitly reviewed and acknowledged
- * 3. Any deviation is documented with clinical rationale
- * 4. Complete chain of custody with cryptographic verification
- * 
- * Key insight from liability research: "what matters to defense is 
+ *
+ * Generates research documentation packet suitable for evidentiary review.
+ * Designed to record and summarize an AI-assisted reading sequence, including:
+ *
+ * 1. An independent assessment recorded prior to AI exposure (when present)
+ * 2. AI output exposure and any subsequent acknowledgments (when present)
+ * 3. Any participant-entered deviation notes (when present)
+ * 4. Sequence integrity via cryptographic hash chaining of recorded events
+ *
+ * Key insight from liability research: "what matters to defense is
  * documented reasoning and process, not AI agreement."
  */
 
@@ -21,7 +21,7 @@ import { DeviationDocumentation, DEVIATION_REASON_CODES, FOLLOWUP_RECOMMENDATION
 // TYPES
 // ============================================================================
 
-export interface RubberStampIndicator {
+export interface BehavioralPatternIndicator {
   indicator: string;
   detected: boolean;
   severity: 'low' | 'medium' | 'high';
@@ -48,7 +48,7 @@ export interface ExpertWitnessPacket {
     allFindingsAcknowledged: boolean;
     deviationDocumented: boolean;
     chainIntegrityVerified: boolean;
-    rubberStampRiskLevel: 'low' | 'medium' | 'high';
+    patternSummaryLevel: 'low' | 'medium' | 'high';
   };
   
   // Timeline (the core exhibit)
@@ -82,8 +82,8 @@ export interface ExpertWitnessPacket {
   // Deviation documentation (if applicable)
   deviation: DeviationDocumentation | null;
   
-  // Rubber-stamp risk indicators
-  rubberStampIndicators: RubberStampIndicator[];
+  // Behavioral pattern indicators
+  patternIndicators: BehavioralPatternIndicator[];
   
   // Chain integrity
   integrity: IntegrityReport;
@@ -104,14 +104,14 @@ export interface TimelineEvent {
 }
 
 // ============================================================================
-// RUBBER-STAMP DETECTION
+// BEHAVIORAL PATTERN DETECTION
 // ============================================================================
 
-export function detectRubberStampIndicators(
+export function detectBehavioralPatternIndicators(
   ledger: ImpressionLedgerExport,
   deviation: DeviationDocumentation | null
-): RubberStampIndicator[] {
-  const indicators: RubberStampIndicator[] = [];
+): BehavioralPatternIndicator[] {
+  const indicators: BehavioralPatternIndicator[] = [];
   const { summary } = ledger;
   
   // 1. Minimal pre-AI time
@@ -120,9 +120,9 @@ export function detectRubberStampIndicators(
     indicator: 'MINIMAL_PRE_AI_TIME',
     detected: preAITimeS < 15,
     severity: preAITimeS < 5 ? 'high' : preAITimeS < 15 ? 'medium' : 'low',
-    description: 'Time spent on independent assessment before AI consultation',
+    description: 'Time recorded prior to AI exposure (independent-assessment window)',
     value: `${preAITimeS.toFixed(1)}s`,
-    threshold: '≥15s recommended',
+    threshold: 'Protocol reference: ≥15s',
   });
   
   // 2. Minimal post-AI time
@@ -131,9 +131,9 @@ export function detectRubberStampIndicators(
     indicator: 'MINIMAL_POST_AI_TIME',
     detected: postAITimeS < 5,
     severity: postAITimeS < 3 ? 'high' : postAITimeS < 5 ? 'medium' : 'low',
-    description: 'Time spent reviewing AI output and reconciling',
+    description: 'Time recorded after AI exposure (review/reconciliation window)',
     value: `${postAITimeS.toFixed(1)}s`,
-    threshold: '≥5s recommended',
+    threshold: 'Protocol reference: ≥5s',
   });
   
   // 3. Instant agreement with AI
@@ -144,7 +144,7 @@ export function detectRubberStampIndicators(
     indicator: 'INSTANT_AI_AGREEMENT',
     detected: instantAgreement,
     severity: 'high',
-    description: 'Changed assessment to match AI with minimal review time',
+    description: 'Assessment aligned with AI post-exposure within short post-AI interval',
     value: instantAgreement ? 'Yes' : 'No',
   });
   
@@ -154,7 +154,7 @@ export function detectRubberStampIndicators(
     indicator: 'UNDOCUMENTED_DEVIATION',
     detected: disagreedWithoutDoc,
     severity: 'high',
-    description: 'Disagreed with AI without documenting rationale',
+    description: 'AI disagreement present with no deviation note recorded',
     value: disagreedWithoutDoc ? 'Yes' : 'No',
   });
   
@@ -163,7 +163,7 @@ export function detectRubberStampIndicators(
     indicator: 'UNACKNOWLEDGED_FINDINGS',
     detected: !summary.allFindingsAcknowledged,
     severity: 'high',
-    description: 'AI-flagged regions were not explicitly reviewed',
+    description: 'No explicit acknowledgment events recorded for all AI-flagged regions',
     value: summary.allFindingsAcknowledged ? 'All acknowledged' : 'Not all acknowledged',
   });
   
@@ -172,15 +172,15 @@ export function detectRubberStampIndicators(
     indicator: 'DISCLOSURE_NOT_VIEWED',
     detected: !summary.disclosureShown,
     severity: 'medium',
-    description: 'AI performance disclosure was not viewed',
+    description: 'AI disclosure panel not shown (as recorded)',
     value: summary.disclosureShown ? 'Viewed' : 'Not shown',
   });
   
   return indicators;
 }
 
-export function calculateRubberStampRiskLevel(
-  indicators: RubberStampIndicator[]
+export function calculatePatternSummaryLevel(
+  indicators: BehavioralPatternIndicator[]
 ): 'low' | 'medium' | 'high' {
   const highCount = indicators.filter(i => i.detected && i.severity === 'high').length;
   const mediumCount = indicators.filter(i => i.detected && i.severity === 'medium').length;
@@ -214,9 +214,9 @@ export function generateExpertWitnessPacket(
     isKeyEvent: ['HUMAN_FIRST_IMPRESSION', 'AI_OUTPUT_EXPOSURE', 'RECONCILIATION'].includes(entry.entryType),
   }));
   
-  // Detect rubber-stamp indicators
-  const rubberStampIndicators = detectRubberStampIndicators(ledger, deviation);
-  const rubberStampRiskLevel = calculateRubberStampRiskLevel(rubberStampIndicators);
+  // Detect behavioral pattern indicators
+  const patternIndicators = detectBehavioralPatternIndicators(ledger, deviation);
+  const patternSummaryLevel = calculatePatternSummaryLevel(patternIndicators);
   
   return {
     generatedAt: new Date().toISOString(),
@@ -233,7 +233,7 @@ export function generateExpertWitnessPacket(
       allFindingsAcknowledged: summary.allFindingsAcknowledged,
       deviationDocumented: deviation !== null,
       chainIntegrityVerified: integrity.valid,
-      rubberStampRiskLevel,
+      patternSummaryLevel,
     },
     
     timeline,
@@ -244,7 +244,7 @@ export function generateExpertWitnessPacket(
         : null,
       firstConfidence: summary.firstImpressionAssessment?.confidence ?? null,
       aiOutput: summary.aiFlagged !== null 
-        ? (summary.aiFlagged ? 'Flagged as Suspicious' : 'Not Flagged')
+        ? (summary.aiFlagged ? 'Flagged region(s) present' : 'None recorded')
         : null,
       aiScore: summary.aiScore,
       aiFlagged: summary.aiFlagged,
@@ -268,7 +268,7 @@ export function generateExpertWitnessPacket(
     },
     
     deviation,
-    rubberStampIndicators,
+    patternIndicators,
     integrity,
     rawLedger: ledger,
   };
@@ -364,7 +364,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <SummaryItem
-            label="Independent Judgment"
+            label="Pre-AI Assessment Recorded"
             value={packet.summary.independentJudgmentDocumented}
           />
           <SummaryItem
@@ -385,13 +385,13 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
             value={packet.summary.chainIntegrityVerified}
           />
           <div className="p-3 rounded-lg bg-slate-800">
-            <div className="text-xs text-slate-400 mb-1">Rubber-Stamp Risk</div>
+            <div className="text-xs text-slate-400 mb-1">Pattern Summary (Descriptive)</div>
             <div className={`font-semibold capitalize ${
-              packet.summary.rubberStampRiskLevel === 'high' ? 'text-red-400' :
-              packet.summary.rubberStampRiskLevel === 'medium' ? 'text-yellow-400' :
+              packet.summary.patternSummaryLevel === 'high' ? 'text-red-400' :
+              packet.summary.patternSummaryLevel === 'medium' ? 'text-yellow-400' :
               'text-green-400'
             }`}>
-              {packet.summary.rubberStampRiskLevel}
+              {packet.summary.patternSummaryLevel}
             </div>
           </div>
         </div>
@@ -453,7 +453,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               {packet.assessmentAnalysis.aiScore ?? '—'}
             </div>
             <div className="text-sm text-slate-400">
-              {packet.assessmentAnalysis.aiFlagged ? 'Flagged' : 'Not Flagged'}
+              {packet.assessmentAnalysis.aiFlagged ? 'Flagged region(s) present' : 'None recorded'}
             </div>
           </div>
           <div className="text-center p-4 bg-green-500/10 rounded-lg">
@@ -509,13 +509,13 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
         </div>
       </div>
 
-      {/* Rubber-Stamp Indicators */}
+      {/* Behavioral Pattern Indicators */}
       <div className="p-6 border-b border-slate-800">
         <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-4">
-          Rubber-Stamp Risk Indicators
+          Behavioral Pattern Indicators (Descriptive)
         </h3>
         <div className="space-y-2">
-          {packet.rubberStampIndicators.map((indicator, idx) => (
+          {packet.patternIndicators.map((indicator, idx) => (
             <div 
               key={idx}
               className={`p-3 rounded-lg flex items-center justify-between ${
@@ -549,7 +549,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           </h3>
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
             <div className="mb-3">
-              <div className="text-sm text-slate-400">Clinical Rationale</div>
+              <div className="text-sm text-slate-400">Rationale (entered)</div>
               <div className="text-white">
                 {packet.deviation.selectedReasonCodes
                   .map(code => DEVIATION_REASON_CODES.find(r => r.code === code)?.label)
@@ -564,7 +564,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
               </div>
             )}
             <div>
-              <div className="text-sm text-slate-400">Recommended Follow-up</div>
+              <div className="text-sm text-slate-400">Follow-up (entered)</div>
               <div className="text-white">
                 {FOLLOWUP_RECOMMENDATIONS.find(r => r.code === packet.deviation!.followupRecommendation)?.label 
                   || packet.deviation.followupOther 
@@ -593,7 +593,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
           <IntegrityCheck label="All Locked" passed={packet.integrity.allEntriesLocked} />
         </div>
         <p className="text-sm text-slate-500 mt-3">
-          See detailed temporal proof walkthrough below ↓
+          See detailed sequence integrity walkthrough below ↓
         </p>
         {packet.integrity.issues.length > 0 && (
           <div className="mt-4 p-3 bg-red-500/10 rounded-lg">
@@ -607,7 +607,7 @@ export const ExpertWitnessPacketView: React.FC<ExpertWitnessPacketViewProps> = (
         )}
       </div>
 
-      {/* Temporal Proof Walkthrough */}
+      {/* Sequence Integrity Walkthrough */}
       <TemporalProofWalkthrough
         timeline={packet.timeline}
         chainValid={packet.integrity.chainValid}
@@ -715,7 +715,7 @@ const TemporalProofWalkthrough: React.FC<{
   return (
     <div className="p-6 border-b border-slate-800">
       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-6">
-        Temporal Proof Walkthrough
+        Sequence Integrity Walkthrough
       </h3>
 
       {/* Vertical Chain Diagram */}
@@ -774,7 +774,7 @@ const TemporalProofWalkthrough: React.FC<{
 
       {/* Plain-Language Explanation */}
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-5 mb-6">
-        <h4 className="text-sm font-semibold text-blue-400 mb-3">How This Proves the Sequence</h4>
+        <h4 className="text-sm font-semibold text-blue-400 mb-3">How This Supports Sequence Integrity</h4>
         <div className="text-sm text-slate-300 space-y-2">
           <p>
             Each step in this documentation chain incorporates a mathematical fingerprint (hash) of
@@ -801,9 +801,10 @@ const TemporalProofWalkthrough: React.FC<{
             </li>
           </ul>
           <p className="text-slate-400 text-xs mt-3 pt-3 border-t border-blue-500/10">
-            This is the same principle used in blockchain technology and is recognized as
-            self-authenticating evidence under Federal Rules of Evidence 902(13)/(14) and
-            Vermont statute 12 V.S.A. {'\u00A7'}1913.
+            This is the same principle used in many tamper-evident record systems. Depending on
+            jurisdiction and the foundation provided, cryptographically verified records may assist
+            with authentication under evidentiary rules (e.g., Federal Rules of Evidence 902(13)/(14)).
+            Courts determine admissibility; this packet is a descriptive research record.
           </p>
         </div>
       </div>

@@ -44,14 +44,14 @@ export {
   type DisclosureExposureLog,
 } from './DisclosureConfig';
 
-// Expert Witness Export: Court-ready documentation
+// Expert Witness Export: Research documentation packet
 export {
   ExpertWitnessPacketView,
   generateExpertWitnessPacket,
-  detectRubberStampIndicators,
-  calculateRubberStampRiskLevel,
+  detectBehavioralPatternIndicators,
+  calculatePatternSummaryLevel,
   type ExpertWitnessPacket,
-  type RubberStampIndicator,
+  type BehavioralPatternIndicator,
   type TimelineEvent,
 } from './ExpertWitnessExport';
 
