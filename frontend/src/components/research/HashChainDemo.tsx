@@ -2,7 +2,7 @@
  * HashChainDemo.tsx
  *
  * Standalone hash chain visualization for the StudySelector.
- * Shows how cryptographic hash chaining proves documentation sequence integrity.
+ * Shows how cryptographic hash chaining supports documentation sequence integrity.
  * All styles are inline — no Tailwind.
  */
 
@@ -50,7 +50,7 @@ const HashChainDemo: React.FC<HashChainDemoProps> = ({ timeline, chainValid, ses
             Hash Chain Verification
           </h2>
           <p style={{ color: '#64748b', fontSize: '14px', margin: '6px 0 0 0' }}>
-            Cryptographic proof of documentation sequence integrity
+            Cryptographic verification of documentation sequence integrity
           </p>
           {sessionId && (
             <span style={{
@@ -191,7 +191,7 @@ const HashChainDemo: React.FC<HashChainDemoProps> = ({ timeline, chainValid, ses
           marginBottom: '24px',
         }}>
           <h4 style={{ color: '#60a5fa', fontSize: '14px', fontWeight: 700, margin: '0 0 16px 0' }}>
-            How This Proves the Sequence
+            How This Supports Sequence Integrity
           </h4>
           <div style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.7' }}>
             <p style={{ margin: '0 0 12px 0' }}>
@@ -202,13 +202,13 @@ const HashChainDemo: React.FC<HashChainDemoProps> = ({ timeline, chainValid, ses
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
                 <span style={{ color: '#60a5fa', marginTop: '2px', flexShrink: 0 }}>•</span>
                 <span>
-                  Step 2's record contains proof that Step 1 existed in its exact form before Step 2 was created
+                  Step 2's record contains verification that Step 1 existed in its exact form before Step 2 was created
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
                 <span style={{ color: '#60a5fa', marginTop: '2px', flexShrink: 0 }}>•</span>
                 <span>
-                  If anyone altered Step 1 after the fact, Step 2's proof would no longer match — the tampering would be automatically detectable
+                  If anyone altered Step 1 after the fact, Step 2's verification would no longer match — the tampering would be automatically detectable
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
@@ -225,9 +225,10 @@ const HashChainDemo: React.FC<HashChainDemoProps> = ({ timeline, chainValid, ses
               color: '#94a3b8',
               fontSize: '12px',
             }}>
-              This is the same principle used in blockchain technology and is recognized as
-              self-authenticating evidence under Federal Rules of Evidence 902(13)/(14) and
-              Vermont statute 12 V.S.A. §1913.
+              This is the same principle used in many tamper-evident record systems. Depending on
+              jurisdiction and the foundation provided, cryptographically verified records may assist
+              with authentication under evidentiary rules (e.g., Federal Rules of Evidence 902(13)/(14)).
+              Courts determine admissibility; this packet is a descriptive research record.
             </p>
           </div>
         </div>

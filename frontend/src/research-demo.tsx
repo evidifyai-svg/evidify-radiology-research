@@ -42,7 +42,19 @@ const ResearchDemoShell: React.FC = () => {
   const [activeStudy, setActiveStudy] = useState<string | null>(null);
 
   if (activeStudy === 'fullsession') {
-    return <ResearchDemoFlow />;
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Full Reading Session Demo
+          </h2>
+          <button onClick={() => setActiveStudy(null)} style={backBtnStyle}>
+            ← Back to Studies
+          </button>
+        </div>
+        <ResearchDemoFlow />
+      </div>
+    );
   }
 
   if (activeStudy === 'contrast') {
