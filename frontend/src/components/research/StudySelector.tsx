@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Columns,
   Link,
@@ -13,6 +13,9 @@ import {
   Shield,
   Info,
   TrendingUp,
+  BookOpen,
+  X,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -154,6 +157,166 @@ const DEMO_STEPS: DemoStepDef[] = [
     subtitle:
       'The complete export: events, ledger, derived metrics, verification results. Three views \u2014 Legal Defense, Clinical QA, and Research \u2014 from the same underlying record.',
     buttonLabel: 'Inspect Export Pack',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Research Themes Data
+// ---------------------------------------------------------------------------
+
+interface ResearchTheme {
+  id: number;
+  title: string;
+  summary: string;
+  legalContext: string;
+  hypothesis: string;
+  studyDesign: string[];
+  platformFeatures: string[];
+  targetPublications: string[];
+  keyCollaborator: string;
+}
+
+const RESEARCH_THEMES: ResearchTheme[] = [
+  {
+    id: 1,
+    title: 'Automation Bias & Disagreement Liability',
+    summary: 'Can AI uncertainty metrics serve as a \u201Cliability shield\u201D for radiologists?',
+    legalContext:
+      'Radiologists face heightened liability when they disagree with AI. Mock jury studies show jurors judge radiologists more harshly when AI catches something they missed.',
+    hypothesis:
+      'Exposing clinicians and jurors to AI uncertainty metrics (confidence levels, error rates) will mitigate automation bias and reduce liability attribution.',
+    studyDesign: [
+      'Instrument reading sessions with varying AI transparency levels',
+      'Create malpractice vignettes from Evidify logs',
+      'Present to mock jurors, measure negligence attribution',
+      'Compare scenarios with/without uncertainty disclosure',
+    ],
+    platformFeatures: ['Event logging', 'AI confidence capture', 'Legal Defense export', 'TheContrast visualization'],
+    targetPublications: ['NEJM AI', 'JACR', 'Journal of Law and the Biosciences'],
+    keyCollaborator: 'Grayson Baird (jury perception), Mike Bernstein (experimental design)',
+  },
+  {
+    id: 2,
+    title: 'Failure to Utilize AI (T.J. Hooper Risk)',
+    summary: 'At what point does AI assistance become legally obligatory?',
+    legalContext:
+      'The T.J. Hooper doctrine holds that failing to use available, beneficial technology can be negligence. AI tools now outperform humans on some tasks.',
+    hypothesis:
+      'There exists a measurable clinical threshold at which AI assistance becomes part of the standard of care.',
+    studyDesign: [
+      'Multi-site comparison: outcomes with vs. without AI assistance',
+      'Quantify miss rates, time to diagnosis, patient outcomes',
+      'Identify inflection point where AI benefit is statistically significant',
+      'Survey legal experts on standard of care implications',
+    ],
+    platformFeatures: ['Observer Mode (passive capture)', 'Counterfactual Simulator', 'Outcome tracking'],
+    targetPublications: ['Radiology', 'JAMA', 'Lancet Digital Health'],
+    keyCollaborator: 'Mike Bruno (clinical workflow), Brian Shepherd (legal analysis)',
+  },
+  {
+    id: 3,
+    title: 'Informed Consent & Black Box Disclosure',
+    summary: 'How should AI involvement be disclosed to patients?',
+    legalContext:
+      'Patient autonomy requires informed consent. AI \u201Cblack boxes\u201D complicate disclosure \u2014 if doctors can\u2019t explain AI reasoning, can consent be meaningful?',
+    hypothesis:
+      'Simplified, transparent disclosure methods yield better patient comprehension without increasing refusal rates.',
+    studyDesign: [
+      'A/B test different AI consent form versions',
+      'Measure comprehension scores, consent rates, patient attitudes',
+      'Track interaction with consent interface via Evidify',
+      'Compare plain language vs. technical disclosure',
+    ],
+    platformFeatures: ['Consent module', 'Interaction logging', 'Comprehension tracking'],
+    targetPublications: ['Journal of Medical Ethics', 'Patient Education and Counseling', 'Lancet Digital Health'],
+    keyCollaborator: 'Mike Bernstein (experimental design)',
+  },
+  {
+    id: 4,
+    title: 'Corporate Negligence & Physician Deskilling',
+    summary: 'Can periodic \u201CAI-off\u201D tests prevent skill atrophy and reduce institutional liability?',
+    legalContext:
+      'Over-reliance on AI may erode clinical skills. Hospitals face corporate liability if they fail to ensure staff competency when implementing AI.',
+    hypothesis:
+      'Regular calibration tests where radiologists read without AI will maintain skills and provide documentation that institutions took reasonable steps.',
+    studyDesign: [
+      'Periodic no-AI reading sessions (Evidify withholds AI output)',
+      'Compare performance with/without AI over 6\u201312 months',
+      'Track skill trajectory, provide feedback on misses',
+      'Compile competency documentation for legal defense',
+    ],
+    platformFeatures: ['Calibration Mode', 'Trust Trajectory Dashboard', 'Performance analytics'],
+    targetPublications: ['Academic Radiology', 'Journal of Digital Imaging', 'JAMA Network Open'],
+    keyCollaborator: 'Grayson Baird (psychometrics), Mike Bruno (clinical implementation)',
+  },
+  {
+    id: 5,
+    title: 'Counterfactual Litigation Analysis',
+    summary: 'Reconstruct \u201Cwhat would have happened\u201D for both plaintiff and defense.',
+    legalContext:
+      'Litigation hinges on causation \u2014 would AI have caught the miss? Did AI also miss (supporting defense)?',
+    hypothesis:
+      'Systematic counterfactual analysis can inform both plaintiff claims and defense strategies.',
+    studyDesign: [
+      'Retrospective analysis of closed malpractice cases',
+      'For each case, simulate what Evidify would have documented',
+      'Determine how many outcomes would have changed',
+    ],
+    platformFeatures: ['Counterfactual Simulator', 'Event reconstruction', 'Dual-framing export'],
+    targetPublications: ['Health law journals', 'JACR'],
+    keyCollaborator: 'Brian Shepherd (litigation strategy)',
+  },
+  {
+    id: 6,
+    title: 'Fatigue & Workload as Mitigating Factor',
+    summary: 'Can session metrics shift liability from individual to institutional negligence?',
+    legalContext:
+      'Errors late in long shifts may reflect systemic understaffing, not individual carelessness.',
+    hypothesis:
+      'Documented workload metrics can serve as mitigating evidence in malpractice defense.',
+    studyDesign: [
+      'Correlate timing metrics with error rates',
+      'Identify thresholds (hour 6? case 40?) where accuracy drops',
+      'Frame excessive workload as institutional failure',
+    ],
+    platformFeatures: ['Workload Monitor', 'Session duration tracking', 'Cohort percentiles'],
+    targetPublications: ['BMJ Quality & Safety', 'Academic Radiology'],
+    keyCollaborator: 'Mike Bruno (clinical operations)',
+  },
+  {
+    id: 7,
+    title: 'Trust Calibration Dynamics',
+    summary: 'How does radiologist\u2013AI trust evolve over time?',
+    legalContext:
+      'Automation bias may develop gradually. Early detection enables intervention.',
+    hypothesis:
+      'Longitudinal tracking of agreement rates can predict automation bias onset.',
+    studyDesign: [
+      'Track individual radiologist\u2019s AI agreement rate over months',
+      'Correlate with Jian trust scale self-reports',
+      'Flag sudden shifts or concerning trends',
+      'Intervene with targeted training',
+    ],
+    platformFeatures: ['Trust Trajectory Dashboard', 'Jian scale integration', 'Behavioral pattern detection'],
+    targetPublications: ['Human Factors', 'Applied Ergonomics', 'JAMIA'],
+    keyCollaborator: 'Grayson Baird (psychometrics)',
+  },
+  {
+    id: 8,
+    title: 'Expert Witness Preparation',
+    summary: 'How should experts use Evidify data to construct testimony?',
+    legalContext:
+      'Expert witnesses need to translate technical logs into jury-comprehensible narratives.',
+    hypothesis:
+      'Structured narrative exports improve testimony coherence and jury comprehension.',
+    studyDesign: [
+      'Give experts same case with raw logs vs. Legal Defense export',
+      'Measure testimony coherence, cross-examination survival',
+      'Jury comprehension study',
+    ],
+    platformFeatures: ['Legal Defense export', 'Expert Witness Prep Mode (proposed)', 'TheContrast'],
+    targetPublications: ['Law journals', 'Forensic psychology outlets'],
+    keyCollaborator: 'Brian Shepherd (expert witness experience)',
   },
 ];
 
@@ -505,23 +668,234 @@ const GuidedDemoFlow: React.FC<GuidedDemoFlowProps> = ({
 
 interface DemoFlowBannerProps {
   onStart: () => void;
+  onViewResearch: () => void;
 }
 
-const DemoFlowBanner: React.FC<DemoFlowBannerProps> = ({ onStart }) => (
+const DemoFlowBanner: React.FC<DemoFlowBannerProps> = ({ onStart, onViewResearch }) => (
   <div className="mb-8">
-    <button
-      type="button"
-      onClick={onStart}
-      className="flex items-center gap-3 px-8 py-4 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-lg font-semibold transition-all duration-200 shadow-lg shadow-blue-600/25"
-    >
-      <Play size={22} />
-      Run BRPLL Demo Flow
-    </button>
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={onStart}
+        className="flex items-center gap-3 px-8 py-4 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-lg font-semibold transition-all duration-200 shadow-lg shadow-blue-600/25"
+      >
+        <Play size={22} />
+        Run BRPLL Demo Flow
+      </button>
+      <button
+        type="button"
+        onClick={onViewResearch}
+        className="flex items-center gap-3 px-8 py-4 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-lg font-semibold transition-all duration-200"
+      >
+        <BookOpen size={22} />
+        Proposed Studies
+      </button>
+    </div>
     <p className="text-slate-500 text-sm mt-2.5">
       Guided 5-step walkthrough &mdash; ~15 minutes
     </p>
   </div>
 );
+
+// ---------------------------------------------------------------------------
+// Research Opportunities Modal
+// ---------------------------------------------------------------------------
+
+interface ResearchOpportunitiesModalProps {
+  onClose: () => void;
+}
+
+const ResearchOpportunitiesModal: React.FC<ResearchOpportunitiesModalProps> = ({ onClose }) => {
+  const [expandedThemes, setExpandedThemes] = useState<Set<number>>(new Set());
+  const [animateIn, setAnimateIn] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAnimateIn(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  const toggleTheme = (id: number) => {
+    setExpandedThemes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 ${animateIn ? 'opacity-100' : 'opacity-0'}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className={`relative bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col transition-all duration-300 ${animateIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+      >
+        {/* Header */}
+        <div className="flex-shrink-0 border-b border-slate-800 p-6 pb-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-1">
+                Research Opportunities Enabled by Evidify
+              </h2>
+              <p className="text-slate-400 text-sm">
+                Proposed studies leveraging the platform&rsquo;s unique data capture capabilities
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+          {RESEARCH_THEMES.map((theme) => {
+            const isExpanded = expandedThemes.has(theme.id);
+            return (
+              <div
+                key={theme.id}
+                className="border border-slate-800 rounded-xl bg-slate-900/50 overflow-hidden"
+              >
+                {/* Collapsible header */}
+                <button
+                  type="button"
+                  onClick={() => toggleTheme(theme.id)}
+                  className="w-full text-left p-4 flex items-start gap-3 hover:bg-slate-800/30 transition-colors duration-200"
+                >
+                  <ChevronRightIcon
+                    size={18}
+                    className={`flex-shrink-0 mt-0.5 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-mono text-blue-400">
+                        {String(theme.id).padStart(2, '0')}
+                      </span>
+                      <h3 className="text-base font-semibold text-white">
+                        {theme.title}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-slate-400">{theme.summary}</p>
+                  </div>
+                </button>
+
+                {/* Expandable details */}
+                {isExpanded && (
+                  <div className="px-4 pb-5 ml-7 border-t border-slate-800/50 pt-4 space-y-4">
+                    {/* Legal Context */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Legal Context
+                      </h4>
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        {theme.legalContext}
+                      </p>
+                    </div>
+
+                    {/* Hypothesis */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Hypothesis
+                      </h4>
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        {theme.hypothesis}
+                      </p>
+                    </div>
+
+                    {/* Study Design */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Study Design
+                      </h4>
+                      <ul className="space-y-1">
+                        {theme.studyDesign.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                            <span className="text-blue-400 mt-1.5 flex-shrink-0 w-1 h-1 rounded-full bg-blue-400" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Platform Features */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Platform Features Used
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {theme.platformFeatures.map((feature) => (
+                          <span
+                            key={feature}
+                            className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-800/50"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Target Publications */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Target Publications
+                      </h4>
+                      <p className="text-sm text-slate-300">
+                        {theme.targetPublications.join(' \u2022 ')}
+                      </p>
+                    </div>
+
+                    {/* Key Collaborator */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                        Key Collaborator Role
+                      </h4>
+                      <p className="text-sm text-slate-300">
+                        {theme.keyCollaborator}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-slate-800 px-6 py-4 flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            Interested in collaborating?{' '}
+            <a
+              href="mailto:josh@evidify.ai"
+              className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+            >
+              josh@evidify.ai
+            </a>
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium transition-all duration-200"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -542,6 +916,7 @@ const StudySelector: React.FC<StudySelectorProps> = ({
   onGuidedStepChange,
 }) => {
   const [selectedStudy, setSelectedStudy] = useState<string | null>(null);
+  const [showResearchModal, setShowResearchModal] = useState(false);
 
   const selected = STUDIES.find((s) => s.id === selectedStudy) ?? null;
 
@@ -571,8 +946,22 @@ const StudySelector: React.FC<StudySelectorProps> = ({
         <Header />
 
         {/* Guided demo banner — shown when parent supports guided mode */}
-        {onGuidedStepChange && (
-          <DemoFlowBanner onStart={() => onGuidedStepChange(0)} />
+        {onGuidedStepChange ? (
+          <DemoFlowBanner
+            onStart={() => onGuidedStepChange(0)}
+            onViewResearch={() => setShowResearchModal(true)}
+          />
+        ) : (
+          <div className="mb-8">
+            <button
+              type="button"
+              onClick={() => setShowResearchModal(true)}
+              className="flex items-center gap-3 px-8 py-4 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-lg font-semibold transition-all duration-200"
+            >
+              <BookOpen size={22} />
+              Proposed Studies
+            </button>
+          </div>
         )}
 
         <CTARow onLaunch={handleLaunch} />
@@ -599,6 +988,11 @@ const StudySelector: React.FC<StudySelectorProps> = ({
 
         <Footer />
       </div>
+
+      {/* Research Opportunities Modal */}
+      {showResearchModal && (
+        <ResearchOpportunitiesModal onClose={() => setShowResearchModal(false)} />
+      )}
     </div>
   );
 };
