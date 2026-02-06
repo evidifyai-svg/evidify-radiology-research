@@ -6,6 +6,8 @@
  * uncertainty display format, and sham-AI configuration.
  */
 
+import type { UncertaintyDisplayMode } from '../components/research/AIRecommendationDisplay';
+
 // ============================================================================
 // Accountability Notification Mode
 // ============================================================================
@@ -27,15 +29,7 @@ export type AccountabilityMode = 'off' | 'standard' | 'explicit';
 // Uncertainty Display Format
 // ============================================================================
 
-/**
- * How AI confidence / error-rate information is presented to the clinician.
- *
- * - 'binary'      — Positive / Negative only
- * - 'confidence'  — AI confidence score (e.g., 87%)
- * - 'error_rates' — FDR / FOR at operating threshold
- * - 'full'        — Confidence + error rates + sample-size context
- */
-export type UncertaintyDisplay = 'binary' | 'confidence' | 'error_rates' | 'full';
+export type UncertaintyDisplay = UncertaintyDisplayMode;
 
 // ============================================================================
 // Sham-AI Configuration
@@ -64,6 +58,8 @@ export interface StudyConfig {
   accountabilityMode: AccountabilityMode;
   /** How uncertainty information is displayed alongside AI output. */
   uncertaintyDisplay: UncertaintyDisplay;
+  /** Static = always show FDR/FOR; Adaptive = modulate by case difficulty. */
+  disclosurePolicy: 'STATIC' | 'ADAPTIVE';
   /** Whether sham-AI cases are enabled for this study. */
   shamAIEnabled: boolean;
   /** If sham-AI is enabled, the manifest of rigged cases. */
@@ -79,5 +75,37 @@ export const DEFAULT_STUDY_CONFIG: StudyConfig = {
   name: 'Demo Study',
   accountabilityMode: 'standard',
   uncertaintyDisplay: 'confidence',
+  disclosurePolicy: 'STATIC',
   shamAIEnabled: false,
 };
+
+// ============================================================================
+// Human-readable labels for the config UI
+// ============================================================================
+
+export const UNCERTAINTY_DISPLAY_OPTIONS: {
+  value: UncertaintyDisplayMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'binary',
+    label: 'Binary only (control)',
+    description: 'AI recommendation without confidence or error-rate information.',
+  },
+  {
+    value: 'confidence',
+    label: 'Confidence score',
+    description: 'Adds a numeric confidence level and progress bar.',
+  },
+  {
+    value: 'error_rates',
+    label: 'Error rates (FDR / FOR)',
+    description: 'Shows false discovery and false omission rates.',
+  },
+  {
+    value: 'full',
+    label: 'Full context (all metrics)',
+    description: 'Confidence, error rates, calibration note, and cohort prevalence.',
+  },
+];
