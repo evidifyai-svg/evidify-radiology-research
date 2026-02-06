@@ -73,6 +73,11 @@ export type ViewerEventType =
   | 'AI_OVERLAY_TOGGLED'
   | 'VIEWS_LINKED_TOGGLED';
 
+// Accountability notification events (Bernstein et al. 2023)
+export type AccountabilityEventType =
+  | 'ACCOUNTABILITY_NOTIFICATION_DISPLAYED'
+  | 'ACCOUNTABILITY_NOTIFICATION_DISMISSED';
+
 // Workload monitoring events (session duration tracking)
 export type WorkloadEventType =
   | 'WORKLOAD_THRESHOLD_CROSSED'
@@ -87,6 +92,7 @@ export type AllEventTypes =
   | AttentionEventType
   | EyeTrackingProxyEventType
   | ViewerEventType
+  | AccountabilityEventType
   | WorkloadEventType
 
 // ============================================================================
@@ -256,6 +262,18 @@ export interface AttentionCoverageProxyPayload {
     pans: number;
     windowLevelChanges: number;
   };
+}
+
+// Accountability notification payloads
+export interface AccountabilityNotificationDisplayedPayload {
+  studyId: string;
+  mode: 'standard' | 'explicit';
+  timestamp: string;
+}
+
+export interface AccountabilityNotificationDismissedPayload {
+  studyId: string;
+  timestamp: string;
 }
 
 // Workload monitoring payloads
@@ -786,6 +804,28 @@ const payload: FinalAssessmentPayload = {
     payload: ErrorClassificationPayload
   ): Promise<LedgerEntry> {
     return this.exportPack.addEvent('ERROR_CLASSIFICATION', payload);
+  }
+
+  // ==========================================================================
+  // Accountability notification events
+  // ==========================================================================
+
+  /**
+   * Log accountability notification displayed
+   */
+  async logAccountabilityNotificationDisplayed(
+    payload: AccountabilityNotificationDisplayedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('ACCOUNTABILITY_NOTIFICATION_DISPLAYED', payload);
+  }
+
+  /**
+   * Log accountability notification dismissed
+   */
+  async logAccountabilityNotificationDismissed(
+    payload: AccountabilityNotificationDismissedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('ACCOUNTABILITY_NOTIFICATION_DISMISSED', payload);
   }
 
   // ==========================================================================
