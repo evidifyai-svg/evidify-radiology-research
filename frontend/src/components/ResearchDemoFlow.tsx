@@ -54,6 +54,9 @@ import { EventLogger } from '../lib/event_logger';
 import { generateSeed, assignCondition, manualCondition, ConditionAssignment, RevealCondition } from '../lib/condition_matrix';
 import { CaseDefinition, CaseQueueState, generateCaseQueue, getCurrentCase, advanceQueue, isQueueComplete, getQueueProgress } from '../lib/case_queue';
 import { IPProtectionFooter, IPProtectionSplash } from './IPProtection';
+import AIRecommendationDisplay from './research/AIRecommendationDisplay';
+import type { UncertaintyDisplayMode, AIRecommendation } from './research/AIRecommendationDisplay';
+import { UNCERTAINTY_DISPLAY_OPTIONS } from '../data/studyConfig';
 import {
   computeValidityProfile,
   generateInterpretiveSummary,
@@ -4137,6 +4140,8 @@ interface StudyConfigPanelProps {
   caseQueue: CaseQueueState | null;
   isInterventionMode: boolean;
   onInterventionModeChange: (mode: boolean) => void;
+  uncertaintyDisplayMode: UncertaintyDisplayMode;
+  onUncertaintyDisplayModeChange: (mode: UncertaintyDisplayMode) => void;
 }
 
 const StudyConfigurationPanel: React.FC<StudyConfigPanelProps> = ({
@@ -4146,6 +4151,8 @@ const StudyConfigurationPanel: React.FC<StudyConfigPanelProps> = ({
   caseQueue,
   isInterventionMode,
   onInterventionModeChange,
+  uncertaintyDisplayMode,
+  onUncertaintyDisplayModeChange,
 }) => {
   if (!condition) return null;
 
@@ -4285,6 +4292,54 @@ const StudyConfigurationPanel: React.FC<StudyConfigPanelProps> = ({
         </div>
       </div>
 
+      {/* AI Uncertainty Display Mode */}
+      <div style={{
+        marginTop: '16px',
+        padding: '12px',
+        backgroundColor: '#0f172a',
+        borderRadius: '8px',
+        border: '1px solid #334155',
+      }}>
+        <div style={{ fontSize: '9px', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+          AI INFORMATION DISPLAY
+        </div>
+        <select
+          value={uncertaintyDisplayMode}
+          onChange={e => onUncertaintyDisplayModeChange(e.target.value as UncertaintyDisplayMode)}
+          style={{
+            width: '100%',
+            padding: '8px',
+            backgroundColor: '#334155',
+            color: 'white',
+            border: '1px solid #475569',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {UNCERTAINTY_DISPLAY_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <div style={{ color: '#64748b', fontSize: '10px', marginTop: '6px' }}>
+          {UNCERTAINTY_DISPLAY_OPTIONS.find(o => o.value === uncertaintyDisplayMode)?.description}
+        </div>
+        <div style={{
+          marginTop: '8px',
+          padding: '8px',
+          backgroundColor: '#1e1b4b',
+          borderRadius: '6px',
+          border: '1px solid #4338ca',
+          fontSize: '10px',
+          color: '#c7d2fe',
+        }}>
+          Published studies test how uncertainty display affects radiologist behavior.
+          This dropdown lets you configure exactly what AI information radiologists see
+          &mdash; running Study 3 requires no additional development.
+        </div>
+      </div>
+
       {/* Intervention Mode Toggle */}
       <div style={{
         marginTop: '16px',
@@ -4337,7 +4392,7 @@ const StudyConfigurationPanel: React.FC<StudyConfigPanelProps> = ({
         color: '#86efac',
         fontWeight: 600,
       }}>
-        Study Mode: Active | Condition: {condition.disclosureFormat} | Cases: {caseQueue?.cases.length ?? 0}
+        Study Mode: Active | Condition: {condition.disclosureFormat} | Display: {uncertaintyDisplayMode} | Cases: {caseQueue?.cases.length ?? 0}
       </div>
     </div>
   );
@@ -4545,6 +4600,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const [showAdvancedResearcher, setShowAdvancedResearcher] = useState(false);
   const [demoPathStep, setDemoPathStep] = useState(0);
   const [disclosurePolicy, setDisclosurePolicy] = useState<'STATIC' | 'ADAPTIVE'>('STATIC');
+  const [uncertaintyDisplayMode, setUncertaintyDisplayMode] = useState<UncertaintyDisplayMode>('binary');
   const [aiAgreementStreak, setAiAgreementStreak] = useState(0);
   const [totalDeviationsRequired, setTotalDeviationsRequired] = useState(0);
   const [deviationsSkipped, setDeviationsSkipped] = useState(0);
@@ -5215,7 +5271,7 @@ await eventLoggerRef.current!.logAIRevealed({
   suggestedBirads: aiSuggestedBirads,
   aiConfidence,
   finding: (state.currentCase as any).finding ?? 'N/A',
-  displayMode: 'PANEL',
+  displayMode: uncertaintyDisplayMode,
 });
 
     if (!state.currentCase.isCalibration) {
@@ -5233,6 +5289,7 @@ await eventLoggerRef.current!.logAIRevealed({
       policy: disclosurePolicy,
       caseDifficulty,
       disclosureIntensity,
+      uncertaintyDisplayMode,
       showFdrFor: disclosurePolicy === 'STATIC' || caseDifficulty !== 'EASY',
       showDebiasPrompt: disclosurePolicy === 'ADAPTIVE' && caseDifficulty === 'HARD',
     });
@@ -5241,7 +5298,7 @@ await eventLoggerRef.current!.logAIRevealed({
       ...s, step: 'AI_REVEALED', lockTime, aiConsultationTime, finalBirads: s.initialBirads, finalConfidence: s.initialConfidence,
       eventCount: exportPackRef.current?.getEvents().length || 0,
     }));
-  }, [state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy]);
+  }, [state.sessionId, state.currentCase, state.initialBirads, state.initialConfidence, state.preTrust, state.condition, state.caseStartTime, state.interactionCounts, state.caseQueue, disclosurePolicy, uncertaintyDisplayMode]);
 
   // Handle comprehension answer
   const handleComprehension = useCallback(async (answer: string) => {
@@ -6317,15 +6374,44 @@ style={{
 
                 {/* AI + FDR/FOR Panel */}
                 <div>
-                  {/* AI Result */}
-                  <div 
-                    onMouseEnter={() => handleROIEnter('ai_box')} 
+                  {/* AI Result - configurable uncertainty display */}
+                  <div
+                    onMouseEnter={() => handleROIEnter('ai_box')}
                     onMouseLeave={() => handleROILeave('ai_box')}
-                    style={{ backgroundColor: '#7c3aed', padding: '20px', borderRadius: '12px', marginBottom: '16px', border: '2px solid #a855f7' }}
                   >
-                    <div style={{ fontSize: '12px', color: '#c4b5fd', marginBottom: '8px' }}>AI ASSESSMENT</div>
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {aiSuggestedBirads}</div>
-                    <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {(aiSuggestedConfidence * 100).toFixed(0)}%</div>
+                    <AIRecommendationDisplay
+                      recommendation={{
+                        recommendation: aiSuggestedBirads >= 4 ? 'ABNORMAL' : 'NORMAL',
+                        finding: (currentCase as any)?.finding ?? `BI-RADS ${aiSuggestedBirads}`,
+                        location: (currentCase as any)?.location,
+                        confidence: Math.round((typeof aiSuggestedConfidence === 'number' && aiSuggestedConfidence <= 1 ? aiSuggestedConfidence * 100 : aiSuggestedConfidence) as number),
+                        falseDiscoveryRate: 4,
+                        falseOmissionRate: 12,
+                        cohortPrevalence: 23,
+                        calibrationNote: 'Well-calibrated at this confidence level',
+                      } as AIRecommendation}
+                      displayMode={uncertaintyDisplayMode}
+                      onViewed={() => {
+                        if (eventLoggerRef.current) {
+                          eventLoggerRef.current.addEvent('AI_RECOMMENDATION_DISPLAYED', {
+                            displayMode: uncertaintyDisplayMode,
+                            recommendation: aiSuggestedBirads >= 4 ? 'ABNORMAL' : 'NORMAL',
+                            confidence: aiSuggestedConfidence,
+                            caseId: currentCase?.caseId,
+                            timestamp: new Date().toISOString(),
+                          });
+                          eventLoggerRef.current.addEvent('AI_UNCERTAINTY_METRICS_VIEWED', {
+                            displayMode: uncertaintyDisplayMode,
+                            metricsShown: uncertaintyDisplayMode === 'binary' ? ['recommendation'] :
+                              uncertaintyDisplayMode === 'confidence' ? ['recommendation', 'confidence'] :
+                              uncertaintyDisplayMode === 'error_rates' ? ['recommendation', 'fdr', 'for'] :
+                              ['recommendation', 'confidence', 'fdr', 'for', 'calibration', 'cohort'],
+                            caseId: currentCase?.caseId,
+                            timestamp: new Date().toISOString(),
+                          });
+                        }
+                      }}
+                    />
                   </div>
                   
                   {/* FDR/FOR Disclosure - Adaptive based on policy + difficulty */}
@@ -6662,6 +6748,19 @@ style={{
                   caseQueue={state.caseQueue}
                   isInterventionMode={isInterventionMode}
                   onInterventionModeChange={setIsInterventionMode}
+                  uncertaintyDisplayMode={uncertaintyDisplayMode}
+                  onUncertaintyDisplayModeChange={async (mode) => {
+                    setUncertaintyDisplayMode(mode);
+                    if (eventLoggerRef.current) {
+                      await eventLoggerRef.current.addEvent('UNCERTAINTY_DISPLAY_MODE_CHANGED', {
+                        previousMode: uncertaintyDisplayMode,
+                        newMode: mode,
+                        caseId: state.currentCase?.caseId,
+                        timestamp: new Date().toISOString(),
+                      });
+                      setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+                    }
+                  }}
                 />
               )}
 
