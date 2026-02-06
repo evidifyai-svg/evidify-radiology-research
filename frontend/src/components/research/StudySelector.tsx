@@ -6,6 +6,7 @@ import {
   Activity,
   Brain,
   FileCheck,
+  FlaskConical,
   GitBranch,
   ArrowLeft,
   ArrowRight,
@@ -102,6 +103,15 @@ const STUDIES: StudyCard[] = [
     researchBasis: 'T.J. Hooper doctrine; failure-to-utilize analysis',
     status: 'ready',
     icon: <GitBranch size={24} />,
+  },
+  {
+    id: 'shamai',
+    title: 'Sham AI Research Mode',
+    description:
+      'Inject deliberately incorrect AI suggestions at controlled rates to measure automation bias. Upload a manifest to configure false positive/negative sham cases.',
+    researchBasis: 'Dratsch et al. (Radiology, 2023); Bernstein et al. (European Radiology, 2023)',
+    status: 'ready',
+    icon: <FlaskConical size={24} />,
   },
   {
     id: 'aiassistant',

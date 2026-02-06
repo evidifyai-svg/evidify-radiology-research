@@ -25,6 +25,7 @@ import {
   Download,
   Eye,
   FileText,
+  FlaskConical,
   Gavel,
   HardDrive,
   Info,
@@ -70,6 +71,7 @@ import {
   CrossExamAnalysis,
   HashBlock,
 } from '../lib/liabilityClassifier';
+import { shamAIManager } from '../lib/shamAIManager';
 
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
@@ -768,8 +770,62 @@ const StudyControlSurface: React.FC<StudyControlSurfaceProps> = ({
             )}
           </div>
           
+          {/* Sham AI Mode Indicator */}
+          {shamAIManager.isActive() && (() => {
+            const summary = shamAIManager.getManifestSummary();
+            if (!summary) return null;
+            return (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>SHAM AI MODE</div>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#4c1d95',
+                  borderRadius: '8px',
+                  border: '1px solid #7c3aed',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <FlaskConical size={12} />
+                    <span style={{ fontSize: '11px', color: '#e9d5ff', fontWeight: 700 }}>ACTIVE</span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#c4b5fd' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span>Sham cases:</span>
+                      <span style={{ fontWeight: 600, color: '#e9d5ff' }}>{summary.shamCases}/{summary.totalCases}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span>False +:</span>
+                      <span style={{ color: '#fca5a5' }}>{summary.falsePositives}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span>False −:</span>
+                      <span style={{ color: '#fcd34d' }}>{summary.falseNegatives}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Target AUC:</span>
+                      <span style={{ color: '#e9d5ff' }}>{summary.targetAUC}</span>
+                    </div>
+                  </div>
+                  {currentCaseId && shamAIManager.isShamCase(currentCaseId) && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '4px 8px',
+                      backgroundColor: '#7f1d1d',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#fca5a5',
+                      textAlign: 'center',
+                    }}>
+                      CURRENT CASE IS SHAM: {shamAIManager.getShamType(currentCaseId)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Session ID */}
-          <div style={{ 
+          <div style={{
             marginTop: '16px',
             padding: '8px',
             backgroundColor: '#0f172a',
@@ -4929,15 +4985,22 @@ const sessionMedianPreAiMs = useMemo(() => {
   }, [state.caseQueue]);
 
   // --- AI helper (compat: old aiResult vs newer case fields) ---
-  const aiSuggestedBirads =
-    (currentCase as any)?.aiResult?.birads ??
-    (currentCase as any)?.aiBirads ??
-    4;
+  // Sham AI: if sham mode is active and this case has a sham recommendation, use it
+  const shamRec = currentCase && shamAIManager.isActive() && shamAIManager.hasCaseInManifest(currentCase.caseId)
+    ? shamAIManager.getShamAIRecommendation(currentCase.caseId)
+    : null;
 
-const aiSuggestedConfidence =
-  (currentCase as any)?.aiResult?.confidence ??
-  (currentCase as any)?.aiConfidence ??
-  0.87;
+  const aiSuggestedBirads = shamRec
+    ? (shamRec.recommendation === 'ABNORMAL' ? 4 : 2)
+    : ((currentCase as any)?.aiResult?.birads ??
+       (currentCase as any)?.aiBirads ??
+       4);
+
+const aiSuggestedConfidence = shamRec
+  ? shamRec.confidence / 100 // Sham confidence is 0-100, normalize to 0-1
+  : ((currentCase as any)?.aiResult?.confidence ??
+     (currentCase as any)?.aiConfidence ??
+     0.87);
 
 // ROI tracking (eye-tracking proxy)
 const handleROIEnter = useCallback(async (roiId: string) => {
@@ -5105,12 +5168,27 @@ const counterbalanceArm = (() => {
       studyCases: queue.cases.filter(c => !c.isCalibration).map(c => c.caseId),
     });
     
+    // Log sham AI mode if active
+    if (shamAIManager.isActive()) {
+      const shamSummary = shamAIManager.getManifestSummary();
+      if (shamSummary) {
+        await eventLoggerRef.current!.logShamAIModeEnabled({
+          manifestId: shamAIManager.getManifest()?.studyId ?? 'unknown',
+          shamCaseCount: shamSummary.shamCases,
+          totalCases: shamSummary.totalCases,
+          targetAUC: shamSummary.targetAUC,
+          falsePositives: shamSummary.falsePositives,
+          falseNegatives: shamSummary.falseNegatives,
+        });
+      }
+    }
+
     if (firstCase) {
       if (!firstCase.isCalibration) {
         await eventLoggerRef.current!.logReadEpisodeStarted(firstCase.caseId, 'PRE_AI');
       }
     }
-    
+
     setState(s => ({
       ...s,
       condition, caseQueue: queue, currentCase: firstCase, caseStartTime: new Date(),
@@ -5201,22 +5279,48 @@ await eventLoggerRef.current!.addEvent('FIRST_IMPRESSION_CONTEXT', {
 
     const aiConsultationTime = new Date();
 
-    const aiSuggestedBirads =
-      (state.currentCase as any)?.aiResult?.birads ??
-      (state.currentCase as any)?.aiBirads ??
-      4;
+    // Sham AI: check if this case should use manipulated AI
+    const lockShamRec = shamAIManager.isActive() && shamAIManager.hasCaseInManifest(state.currentCase.caseId)
+      ? shamAIManager.getShamAIRecommendation(state.currentCase.caseId)
+      : null;
 
-    const aiConfidence =
-      (state.currentCase as any)?.aiResult?.confidence ??
-      (state.currentCase as any)?.aiConfidence ??
-      0.87;
-    
+    const aiSuggestedBirads = lockShamRec
+      ? (lockShamRec.recommendation === 'ABNORMAL' ? 4 : 2)
+      : ((state.currentCase as any)?.aiResult?.birads ??
+         (state.currentCase as any)?.aiBirads ??
+         4);
+
+    const aiConfidence = lockShamRec
+      ? lockShamRec.confidence / 100
+      : ((state.currentCase as any)?.aiResult?.confidence ??
+         (state.currentCase as any)?.aiConfidence ??
+         0.87);
+
+    const aiFinding = lockShamRec?.finding
+      ?? (state.currentCase as any).finding
+      ?? 'N/A';
+
 await eventLoggerRef.current!.logAIRevealed({
   suggestedBirads: aiSuggestedBirads,
   aiConfidence,
-  finding: (state.currentCase as any).finding ?? 'N/A',
+  finding: aiFinding,
   displayMode: 'PANEL',
 });
+
+    // Log sham AI event if applicable
+    if (lockShamRec && shamAIManager.isActive()) {
+      const shamType = shamAIManager.getShamType(state.currentCase.caseId);
+      if (shamType) {
+        await eventLoggerRef.current!.logShamAICaseDisplayed({
+          caseId: state.currentCase.caseId,
+          shamType,
+          shamRecommendation: lockShamRec.recommendation,
+          shamConfidence: lockShamRec.confidence,
+          shamFinding: lockShamRec.finding,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
 
     if (!state.currentCase.isCalibration) {
       await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'PRE_AI', 'AI_REVEALED');
@@ -5297,6 +5401,30 @@ setAiAgreementStreak(prev => prev + 1);
       state.initialBirads ?? 0,
       aiSuggestedBirads
     );
+
+    // Log sham AI follow/reject if applicable
+    if (shamAIManager.isActive() && shamAIManager.hasCaseInManifest(state.currentCase.caseId)) {
+      const shamType = shamAIManager.getShamType(state.currentCase.caseId);
+      const shamRecForLog = shamAIManager.getShamAIRecommendation(state.currentCase.caseId);
+      if (shamType && shamRecForLog) {
+        // Map final BI-RADS to NORMAL/ABNORMAL for sham comparison
+        const finalBiradsVal = state.finalBirads ?? state.initialBirads ?? 0;
+        const radAssessment: 'NORMAL' | 'ABNORMAL' = finalBiradsVal <= 2 ? 'NORMAL' : 'ABNORMAL';
+        const matchedSham = radAssessment === shamRecForLog.recommendation;
+
+        await eventLoggerRef.current!.logShamAIFollowed({
+          caseId: state.currentCase.caseId,
+          shamType,
+          radiologistMatchedSham: matchedSham,
+          radiologistAssessment: `BI-RADS ${finalBiradsVal}`,
+          shamRecommendation: shamRecForLog.recommendation,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Also log to the sham manager for in-session analytics
+        shamAIManager.logShamInteraction(state.currentCase.caseId, radAssessment);
+      }
+    }
 
     if (!state.currentCase.isCalibration) {
       await eventLoggerRef.current!.logReadEpisodeEnded(state.currentCase.caseId, 'POST_AI', 'FINAL_ASSESSMENT');
@@ -6318,14 +6446,36 @@ style={{
                 {/* AI + FDR/FOR Panel */}
                 <div>
                   {/* AI Result */}
-                  <div 
-                    onMouseEnter={() => handleROIEnter('ai_box')} 
+                  <div
+                    onMouseEnter={() => handleROIEnter('ai_box')}
                     onMouseLeave={() => handleROILeave('ai_box')}
                     style={{ backgroundColor: '#7c3aed', padding: '20px', borderRadius: '12px', marginBottom: '16px', border: '2px solid #a855f7' }}
                   >
                     <div style={{ fontSize: '12px', color: '#c4b5fd', marginBottom: '8px' }}>AI ASSESSMENT</div>
                     <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white' }}>BI-RADS {aiSuggestedBirads}</div>
                     <div style={{ fontSize: '14px', color: '#c4b5fd', marginTop: '4px' }}>Confidence: {(aiSuggestedConfidence * 100).toFixed(0)}%</div>
+                    {/* Show sham finding if applicable */}
+                    {shamRec?.finding && (
+                      <div style={{ fontSize: '12px', color: '#e9d5ff', marginTop: '8px', fontStyle: 'italic' }}>
+                        {shamRec.finding}
+                      </div>
+                    )}
+                    {/* Researcher-only sham indicator (blinded participants won't see this) */}
+                    {isResearcher && shamAIManager.isActive() && currentCase && shamAIManager.isShamCase(currentCase.caseId) && (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '4px 8px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        color: '#fca5a5',
+                        textAlign: 'center',
+                      }}>
+                        SHAM: {shamAIManager.getShamType(currentCase.caseId)}
+                      </div>
+                    )}
                   </div>
                   
                   {/* FDR/FOR Disclosure - Adaptive based on policy + difficulty */}
