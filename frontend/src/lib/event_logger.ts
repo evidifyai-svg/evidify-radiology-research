@@ -80,6 +80,12 @@ export type WorkloadEventType =
   | 'WORKLOAD_ADVISORY_RESPONSE'
   | 'SESSION_WORKLOAD_SUMMARY';
 
+// Sham AI research events (automation bias studies)
+export type ShamAIEventType =
+  | 'SHAM_AI_MODE_ENABLED'
+  | 'SHAM_AI_CASE_DISPLAYED'
+  | 'SHAM_AI_FOLLOWED';
+
 export type AllEventTypes =
   | SessionEventType
   | CaseEventType
@@ -88,6 +94,7 @@ export type AllEventTypes =
   | EyeTrackingProxyEventType
   | ViewerEventType
   | WorkloadEventType
+  | ShamAIEventType
 
 // ============================================================================
 // EVENT PAYLOADS
@@ -315,6 +322,34 @@ export interface SessionWorkloadSummaryPayload {
     continued: number;
     tookBreak: number;
   };
+}
+
+// Sham AI research payloads
+export interface ShamAIModeEnabledPayload {
+  manifestId: string;
+  shamCaseCount: number;
+  totalCases: number;
+  targetAUC: number;
+  falsePositives: number;
+  falseNegatives: number;
+}
+
+export interface ShamAICaseDisplayedPayload {
+  caseId: string;
+  shamType: 'FALSE_POSITIVE' | 'FALSE_NEGATIVE' | 'CORRECT';
+  shamRecommendation: 'NORMAL' | 'ABNORMAL';
+  shamConfidence: number;
+  shamFinding?: string;
+  timestamp: string;
+}
+
+export interface ShamAIFollowedPayload {
+  caseId: string;
+  shamType: 'FALSE_POSITIVE' | 'FALSE_NEGATIVE' | 'CORRECT';
+  radiologistMatchedSham: boolean;
+  radiologistAssessment: string;
+  shamRecommendation: 'NORMAL' | 'ABNORMAL';
+  timestamp: string;
 }
 
 // Viewport attention tracking payloads
@@ -826,6 +861,37 @@ const payload: FinalAssessmentPayload = {
     payload: SessionWorkloadSummaryPayload
   ): Promise<LedgerEntry> {
     return this.exportPack.addEvent('SESSION_WORKLOAD_SUMMARY', payload);
+  }
+
+  // ==========================================================================
+  // Sham AI research events
+  // ==========================================================================
+
+  /**
+   * Log sham AI mode being enabled with manifest details
+   */
+  async logShamAIModeEnabled(
+    payload: ShamAIModeEnabledPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SHAM_AI_MODE_ENABLED', payload);
+  }
+
+  /**
+   * Log a sham AI case being displayed to the radiologist
+   */
+  async logShamAICaseDisplayed(
+    payload: ShamAICaseDisplayedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SHAM_AI_CASE_DISPLAYED', payload);
+  }
+
+  /**
+   * Log whether radiologist followed or rejected a sham AI recommendation
+   */
+  async logShamAIFollowed(
+    payload: ShamAIFollowedPayload
+  ): Promise<LedgerEntry> {
+    return this.exportPack.addEvent('SHAM_AI_FOLLOWED', payload);
   }
 }
 

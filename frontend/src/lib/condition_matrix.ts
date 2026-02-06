@@ -23,6 +23,10 @@ export interface StudyConfig {
   conditions: RevealCondition[];
   disclosureFormats: DisclosureFormat[];
   counterbalanceMethod: 'LATIN_SQUARE' | 'FULL_FACTORIAL' | 'RANDOM';
+  /** When true, sham AI mode is active and AI suggestions may be manipulated per manifest */
+  shamAIEnabled?: boolean;
+  /** Identifier of the loaded sham AI manifest */
+  shamAIManifestId?: string;
 }
 
 // Default BRPLL study configuration
