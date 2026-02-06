@@ -70,6 +70,8 @@ import {
   CrossExamAnalysis,
   HashBlock,
 } from '../lib/liabilityClassifier';
+import AccountabilityBanner from './research/AccountabilityBanner';
+import type { AccountabilityMode } from '../data/studyConfig';
 
 type DemoStep = 'SETUP' | 'CALIBRATION' | 'CALIBRATION_FEEDBACK' | 'INITIAL' | 'AI_REVEALED' | 'DEVIATION' | 'COMPLETE' | 'TLX' | 'STUDY_COMPLETE';
 
@@ -4550,6 +4552,7 @@ export const ResearchDemoFlow: React.FC = () => {
   const [deviationsSkipped, setDeviationsSkipped] = useState(0);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [hangingProtocol, setHangingProtocol] = useState('MAMMO_CC_ONLY');
+  const [accountabilityMode, setAccountabilityMode] = useState<AccountabilityMode>('standard');
   const [recoveryData, setRecoveryData] = useState<{
     sessionId: string;
     step: string;
@@ -5769,9 +5772,23 @@ style={{
           </div>
         )}
 
+        {/* Accountability Notification Banner — shown during active reading steps */}
+        {!isSetupScreen && state.step !== 'STUDY_COMPLETE' && (
+          <AccountabilityBanner
+            mode={accountabilityMode}
+            studyId={state.sessionId}
+            logEvent={async (type, payload) => {
+              if (eventLoggerRef.current) {
+                await eventLoggerRef.current.addEvent(type, payload);
+                setState(s => ({ ...s, eventCount: exportPackRef.current?.getEvents().length || 0 }));
+              }
+            }}
+          />
+        )}
+
         {/* Main Content */}
         <div style={{ backgroundColor: '#1e293b', padding: '32px', borderRadius: '0 0 16px 16px' }}>
-          
+
           {/* SETUP */}
           {state.step === 'SETUP' && (
             <div style={{ textAlign: 'center', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
@@ -5960,6 +5977,35 @@ style={{
                           <Settings size={12} />
                           Researcher
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Accountability Notification Mode */}
+                    <div>
+                      <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px' }}>Accountability Banner</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {(['off', 'standard', 'explicit'] as AccountabilityMode[]).map(m => (
+                          <button
+                            key={m}
+                            onClick={() => setAccountabilityMode(m)}
+                            style={{
+                              padding: '8px 14px',
+                              backgroundColor: accountabilityMode === m ? (m === 'off' ? '#64748b' : m === 'standard' ? '#d97706' : '#dc2626') : '#1f2937',
+                              border: '1px solid ' + (accountabilityMode === m ? (m === 'off' ? '#94a3b8' : m === 'standard' ? '#f59e0b' : '#ef4444') : '#334155'),
+                              borderRadius: '8px',
+                              color: 'white',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '11px', marginTop: '6px' }}>
+                        Bernstein et al. (2023): documentation awareness reduced false positives (p=0.03)
                       </div>
                     </div>
 

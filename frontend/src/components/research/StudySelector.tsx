@@ -44,8 +44,8 @@ const STUDIES: StudyCard[] = [
     id: 'fullsession',
     title: 'Full Reading Session Demo',
     description:
-      'End-to-end workflow: calibration \u2192 pre-AI assessment \u2192 AI exposure \u2192 reconciliation \u2192 export pack.',
-    researchBasis: 'Human\u2013AI workflow / disclosure literature (see Methods)',
+      'End-to-end workflow: calibration \u2192 pre-AI assessment \u2192 AI exposure \u2192 reconciliation \u2192 export pack. Includes configurable accountability notification banner (Bernstein et al. 2023).',
+    researchBasis: 'Human\u2013AI workflow / disclosure literature; Bernstein et al. (European Radiology, 2023) accountability effects',
     status: 'ready',
     icon: <Play size={24} />,
   },
@@ -537,9 +537,17 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ study, onLaunch, onBack }) =>
 
     <p className="text-slate-300 leading-relaxed mb-2">{study.description}</p>
     {study.researchBasis && (
-      <p className="text-slate-500 text-sm italic mb-6">
+      <p className="text-slate-500 text-sm italic mb-4">
         Methods context: {study.researchBasis}
       </p>
+    )}
+    {study.id === 'fullsession' && (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-900/20 border border-amber-700/50 mb-6">
+        <Shield size={14} className="text-amber-400 flex-shrink-0" />
+        <span className="text-amber-200 text-xs">
+          Accountability banner active &mdash; configurable in Advanced settings (off / standard / explicit)
+        </span>
+      </div>
     )}
 
     <div className="flex gap-3 mt-6">
