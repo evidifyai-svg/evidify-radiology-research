@@ -14,6 +14,8 @@ import TrustTrajectoryDashboard from './components/research/TrustTrajectoryDashb
 import { DEMO_TRUST_DATA } from './data/trustTrajectoryDemoData';
 import CounterfactualSimulator from './components/research/CounterfactualSimulator';
 import { DEMO_COUNTERFACTUAL_CASE } from './data/counterfactualDemoData';
+import CompetencyReportGenerator from './components/research/CompetencyReportGenerator';
+import { DEMO_COMPETENCY_REPORT } from './data/competencyDemoData';
 import {
   DEMO_PACK_EVENTS,
   DEMO_PACK_LEDGER,
@@ -163,6 +165,22 @@ if (activeStudy === 'trust-trajectory') {
       </div>
     );
   }
+  if (activeStudy === 'competency-report') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>
+        <div style={headerBarStyle}>
+          <h2 style={{ color: '#f8fafc', margin: 0, fontSize: '18px', fontFamily: 'system-ui, sans-serif' }}>
+            Competency Report Generator
+          </h2>
+          <button onClick={handleBack} style={backBtnStyle}>
+            {backLabel}
+          </button>
+        </div>
+        <CompetencyReportGenerator report={DEMO_COMPETENCY_REPORT} />
+      </div>
+    );
+  }
+
   if (activeStudy === 'inspector') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0f172a' }}>

@@ -17,6 +17,7 @@ import {
   BookOpen,
   X,
   ChevronRight as ChevronRightIcon,
+  ClipboardCheck,
   Clock,
   Users,
 } from 'lucide-react';
@@ -104,6 +105,15 @@ const STUDIES: StudyCard[] = [
     researchBasis: 'T.J. Hooper doctrine; failure-to-utilize analysis',
     status: 'ready',
     icon: <GitBranch size={24} />,
+  },
+  {
+    id: 'competency-report',
+    title: 'Competency Report Generator',
+    description:
+      'Exportable competency dossier showing maintained AI-free diagnostic performance across periodic calibration sessions.',
+    researchBasis: 'Deskilling prevention; corporate negligence / learned intermediary doctrine',
+    status: 'ready',
+    icon: <ClipboardCheck size={24} />,
   },
   {
     id: 'aiassistant',
